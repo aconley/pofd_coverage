@@ -35,7 +35,8 @@ class beam {
   void getBeam(unsigned int, double, double* const) const; 
 
   /*!\brief Get 2D histogrammed beam*/
-  void getBeamHist(unsigned int, double, unsigned int&, unsigned int* const,
+  void getBeamHist(unsigned int, double, unsigned int,
+		   unsigned int&, unsigned int* const,
 		   double* const, bool=false) const;
 
 };

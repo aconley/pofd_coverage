@@ -53,11 +53,12 @@ numberCounts::numberCounts(const std::string& modelfile) {
   for (unsigned int i = 0; i < nknots; ++i)
     knotvals[i] = kv[i];
 
-  a = gamma = iomg = fk = powarr = NULL;
+  a = gamma = omg = iomg = fk = powarr = NULL;
   gamone = NULL;
   initMParams();
 
-  nwkr = 0;
+  //Don't set histogrammed beam currently
+  nwrk = 0;
   wrk_wts = NULL;
   wrk_bm = NULL;
 
@@ -94,15 +95,14 @@ numberCounts::numberCounts(unsigned int NKNOTS, const double* const KNOTPOS,
   knotvals = new double[nknots];
   for (unsigned int i = 0; i < nknots; ++i) knotvals[i] = KNOTVAL[i];
 
-  a = gamma = iomg = fk = powarr = NULL;
+  a = gamma = omg = iomg = fk = powarr = NULL;
   gamone = NULL;
   initMParams();
 
-  nwkr = 0;
+  nwrk = 0;
   wrk_wts = NULL;
   wrk_bm = NULL;
 }
-
 
 void numberCounts::initMParams() {
   
@@ -116,18 +116,20 @@ void numberCounts::initMParams() {
   if (a != NULL) delete[] a;
   a = new double[nknots-1];
   for (unsigned int i = 0; i < nknots-1; ++i)
-    a[i] = kv[i] * pow(knotpos[i], gamma[i]);
+    a[i] = knotvals[i] * pow(knotpos[i], gamma[i]);
 
   if (gamone != NULL) delete[] gamone;
   gamone = new bool[nknots-1];
+  if (omg != NULL) delete[] omg;
+  omg = new double[nknots-1];
   if (iomg != NULL) delete[] iomg;
-  iomg = new double[nknots];
-  double omg;
+  iomg = new double[nknots-1];
+  double val;
   for (unsigned int i = 0; i < nknots-1; ++i) {
-    omg = gamma[i] - 1.0;
-    if (fabs(omg) < ftol) {
+    omg[i] = val = gamma[i] - 1.0;
+    if (fabs(val) < ftol) {
       gamone[i] = true; 
-      iomg[i] = 1.0 / omg;
+      iomg[i] = 1.0 / val;
     } else gamone[i] = false;
   }
 
@@ -143,8 +145,8 @@ void numberCounts::initMParams() {
       tmp = log(knotpos[i]);
       m = a[i] * (log(knotpos[i+1]) - tmp);
     } else {
-      tmp = pow(knotpos[i], 1.0 - gamma[i]);
-      m = a[i] * iomg[i] * (pow(knotpos[i+1], omg[i]) - tmp) 
+      tmp = pow(knotpos[i], omg[i]);
+      m = a[i] * iomg[i] * (pow(knotpos[i+1], omg[i]) - tmp);
     }
     powarr[i] = tmp;
     if (i == 0) fk[i] = m;
@@ -174,13 +176,14 @@ void numberCounts::initMParams() {
       base_meanfluxsq += 
 	a[i] * (pow(knotpos[i+1], tmg) - pow(knotpos[i], tmg)) / tmg;
   }
-
+}
 
 numberCounts::~numberCounts() {
   delete[] knotpos;
   delete[] knotvals;
   delete[] gamma;
   delete[] a;
+  delete[] omg;
   delete[] iomg;
   delete[] gamone;
   delete[] fk;
@@ -196,13 +199,35 @@ bool numberCounts::isValid() const {
   return true;
 }
 
+/*!
+  \returns The base number of sources per area
+ */
+double numberCounts::getBaseN0() const {
+  if (!isValid()) return std::numeric_limits<double>::quiet_NaN();
+  return base_n0;
+}
+
+/*!
+  \returns Mean flux per square degree for base model
+ */
 double numberCounts::getMeanFluxPerArea() const {
+  if (!isValid()) return std::numeric_limits<double>::quiet_NaN();
   return base_meanflux;
 }
 
+/*!
+  \returns Mean flux^2 per square degree for base model
+ */
 double numberCounts::getMeanFluxSqPerArea() const {
+  if (!isValid()) return std::numeric_limits<double>::quiet_NaN();
   return base_meanfluxsq;
 }
+
+/*!
+  \param[in] flux Flux density number counts are desired at
+
+  \returns Differential number counts at flux density flux for base model
+ */
 
 double numberCounts::getdNdS(double flux) const {
   if (flux < knotpos[0]) return 0.0;
@@ -213,8 +238,7 @@ double numberCounts::getdNdS(double flux) const {
   return a[loc] * pow(flux, -gamma[loc]);
 }
 
-/*!\brief Get number of source responses 
-
+/*!
   \param[in] x The value R is desired for
   \param[in] bm The beam
   \param[in] pixsize The pixel size, in arcseconds
@@ -250,8 +274,8 @@ double numberCounts::getR(double x, const beam& bm,
   //Get the inverse binned beam histogram
   if (nwrk < nbins) {
     //Must expand
-    if (wrk_wts == NULL) delete[] wkr_wts;
-    if (wrk_bm == NULL) delete[] wkr_bm;
+    if (wrk_wts == NULL) delete[] wrk_wts;
+    if (wrk_bm == NULL) delete[] wrk_bm;
     wrk_wts = new unsigned int[nbins];
     wrk_bm = new double[nbins];
     nwrk = nbins;
@@ -260,7 +284,7 @@ double numberCounts::getR(double x, const beam& bm,
 						0.9999999999);
   npix = 2 * npix + 1;
   unsigned int nnonzero;
-  bm.getBeamHist(npix, pixsize, nnonzero, wrk_wts, wrk_bm, true);
+  bm.getBeamHist(npix, pixsize, nbins, nnonzero, wrk_wts, wrk_bm, true);
 
   //And now the actual computation
   double cval, cR, R, ibm;
@@ -277,7 +301,7 @@ double numberCounts::getR(double x, const beam& bm,
   }
 
   double prefac = pixsize / 3600.0;
-  return R * prefac * prefac;
+  return prefac * prefac * R;
 }
 
 /*!\brief Get number of source responses, vector version 
@@ -324,8 +348,8 @@ void numberCounts::getR(unsigned int n, double minflux,
   //Get the inverse binned beam histogram
   if (nwrk < nbins) {
     //Must expand
-    if (wrk_wts == NULL) delete[] wkr_wts;
-    if (wrk_bm == NULL) delete[] wkr_bm;
+    if (wrk_wts == NULL) delete[] wrk_wts;
+    if (wrk_bm == NULL) delete[] wrk_bm;
     wrk_wts = new unsigned int[nbins];
     wrk_bm = new double[nbins];
     nwrk = nbins;
@@ -334,7 +358,7 @@ void numberCounts::getR(unsigned int n, double minflux,
 						0.9999999999);
   npix = 2 * npix + 1;
   unsigned int nnonzero;
-  bm.getBeamHist(npix, pixsize, nnonzero, wrk_wts, wrk_bm, true);
+  bm.getBeamHist(npix, pixsize, nbins, nnonzero, wrk_wts, wrk_bm, true);
 
   double prefac = pixsize / 3600.0;
   prefac = prefac * prefac;

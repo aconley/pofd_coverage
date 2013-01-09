@@ -43,7 +43,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   // Set up array to hold 1D beams (center normalized)
   // Note that the beam is set up in oversampled space
   const unsigned int nfwhm = 3.5;
-  ngauss = static_cast<unsigned_int>(nfwhm * fwhm / pixsize_gen + 0.99999999);
+  ngauss = static_cast<unsigned int>(nfwhm * fwhm / pixsize_gen + 0.99999999);
   ngauss = 2 * ngauss + 1;
   beam bm(fwhm);
   bm.getBeamFac(ngauss, pixsize_gen, gauss);
@@ -51,7 +51,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   //Set up additional smoothing 
   // This is done in un-oversampled space
   if (esmooth > 0) {
-    ngauss_add = static_cast<unsigned_int>(nfwhm * esmooth / pixsize +
+    ngauss_add = static_cast<unsigned int>(nfwhm * esmooth / pixsize +
 					   0.99999999);
     ngauss_add = 2 * ngauss_add + 1;
     beam ebm(esmooth);
@@ -261,7 +261,7 @@ void simImage::convolveWithAdd() {
   // and the extra amount of smoothing, and is derived from the
   // relation between the peak value of a Gaussian beam and it's
   // area
-  const double prefac = 4*std::log(2)/pofd_delta::pi;
+  const double prefac = 4*std::log(2)/pofd_coverage::pi;
   double normval = prefac * (fwhm*fwhm + esmooth*esmooth)*pixsize*pixsize / 
     (fwhm*fwhm*esmooth*esmooth);
   for (unsigned int i = 0; i < n1*n2; ++i)
@@ -277,7 +277,7 @@ double simImage::getNoise() const {
 
 //Will return estimated smoothed noise, even if current image is not smoothed
 double simImage::getSmoothedNoiseEstimate() const {
-  const double prefac = sqrt(2*std::log(2)/pofd_delta::pi);
+  const double prefac = sqrt(2*std::log(2)/pofd_coverage::pi);
   if (sigi == 0) return 0.0;
   if (esmooth <= 0.0) return sigi;
   return prefac*sigi*pixsize*(fwhm*fwhm+esmooth*esmooth) / 
@@ -297,7 +297,7 @@ double simImage::getArea() const {
   \params[in] meansub Do mean subtraction
   \params[in] bin Create binned image data
  */
-void simImage::realize(const numberCounts& model,
+void simImage::realize(const numberCounts& model, double n0,
 		       bool extra_smooth, bool meansub, bool bin) {
 
   if (!isValid())
@@ -516,102 +516,103 @@ int simImage::writeToFits(const std::string& outputfile) const {
   long axissize[2];
   axissize[0] = static_cast<long>(n1);
   axissize[1] = static_cast<long>(n2);
-  fits_create_img( fp, DOUBLE_IMG, 2, axissize, &status );
+  fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
   
   //Model params
-  fits_write_key( fp, TSTRING, const_cast<char*>("MODEL"),
-		  const_cast<char*>("Broken Power"), 
-		  const_cast<char*>("Model type"),
-		  &status );
+  fits_write_key(fp, TSTRING, const_cast<char*>("MODEL"),
+		 const_cast<char*>("Broken Power"), 
+		 const_cast<char*>("Model type"),
+		 &status);
 
   //Sim params
   double tmpval = fwhm;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("FWHM"), &tmpval, 
-		  const_cast<char*>("Beam fwhm [arcsec]"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &tmpval, 
+		 const_cast<char*>("Beam fwhm [arcsec]"), 
+		 &status);
   if (smooth_applied) {
     int tmpi = 1;
-    fits_write_key( fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
-		    const_cast<char*>("Additional smoothing applied"), 
-		    &status );
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+		   const_cast<char*>("Additional smoothing applied"), 
+		   &status);
     tmpval = esmooth;
-    fits_write_key( fp, TDOUBLE, const_cast<char*>("ESMOOTH"), &tmpval, 
-		    const_cast<char*>("Extra smoothing fwhm [arcsec]"), 
-		    &status );
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH"), &tmpval, 
+		   const_cast<char*>("Extra smoothing fwhm [arcsec]"), 
+		   &status);
   } else {
     int tmpi = 0;
-    fits_write_key( fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
-		    const_cast<char*>("Additional smoothing applied"), 
-		    &status );
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+		   const_cast<char*>("Additional smoothing applied"), 
+		   &status);
   }
 
 
   tmpval = sigi;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("SIGI"), &tmpval, 
-		  const_cast<char*>("Instrument noise"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI"), &tmpval, 
+		 const_cast<char*>("Instrument noise"), 
+		 &status);
   if (smooth_applied) {
     tmpval = getSmoothedNoiseEstimate();
-    fits_write_key( fp, TDOUBLE, const_cast<char*>("SIGISM"), &tmpval, 
-		    const_cast<char*>("Smoothed instrument noise"), 
-		    &status );
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGISM"), &tmpval, 
+		   const_cast<char*>("Smoothed instrument noise"), 
+		   &status);
   }
-  fits_write_key( fp, TSTRING, const_cast<char*>("VERSION"),
-		  const_cast<char*>(pofd_delta::version), 
-		  const_cast<char*>("pofd_delta version"),
-		  &status );
+  fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
+		 const_cast<char*>(pofd_coverage::version), 
+		 const_cast<char*>("pofd_coverage version"),
+		 &status);
 
   if (oversample > 1) {
     unsigned int utmp = oversample;
-    fits_write_key( fp, TUINT, const_cast<char*>("OVERSMPL"), &utmp, 
+    fits_write_key(fp, TUINT, const_cast<char*>("OVERSMPL"), &utmp, 
 		    const_cast<char*>("Oversampling factor"), 
-		    &status );
+		    &status);
   }
 
-  fits_write_history( fp, const_cast<char*>("Simulated image from pofd_delta"),
-		      &status );
-  fits_write_date( fp, &status );
+  fits_write_history(fp, 
+		     const_cast<char*>("Simulated image from pofd_coverage"),
+		     &status);
+  fits_write_date(fp, &status);
 
 
 
   // Astrometry
-  fits_write_key( fp, TSTRING, const_cast<char*>("CTYPE1"),
-		  const_cast<char*>("RA---TAN"),
-		  const_cast<char*>("WCS: Projection type axis 1"),&status);
-  fits_write_key( fp, TSTRING, const_cast<char*>("CTYPE2"),
-		  const_cast<char*>("DEC--TAN"),
-		  const_cast<char*>("WCS: Projection type axis 2"),&status);
+  fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE1"),
+		 const_cast<char*>("RA---TAN"),
+		 const_cast<char*>("WCS: Projection type axis 1"),&status);
+  fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE2"),
+		 const_cast<char*>("DEC--TAN"),
+		 const_cast<char*>("WCS: Projection type axis 2"),&status);
   tmpval = n1/2;
-  fits_write_key( fp, TFLOAT, const_cast<char*>("CRPIX1"), &tmpval, 
-		  const_cast<char*>("Ref pix of axis 1"), &status );
+  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX1"), &tmpval, 
+		 const_cast<char*>("Ref pix of axis 1"), &status );
   tmpval = n2/2;
-  fits_write_key( fp, TFLOAT, const_cast<char*>("CRPIX2"), &tmpval, 
-		  const_cast<char*>("Ref pix of axis 2"), &status );
+  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX2"), &tmpval, 
+		 const_cast<char*>("Ref pix of axis 2"), &status );
   tmpval = 90.0; //Arbitrary
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
-		  const_cast<char*>("val at ref pix axis 1"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
+		 const_cast<char*>("val at ref pix axis 1"), &status );
   tmpval = 10.0; //Arbitrary
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CRVAL2"), &tmpval, 
-		  const_cast<char*>("val at ref pix axis 2"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL2"), &tmpval, 
+		 const_cast<char*>("val at ref pix axis 2"), &status );
   tmpval = - pixsize/3600.0;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CD1_1"), &tmpval, 
-		  const_cast<char*>("Pixel scale axis 1,1"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_1"), &tmpval, 
+		 const_cast<char*>("Pixel scale axis 1,1"), &status );
   tmpval = 0.0;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CD1_2"), &tmpval, 
-		  const_cast<char*>("Pixel scale axis 1,2"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_2"), &tmpval, 
+		 const_cast<char*>("Pixel scale axis 1,2"), &status );
   tmpval = 0.0;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CD2_1"), &tmpval, 
-		  const_cast<char*>("Pixel scale axis 2,1"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_1"), &tmpval, 
+		 const_cast<char*>("Pixel scale axis 2,1"), &status );
   tmpval = pixsize/3600.0;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CD2_2"), &tmpval, 
-		  const_cast<char*>("Pixel scale axis 2,2"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_2"), &tmpval, 
+		 const_cast<char*>("Pixel scale axis 2,2"), &status );
   tmpval = 2000.0;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("EPOCH"), &tmpval, 
-		  const_cast<char*>("WCS: Epoch of celestial pointing"), 
-		  &status );
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("EQUINOX"), &tmpval, 
-		  const_cast<char*>("WCS: Equinox of celestial pointing"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("EPOCH"), &tmpval, 
+		 const_cast<char*>("WCS: Epoch of celestial pointing"), 
+		 &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("EQUINOX"), &tmpval, 
+		 const_cast<char*>("WCS: Equinox of celestial pointing"), 
+		 &status );
 
   //Do data writing.  We have to make a transposed copy of the
   // data to do this, which is irritating as hell
@@ -620,7 +621,7 @@ int simImage::writeToFits(const std::string& outputfile) const {
   for ( unsigned int j = 0; j < n2; ++j ) {
     for (unsigned int i = 0; i < n1; ++i) tmpdata[i] = data[i*n2+j];
     fpixel[1] = static_cast<long>(j+1);
-    fits_write_pix( fp, TDOUBLE, fpixel, n1, tmpdata, &status );
+    fits_write_pix(fp, TDOUBLE, fpixel, n1, tmpdata, &status);
   }
   delete[] tmpdata;
 

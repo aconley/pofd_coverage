@@ -2,6 +2,7 @@
 
 #include<beam.h>
 #include<global_settings.h>
+#include<pofdExcept.h>
 
 /*!
   \param[in] FWHM     FWHM of beam, in arcsec
@@ -13,15 +14,15 @@ beam::beam( double FWHM ) { setFWHM(FWHM); }
 */
 void beam::setFWHM(double fwhm_) {
   fwhm = fwhm_;
-  rhosq = pofd_delta::rhofac / (fwhm*fwhm);
+  rhosq = pofd_coverage::rhofac / (fwhm*fwhm);
 }
 
 double beam::getEffectiveArea() const {
-  return pofd_delta::pi/rhosq;
+  return pofd_coverage::pi/rhosq;
 }
 
 double beam::getEffectiveAreaSq() const {
-  return 0.5*pofd_delta::pi/rhosq;
+  return 0.5*pofd_coverage::pi/rhosq;
 }
 
 /*!
@@ -51,7 +52,7 @@ void beam::getBeamFac(unsigned int n, double pixsize,
   }
 
   double sig = fwhm * pofd_coverage::fwhmfac / pixsize; //Gaussian sigma in pix
-  expfac = - 0.5 / (sig * sig);
+  double expfac = - 0.5 / (sig * sig);
   int ni = static_cast<int>(n);
   int no2 = ni / 2;
   double dist;
@@ -91,7 +92,7 @@ void beam::getBeam(unsigned int n, double pixsize,
   //Make factorized beam, then multiply
   double* fac = new double[n];
   double sig = fwhm * pofd_coverage::fwhmfac / pixsize; //Gaussian sigma in pix
-  expfac = - 0.5 / (sig * sig);
+  double expfac = - 0.5 / (sig * sig);
   int ni = static_cast<int>(n);
   int no2 = ni / 2;
   double dist;
@@ -115,10 +116,10 @@ void beam::getBeam(unsigned int n, double pixsize,
 /*!
   \params[in] n  Number of pixels along each dimension.  Should be odd
   \params[in] pixsize Size of pixels in arcsec
-  \params[in] nbins Number of bins
+  \params[in] nbins Number of bins of output
   \param[out] nnonzero The number of elements of wt/bm that are filled
   \params[out] wt Returns histogrammed beam weights or order nbins
-  \params[out] bm Returns beam values in row-major order.  
+  \params[out] bm Returns histogrammed beam values.  
                    Must be pre-allocated by caller and be of length nbins
   \params[in] inverse If set, return one over the beam (for non-zero entries)
 
@@ -126,6 +127,7 @@ void beam::getBeam(unsigned int n, double pixsize,
   The first nnonzero entries contain the actual data.
  */
 void beam::getBeamHist(unsigned int n, double pixsize,
+		       unsigned int nbins,
 		       unsigned int& nnonzero,
 		       unsigned int* const wt,
 		       double* const bm,
@@ -155,7 +157,7 @@ void beam::getBeamHist(unsigned int n, double pixsize,
   //Make factorized beam
   double* fac = new double[n];
   double sig = fwhm * pofd_coverage::fwhmfac / pixsize; //Gaussian sigma in pix
-  expfac = - 0.5 / (sig * sig);
+  double expfac = - 0.5 / (sig * sig);
   int ni = static_cast<int>(n);
   int no2 = ni / 2;
   double dist;
@@ -164,11 +166,11 @@ void beam::getBeamHist(unsigned int n, double pixsize,
     fac[i] = exp(expfac * dist * dist);
   }
 
-  double minbinval = log(0.99* fac[0] * fac[0]);
-  double maxbinval = log(1.01);
-  double histstep = (maxbinval - meanbinval) / static_cast<int>(nbins+2);
+  double minbinval = log2(0.999 * fac[0] * fac[0]); //Farthest from center
+  double maxbinval = log2(1.001); //Assuming beam peaks at one.
+  double histstep = (maxbinval - minbinval) / static_cast<int>(nbins+2);
 
-  unsigned int* initwts = new unsigned int[nbins];
+  unsigned int* initwt = new unsigned int[nbins];
   double* meanbinval = new double[nbins];
   for (unsigned int i = 0; i < nbins; ++i) meanbinval[i] = 0.0;
   for (unsigned int i = 0; i < nbins; ++i) initwt[i] = 0;
@@ -178,8 +180,8 @@ void beam::getBeamHist(unsigned int n, double pixsize,
   for (unsigned int i = 0; i < n; ++i) {
     fval = fac[i];
     for (unsigned int j = 0; j < n; ++j) {
-      val = log(fval * fac[j]);
-      idx = static_cast<unsigned int>((log(val) - minbinval) / histstep);
+      val = fval * fac[j];
+      idx = static_cast<unsigned int>((log2(val) - minbinval) / histstep);
       meanbinval[idx] += val;
       initwt[i] += 1;
     }
@@ -199,8 +201,8 @@ void beam::getBeamHist(unsigned int n, double pixsize,
       ++nnonzero;
     }
   }
-  delete initwt[];
-  delete meanbinval[];
+  delete[] initwt;
+  delete[] meanbinval;
   if (nnonzero == 0)
     throw pofdExcept("beam", "getBeamHist", "No binned elements", 7);  
 

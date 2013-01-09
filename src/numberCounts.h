@@ -23,6 +23,7 @@ class numberCounts {
   unsigned int nknots; //!< Number of flux density knots
   double* knotpos; //!< Positions of knots, length nknots
   double* knotvals; //!< Values of differential number counts at knotpos
+  double* logknotvals; //!< Log values of differential number counts at knotpos
 
   //Internal information
   void initMParams(); //< Initialize internal arrays based on model

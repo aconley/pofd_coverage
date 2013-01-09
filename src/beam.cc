@@ -1,5 +1,7 @@
 //beam.cc
 
+#include<sstream>
+
 #include<beam.h>
 #include<global_settings.h>
 #include<pofdExcept.h>
@@ -37,12 +39,21 @@ void beam::getBeamFac(unsigned int n, double pixsize,
 		      double* const fac) const {
 
   //Input checks
-  if (n == 0)
-    throw pofdExcept("beam", "getBeamFac", "n should be positive", 1);
-  if (n % 2 != 0)
-    throw pofdExcept("beam", "getBeamFac", "n should be odd", 2);
-  if (pixsize <= 0.0)
-    throw pofdExcept("beam", "getBeamFac", "pixsize must be positive", 3);
+  if (n == 0) {
+    std::stringstream errstr;
+    errstr << "n (" << n << ") should be positive";
+    throw pofdExcept("beam", "getBeamFac", errstr.str(), 1);
+  }
+  if (n % 2 == 0) {
+    std::stringstream errstr;
+    errstr << "n (" << n << ") should be odd";
+    throw pofdExcept("beam", "getBeamFac", errstr.str(), 2);
+  }
+  if (pixsize <= 0.0) {
+    std::stringstream errstr;
+    errstr << "pixsize (" << pixsize << ") should be positive";
+    throw pofdExcept("beam", "getBeamFac", errstr.str(), 3);
+  }
   if (fac == NULL)
     throw pofdExcept("beam", "getBeamFac", "fac is not allocated", 4);
 

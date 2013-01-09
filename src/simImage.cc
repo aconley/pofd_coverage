@@ -2,6 +2,8 @@
 #include<cmath>
 #include<limits>
 
+#include<fitsio.h>
+
 #include<global_settings.h>
 #include<simImage.h>
 #include<beam.h>
@@ -45,6 +47,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   const unsigned int nfwhm = 3.5;
   ngauss = static_cast<unsigned int>(nfwhm * fwhm / pixsize_gen + 0.99999999);
   ngauss = 2 * ngauss + 1;
+  gauss = new double[ngauss];
   beam bm(fwhm);
   bm.getBeamFac(ngauss, pixsize_gen, gauss);
 
@@ -54,6 +57,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
     ngauss_add = static_cast<unsigned int>(nfwhm * esmooth / pixsize +
 					   0.99999999);
     ngauss_add = 2 * ngauss_add + 1;
+    gauss_add = new double[ngauss_add];
     beam ebm(esmooth);
     ebm.getBeamFac(ngauss_add, pixsize, gauss_add);
   } else {

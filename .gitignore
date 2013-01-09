@@ -14,6 +14,7 @@
 
 pofd_coverage*tar.gz
 
+pofd_coverage_makeCat
 pofd_coverage_makeSim
 
 INSTALL

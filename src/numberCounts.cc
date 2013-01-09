@@ -49,9 +49,14 @@ numberCounts::numberCounts(const std::string& modelfile) {
   knotpos = new double[nknots];
   for (unsigned int i = 0; i < nknots; ++i)
     knotpos[i] = kp[i];
-  knotvals = new double[nknots];
+  
+  //These are read in as log_10, so we must convert to log_e
+  logknotvals = new double[nknots];
   for (unsigned int i = 0; i < nknots; ++i)
-    knotvals[i] = kv[i];
+    logknotvals[i] = kv[i] * pofd_coverage::logfac;
+
+  knotvals = new double[nknots];
+  for (unsigned int i = 0; i < nknots; ++i) knotvals[i] = exp(logknotvals[i]);
 
   a = gamma = omg = iomg = fk = powarr = NULL;
   gamone = NULL;
@@ -64,7 +69,11 @@ numberCounts::numberCounts(const std::string& modelfile) {
 
 }
 
-
+/*!
+  \param[in] NKNOTS Number of knots
+  \param[in] KNOTPOS Knot positions, in Jy
+  \param[in] KNOTVAL log 10 differential counts in Jy^-1 deg^-2
+ */
 numberCounts::numberCounts(unsigned int NKNOTS, const double* const KNOTPOS,
 			   const double* const KNOTVAL) {
 
@@ -83,17 +92,16 @@ numberCounts::numberCounts(unsigned int NKNOTS, const double* const KNOTPOS,
       throw pofdExcept("numberCounts","numberCounts",
 		       "knot positions must be monotonically increasing",3);
 
-  for (unsigned int i = 0; i < NKNOTS; ++i)
-    if (KNOTVAL[i] <= 0.0)
-      throw pofdExcept("numberCounts","numberCounts",
-		       "knot values must all be positive",4);
-
   //Now construct internal model parameters
   nknots = NKNOTS;
   knotpos = new double[nknots];
   for (unsigned int i = 0; i < nknots; ++i) knotpos[i] = KNOTPOS[i];
+  //Input values are log10, convert to log_e
+  logknotvals = new double[nknots];
+  for (unsigned int i = 0; i < nknots; ++i) 
+    logknotvals[i] = pofd_coverage::logfac * KNOTVAL[i];
   knotvals = new double[nknots];
-  for (unsigned int i = 0; i < nknots; ++i) knotvals[i] = KNOTVAL[i];
+  for (unsigned int i = 0; i < nknots; ++i) knotvals[i] = exp(logknotvals[i]);
 
   a = gamma = omg = iomg = fk = powarr = NULL;
   gamone = NULL;
@@ -110,7 +118,7 @@ void numberCounts::initMParams() {
   if (gamma != NULL) delete[] gamma;
   gamma = new double[nknots-1];
   for (unsigned int i = 0; i < nknots-1; ++i)
-    gamma[i] = - log(knotvals[i+1]/knotvals[i]) / 
+    gamma[i] = - (logknotvals[i+1] - logknotvals[i]) / 
       log(knotpos[i+1]/knotpos[i]);
 
   if (a != NULL) delete[] a;
@@ -126,11 +134,11 @@ void numberCounts::initMParams() {
   iomg = new double[nknots-1];
   double val;
   for (unsigned int i = 0; i < nknots-1; ++i) {
-    omg[i] = val = gamma[i] - 1.0;
-    if (fabs(val) < ftol) {
-      gamone[i] = true; 
+    omg[i] = val = 1.0 - gamma[i];
+    if (fabs(val) < ftol) gamone[i] = true; else {
       iomg[i] = 1.0 / val;
-    } else gamone[i] = false;
+      gamone[i] = false;
+    }
   }
 
   if (fk != NULL) delete[] fk;
@@ -152,7 +160,7 @@ void numberCounts::initMParams() {
     if (i == 0) fk[i] = m;
     else fk[i] = m + fk[i-1];
   }
-  base_n0 = fk[nknots - 2];
+  base_n0 = fk[nknots-2];
 
   //Compute the mean flux per area for the base model
   base_meanflux = 0.0;
@@ -181,6 +189,7 @@ void numberCounts::initMParams() {
 numberCounts::~numberCounts() {
   delete[] knotpos;
   delete[] knotvals;
+  delete[] logknotvals;
   delete[] gamma;
   delete[] a;
   delete[] omg;

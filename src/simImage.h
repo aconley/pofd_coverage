@@ -5,7 +5,6 @@
 
 #include<string>
 
-#include<fitsio.h>
 #include<ran.h>
 
 #include<numberCounts.h>

@@ -4,50 +4,40 @@
 #include<vector>
 #include<fstream>
 #include<cstdlib>
+#include<ctime>
 
 #include<getopt.h>
 
-#include<simImage.h>
+#include<fitsio.h>
+
+#include<numberCounts.h>
+#include<ran.h>
 #include<pofdExcept.h>
 #include<global_settings.h>
 
 //Set up global option index that can be used for both single and double case
 static struct option long_options[] = {
   {"double",no_argument,0,'d'},
-  {"extra_smooth",required_argument,0,'e'},
-  {"extra_smooth1",required_argument,0,'1'},
-  {"extra_smooth2",required_argument,0,'2'},
   {"help", no_argument, 0, 'h'},
-  {"oversample", required_argument, 0, 'o'},
   {"seed", required_argument, 0,'S'},
-  {"sigma",required_argument,0,'s'},
-  {"sigma1",required_argument,0,'3'},
-  {"sigma2",required_argument,0,'4'},
   {"verbose",no_argument,0,'v'},
   {"version",no_argument,0,'V'},
   {0,0,0,0}
 };
-char optstring[] = "de:1:2:ho:S:s:3:4:vV";
+char optstring[] = "dhS:vV";
 
+int makeCatSingle(int argc, char **argv) {
 
-int makeSimSingle(int argc, char **argv) {
-
-  unsigned int n1, n2;
-  double n0, pixsize, sigma, fwhm;
-  double extra_smooth; //Additional smoothing
+  unsigned int n0;
   std::string modelfile, outputfile; 
-  unsigned long long int user_seed;
-  bool verbose, do_extra_smooth, have_user_seed;
-  unsigned int oversample;
+  unsigned long long int seed;
+  bool verbose, have_user_seed;
 
   //Defaults
-  do_extra_smooth     = false;
-  extra_smooth        = 0.0;
-  sigma               = 0.0;
   verbose             = false;
-  user_seed           = 0;
   have_user_seed      = false;
-  oversample          = 1;
+  seed                = 0;
+
 
   int c;
   int option_index = 0;
@@ -55,81 +45,95 @@ int makeSimSingle(int argc, char **argv) {
   while ( ( c = getopt_long(argc,argv,optstring,long_options,
 			    &option_index ) ) != -1 ) 
     switch(c) {
-    case 'e' :
-      do_extra_smooth = true;
-      extra_smooth = atof(optarg);
-      break;
-    case 'o':
-      oversample = atoi(optarg);
-      break;
     case 'S' :
       have_user_seed = true;
-      user_seed = static_cast<unsigned long long int>( atoi(optarg) );
-      break;
-    case 's' :
-      sigma = atof(optarg);
+      seed = static_cast<unsigned long long int>( atoi(optarg) );
       break;
     case 'v' :
       verbose = true;
       break;
     }
 
-  if (optind >= argc-6 ) {
+  if (optind >= argc-2 ) {
     std::cerr << "Some required arguments missing" << std::endl;
     std::cerr << " Use --help for description of inputs and options"
 	      << std::endl;
     return 1;
   }
   modelfile  = std::string(argv[optind]);
-  n0         = atof(argv[optind + 1]);
-  fwhm       = atof(argv[optind + 2]);
-  pixsize    = atof(argv[optind + 3]);
-  n1         = atoi(argv[optind + 4]);
-  n2         = atoi(argv[optind + 5]);
-  outputfile = std::string(argv[optind + 6]);
+  n0         = atoi(argv[optind + 1]);
+  outputfile = std::string(argv[optind + 2]);
 
-  if (n0 <= 0.0) {
+  if (n0 == 0) {
     std::cerr << "Invalid (non-positive) n0: " << n0 << std::endl;
     return 1;
   }
-  if (std::isnan(n0) || std::isinf(n0)) {
-    std::cerr << "Invalid (non-finite) n0: " << n0 << std::endl;
-    return 1;
-  }
-  if (sigma < 0.0) {
-    std::cerr << "Invalid noise level: must be >= 0.0" << std::endl;
-    return 1;
-  }
-  if (fwhm < 0.0) {
-    std::cerr << "Invalid (non-positive) FWHM" << std::endl;
-    return 1;
-  }
-  if (do_extra_smooth && extra_smooth < 0.0) {
-    std::cerr << "Invalid (non-positive) extra smoothing FWHM" << std::endl;
-    return 1;
-  }
-  if (oversample == 0) {
-    std::cerr << "Invalid (non-positive) oversampling" << std::endl;
-    return 1;
-  }
-  
 
   try {
+
+    //Set up random number generator
+    ran rangen;
+    if (!have_user_seed) {
+      seed = static_cast<unsigned long long int>(time(NULL));
+      seed += static_cast<unsigned long long int>(clock());
+    }
+    rangen.set_seed(seed);
+
+    //Set up the model
     numberCounts model(modelfile);
-    if (verbose)
-      std::cout << "Base model n0: " << model.getBaseN0()
-		<< " Your value: " << n0 << std::endl;
+    if (!model.isValid())
+      throw pofdExcept("pofd_coverage_makeCat", "makeCatSingle",
+		       "Trying to realize model with invalid parameters", 1);
 
-    simImage dim(n1, n2, pixsize, fwhm, sigma, extra_smooth,
-		 oversample);
-    if (have_user_seed) dim.setSeed( user_seed );
-    dim.realize(model, n0, do_extra_smooth, true, false); //Do mean subtract
+    //Get the fluxes
+    float *flux;
+    flux = new float[n0];
+    for (unsigned int i = 0; i < n0; ++i)
+      flux[i] = model.genSource(rangen.doub());
 
-    //Write it
     if (verbose) std::cout << "Writing simulated image to " << outputfile 
 			   << std::endl;
-    int status = dim.writeToFits(outputfile);
-    if (status != 0) return status;
+
+    //Do the write
+    int status = 0;
+    fitsfile *fp;
+    fits_create_file(&fp, outputfile.c_str(), &status);
+    if (status) {
+      fits_report_error(stderr,status);
+      return status;
+    }
+
+    int tfields = 1;
+    long nrows = static_cast<long>(n0);
+    char extname[] = "CATALOG";
+    //These make g++ complain, but there isn't much I can do about it
+    // because I can't change the call signature of fits_create_tbl
+    // to make them const*
+    char *ttype[] = {"FluxDensity"};
+    char *tform[] = {"1E"};
+    char *tunit[] = {"Jy"};
+    fits_create_tbl(fp, BINARY_TBL, nrows, tfields, ttype, tform,
+		    tunit, extname, &status);
+    if (status) {
+      fits_report_error(stderr,status);
+      return status;
+    }
+
+    fits_write_col(fp, TFLOAT, 1, 1, 1, nrows, flux,
+                   &status);
+    if (status) {
+      fits_report_error(stderr,status);
+      return status;
+    }
+    
+    fits_close_file(fp, &status);
+    if (status) {
+      fits_report_error(stderr,status);
+      return status;
+    }
+
+    delete[] flux;
+
   } catch ( const pofdExcept& ex ) {
     std::cerr << "Error encountered" << std::endl;
     std::cerr << ex << std::endl;
@@ -158,24 +162,22 @@ int main( int argc, char** argv ) {
     switch(c) {
     case 'h' :
       std::cerr << "NAME" << std::endl;
-      std::cerr << "\tpofd_coverage_makeSim -- make simulated images for"
+      std::cerr << "\tpofd_coverage_makeCat -- make simulated catalog for"
 		<< " a broken" << std::endl;
-      std::cerr << "\t power law type model with Gaussian beams."
+      std::cerr << "\t power law type model."
 		<< std::endl;
       std::cerr << std::endl;
       std::cerr << "SYNOPSIS" << std::endl;
-      std::cerr << "\t  pofd_coverage_makeSim [options] modelfile n0 fwhm "
-		<< "pixsize" << std::endl;
-      std::cerr << "\t    n1 n2 outputfile" << std::endl;
-      std::cerr << std::endl;
+      std::cerr << "\t  pofd_coverage_makeCat [options] modelfile n0 "
+		<< "outputfile" << std::endl;
       std::cerr << "DESCRIPTION" << std::endl;
-      std::cerr << "\tCreates a simulated image for a given model, and writes"
+      std::cerr << "\tCreates a simulated catalog for a given model, and writes"
 		<< " them" << std::endl;
       std::cerr << "\tto outfile.  The number counts model is a broken power" 
 		<< std::endl;
       std::cerr << "\ta law model specified by modelfile, and by the number of"
 		<< std::endl;
-      std::cerr << "\tsources per unit area n0." << std::endl;
+      std::cerr << "\tsources to generate is n0." << std::endl;
       std::cerr << std::endl;
       std::cerr << "\tmodelfile should be a text file that consists of"
 		<< " nknots" << std::endl;
@@ -190,28 +192,10 @@ int main( int argc, char** argv ) {
       std::cerr << "\tline are ignored, and # denotes a comment line."
 		<< std::endl;
       std::cerr << std::endl;
-      std::cerr << "\tfwhm is the beam FWHM in arcsec.  The beam is assumed "
-		<< "Gaussian. " << std::endl;
-      std::cerr << "\tPixsize gives the pixel size (in arcsec), while n1 and "
-		<< "n2 are the" << std::endl;
-      std::cerr << "\tnumber of pixels along each dimension." << std::endl;
       std::cerr << std::endl;
       std::cerr << "OPTIONS" << std::endl;
       std::cerr << "\t-h --help" << std::endl;
       std::cerr << "\t\tPrint this message and exit." << std::endl;
-      std::cerr << "\t-e, --extra_smooth FWHM" << std::endl;
-      std::cerr << "\t\tApply additional smoothing with a gaussian of this"
-		<< " FWHM" << std::endl;
-      std::cerr << "\t\t(in arcseconds); this is applied after noise is added."
-		<< std::endl;
-      std::cerr << "\t-o, --oversample VALUE" << std::endl;
-      std::cerr << "\t\tAmount of oversampling to use (integral) when " 
-		<< "generating" << std::endl;
-      std::cerr << "\t\timage.  The data is then down-binned to the specified"
-		<< "size." << std::endl;
-      std::cerr << "\t\tThe default is to apply no oversampling." << std::endl;
-      std::cerr << "\t--sigma NOISE" << std::endl;
-      std::cerr << "\t\tThe assumed per-pixel noise (def: 0)." << std::endl;
       std::cerr << "\t--S, --seed SEED" << std::endl;
       std::cerr << "\t\tUse this seed for the random number generator." 
 		<< std::endl;
@@ -234,7 +218,7 @@ int main( int argc, char** argv ) {
     }
 
   if (!twod)
-    return makeSimSingle(argc,argv);
+    return makeCatSingle(argc,argv);
   else {
     std::cerr << "2D broken power law model not supported" << std::endl;
     return 1;

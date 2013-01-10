@@ -53,7 +53,8 @@ void PDFactory::init() {
   has_wisdom = false;
   fftw_plan_style = FFTW_ESTIMATE;
 
-  max_sigma = 0.0;
+  sigma = 0.0;
+  max_n0 = 0.0;
   initialized = false;
 }
 
@@ -174,14 +175,17 @@ bool PDFactory::addWisdom(const std::string& filename) {
   \param[in] maxflux Maximum flux generated in R
   \param[in] model   number counts model to use for fill.  Params must be set
   \param[in] beam    Beam fwhm
+  \param[in] pixsize Pixel size in arcseconds
+  \param[in] nfwhm   Number of FWHM out to go in beam
+  \param[in] nbins   Number of bins used in histogrammed beam
   \param[out] vec    Returns moments
   \param[in] nmom    Number of moments
 
 */
 void PDFactory::getRIntegrals(unsigned int n, double maxflux,
 			      const numberCounts& model, const beam& bm, 
-			      std::vector<double>& vec, 
-			      unsigned int nmom) {
+			      double pixsize, double nfwhm, unsigned int nbins,
+			      std::vector<double>& vec, unsigned int nmom) {
   //We are totally going to screw things up, so mark as unclean
   initialized = false;  
   if (n == 0)
@@ -192,7 +196,7 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
 		     "nmom must be positive", 2);
 
   vec.resize(nmom);
-  initR(n, maxflux, model, bm);
+  initR(n, maxflux, model, bm, pixsize, nfwhm, nbins);
 
   double dx = RFlux[1] - RFlux[0];
 
@@ -226,17 +230,20 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
   Prepare R.
  
   \param[in] n       Size of transform 
-  \param[in] maxflux Maximum flux generated in R
   \param[in] model   number counts model to use for fill.  Params must be set
   \param[in] beam    Beam fwhm
+  \param[in] pixsize Pixel size in arcseconds
+  \param[in] nfwhm   Number of FWHM out to go in beam
+  \param[in] nbins   Number of bins used in histogrammed beam
 
   Note that n is the transform size; the output array will generally
   be smaller because of padding.  Furthermore, because of mean shifting,
-  the maximum flux will end up being -less- than maxflux in practice
-  by about the mean flux + 10 sigma.
- */
+  the maximum flux will often end up a bit off from the desired value.
+*/
 void PDFactory::initR(unsigned int n, double maxflux, 
-		      const numberCounts& model, const beam& bm ) {
+		      const numberCounts& model, const beam& bm,
+		      double pixsize, double nfwhm, 
+		      unsigned int nbins) {
 
   //Make sure we have enough room
   resize(n);
@@ -253,7 +260,7 @@ void PDFactory::initR(unsigned int n, double maxflux,
 #ifdef TIMING
   std::clock_t starttime = std::clock();
 #endif
-  model.getR(n, 0.0, maxflux, bm, rvals);
+  model.getR(n, 0.0, maxflux, bm, pixsize, nfwhm, nbins, rvals);
 #ifdef TIMING
   RTime += std::clock() - starttime;
 #endif
@@ -261,59 +268,98 @@ void PDFactory::initR(unsigned int n, double maxflux,
 
 
 /*!
-  Gets ready for P(D) computation by preparing R
+  Gets ready for P(D) computation by preparing R and computing its forward
+   transform
  
   \param[in] n       Size of transform 
-  \param[in] sigma   Maximum allowed sigma
-  \param[in] maxflux Maximum flux generated in R
+  \param[in] inst_sigma Instrument noise, in Jy
+  \param[in] maxflux Desired maximum image flux in Jy
+  \param[in] maxn0   Maximum n0 supported (number of sources per area)
   \param[in] model   number counts model to use for fill.  Params must be set
   \param[in] beam    Beam fwhm
+  \param[in] pixsize Pixel size in arcseconds
+  \param[in] nfwhm   Number of FWHM out to go in beam
+  \param[in] nbins   Number of bins used in histogrammed beam
 
   Note that n is the transform size; the output array will generally
   be smaller because of padding.  Furthermore, because of mean shifting,
   the maximum flux will end up being -less- than maxflux in practice
   by about the mean flux + 10 sigma.
  */
-void PDFactory::initPD(unsigned int n, double sigma,
-		       double maxflux, const numberCounts& model,
-		       const beam& bm ) {
+void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux, 
+		       double maxn0, const numberCounts& model,
+		       const beam& bm, double pixsize, double nfwhm,
+		       unsigned int nbins) {
 
-  //Fill R
-  initR(n, maxflux, model, bm);
+  if (!model.isValid())
+    throw pofdExcept("PDFactory", "initPD", "model not valid", 1);
+  if (maxn0 <= 0.0)
+    throw pofdExcept("PDFactory", "initPD", "invalid (non-positive) n0", 2);
 
-  //Use R to estimate the mean and standard deviation of
-  // the resulting P(D) -> <D> = \int x R dx, Var[D] = \int x^2 R dx
-  mn = rvals[1]; //Noting that RFlux[0] = 0
-  for (unsigned int i = 2; i < n-1; ++i)
-    mn += rvals[i]*static_cast<double>(i);
-  mn += 0.5*rvals[n-1]*static_cast<double>(n-1);
-  mn *= dflux*dflux; //Twice -- one for the step size, one for RFlux step
+  //This will cause R wrapping problems, so check maxn0 relative to
+  // the model base n0 value
+  if (maxn0 < model.getBaseN0())
+    throw pofdExcept("PDFactory", "initPD",
+		     "maxn0 must be greater than model baseN0", 3);
 
-  double varR = rvals[1]; //Again, using the fact that RFlux[0] = 0
-  for (unsigned int i = 2; i < n-1; ++i)
-    varR += rvals[i]*static_cast<double>(i)*static_cast<double>(i);
-  varR += 0.5*rvals[n-1]*static_cast<double>(n-1)*
-    static_cast<double>(n-1);
-  varR *= dflux*dflux*dflux;
-  double sigR = sqrt(varR + sigma*sigma);
+  //Allocate/resize internal arrays
+  resize(n);
+  if (! isRTransAllocated ) {
+    if (rtrans != NULL) fftw_free(rtrans);
+    unsigned int fsize = n / 2 + 1;
+    rtrans = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);
+    isRTransAllocated = true;
+  }
+  
+  base_n0 = model.getBaseN0();
+  double n0ratio = maxn0 / base_n0;
 
+  //We will iterate to try to get the maximum right.  Given R,
+  // we can compute the mean and standard deviation of the resulting P(D).
+  // Thanks to shifting (to avoid aliasing and include mean subtraction),
+  // what we compute R out to to achieve this is slightly tricky.
+  //Since the usage model for pofd_coverage is to compute R once and then
+  // re-use it a bunch of times, we can afford to compute R twice to get
+  // a better estimate
+
+  //Estimate the mean model flux and sigma crudely
+  double maxflux_R, s_ave, est_shift, var;
+  s_ave = n0ratio * model.getMeanFluxPerArea();
+  mn =  s_ave * bm.getEffectiveArea();
+  var = model.getMeanFluxSqPerArea() * bm.getEffectiveArea() - s_ave*s_ave;
+  if (var <= 0) var = 0.0;
+  sg = sqrt(n0ratio * n0ratio * var + inst_sigma*inst_sigma);
+  est_shift = mn + pofd_coverage::n_sigma_shift * sg;
+  maxflux_R = maxflux + est_shift;
+
+  //Compute R integrals to update values
+  std::vector<double> mom(2);
+  getRIntegrals(n, maxflux_R, model, bm, pixsize, nfwhm, nbins, mom, 2);
+  mn = n0ratio * mom[0];
+  sg = sqrt(n0ratio * n0ratio * mom[2] + inst_sigma * inst_sigma);
+  est_shift = mn + pofd_coverage::n_sigma_shift * sg;
+  maxflux_R = maxflux + est_shift;
+
+  //Now prepare final R.  Note this uses the base model, even
+  // though we computed the maximum R value based on the maximum n0 value
+  initR(n, maxflux_R, model, bm, pixsize, nfwhm, nbins);
+  double inm1 = 1.0 / static_cast<double>(n - 1);
+  dflux = maxflux_R * inm1;
+  
   //Multiply R by dflux factor to represent the actual
   // number of sources in each bin
   for (unsigned int i = 0; i < n; ++i)
     rvals[i] *= dflux;
 
   //Make the plans, or keep the old ones if possible
-  //Note that the forward transform dumps into out_part,
+  //Note that the forward transform dumps into rtrans
   // but the backwards one comes from pval.  The idea
-  // is that out_part holds the working bit.  These are
-  // convolved together into pval.  This is inefficient
-  // if there is only one sign present, but the special
-  // case doesn't seem worth the effort
+  // is that we can re-use the forward transform, updating
+  // pval as we change n0, and including instrument noise and
+  // the shift.  That is, rtrans doesn't change after we call
+  // initPD, but pvals will change each time we call getPD
   //If we resized, we must make the new plans because the
   // addresses changed
-  //We will have to use the advanced interfact to point
-  // specifically at the rvals subindex we are using on the
-  // forward plan, but the backwards plan is fine
   int intn = static_cast<int>(n);
   if ( (!plans_valid) || (lastfftlen != n) ) {
     if (plan != NULL) fftw_destroy_plan(plan);
@@ -326,13 +372,13 @@ void PDFactory::initPD(unsigned int n, double sigma,
       std::stringstream str;
       str << "Plan creation failed for forward transform of size: " << 
 	n << std::endl;
-      throw pofdExcept("PDFactory","initPD",str.str(),32);
+      throw pofdExcept("PDFactory","initPD",str.str(),4);
     }
     if (plan_inv == NULL) {
       std::stringstream str;
       str << "Plan creation failed for inverse transform of size: " << 
 	n << std::endl;
-      throw pofdExcept("PDFactory","initPD",str.str(),64);
+      throw pofdExcept("PDFactory","initPD",str.str(),5);
     }
     plans_valid = true;
   }
@@ -340,80 +386,67 @@ void PDFactory::initPD(unsigned int n, double sigma,
   //Decide if we will shift and pad, and if so by how much
   //Only do shift if the noise is larger than one actual step size
   // Otherwise we can't represent it well.
-  bool dopad = (sigma > dflux);
-  doshift = ( dopad && ( mn < pofd_delta::n_sigma_shift*sigR) );
-  if ( doshift ) shift = pofd_delta::n_sigma_shift*sigR - mn; else
+  bool dopad = (inst_sigma > dflux);
+  doshift = ( dopad && ( mn < pofd_coverage::n_sigma_shift * sg) );
+  if ( doshift ) shift = pofd_coverage::n_sigma_shift*sg - mn; else
     shift=0.0;
 
   if (verbose) {
     std::cout << " Initial mean estimate: " << mn << std::endl;
-    std::cout << " Initial stdev estimate: " << sigR << std::endl;
+    std::cout << " Initial stdev estimate: " << sg << std::endl;
     if (doshift)
       std::cout << " Additional shift applied: " << shift << std::endl;
   }
 
   //Make sure that maxflux is large enough that we don't get
   // bad aliasing wrap from the top around into the lower P(D) values.
-  if (maxflux <= pofd_delta::n_sigma_pad*sigR)
-    throw pofdExcept("PDFactory","initPD","Top wrap problem",
-		     128);
+  if (maxflux_R <= pofd_coverage::n_sigma_pad * sg)
+    throw pofdExcept("PDFactory", "initPD", "Top wrap problem", 4);
 
   //The other side of the equation is that we want to zero-pad the
   // top, and later discard that stuff.
   // The idea is as follows:
   // the 'target mean' of the calculated P(D) will lie at mn+shift.
-  // We assume that anything within n_sigma_pad2d*sg
+  // We assume that anything within n_sigma_pad*sg
   // is 'contaminated'.  That means that, if n_sigma_pad*sg >
   // mn+shift, there will be some wrapping around the bottom of the P(D)
   // to contaminate the top by an amount n_sigma_pad*sg - (mn+shift).
   // We therefore zero pad and discard anything above
   // maxflux - (n_sigma_pad*sg - (mn+shift))
   if (dopad) {
-    double contam = pofd_delta::n_sigma_pad*sigR - (mn+shift);
+    double contam = pofd_coverage::n_sigma_pad*sg - (mn+shift);
     if (contam < 0) maxidx = n; else {
-      double topflux = maxflux - contam;
+      double topflux = maxflux_R - contam;
       if (topflux < 0)
-	throw pofdExcept("PDFactory","initPD","Padding problem",
-			 256);
-      maxidx = static_cast< unsigned int>( topflux/dflux );
+	throw pofdExcept("PDFactory", "initPD", "Padding problem", 6);
+      maxidx = static_cast< unsigned int>(topflux/dflux);
       if (maxidx > n)
-	throw pofdExcept("PDFactory","initPD",
-			 "Padding problem",
-			 512);
+	throw pofdExcept("PDFactory","initPD", "Padding problem", 7);
       //Actual padding
       for (unsigned int i = maxidx; i < n; ++i)
 	rvals[i] = 0.0;
     }
   } else maxidx = n;
 
-  //Allocate memory if needed; this is a way of not allocating
-  // these until we run into a beam that needs them
-  if (! isRTransAllocated ) {
-    if (rtrans != NULL) fftw_free(rtrans);
-    unsigned int fsize = currsize/2+1;
-    rtrans = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);
-    isRTransAllocated = true;
-  }
-
   //Compute forward transform of this r value, store in rtrans
-  //Have to use argument version, since the address of rtrans can move
 #ifdef TIMING
   starttime = std::clock();
 #endif
-  fftw_execute_dft_r2c(plan,rvals,rtrans); 
+  fftw_execute(plan); 
 #ifdef TIMING
   fftTime += std::clock() - starttime;
 #endif
   
+  max_n0 = maxn0;
+  sigma = inst_sigma;
   lastfftlen = n;
-  max_sigma = sigma;
   initialized = true;
 }
 
 /*!
   Calculates P(D) for a dataset using direct fills
  
-  \param[in] sigma Instrument noise sigma
+  \param[in] n0 Number of sources in current computation
   \param[out] pd Holds P(D) on output
   \param[in] setLog If true, pd is log(P(D) on output; convenient
               for likelihood evaluation.
@@ -426,34 +459,34 @@ void PDFactory::initPD(unsigned int n, double sigma,
 
   You must call initPD first, or bad things will probably happen.
 */
-void PDFactory::getPD( double sigma, PD& pd, bool setLog, 
-		       bool edgeFix) {
+void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
 
   // The basic idea is to compute the P(D) from the previously filled
   // R values, adding in noise and all that fun stuff, filling pd
   // for output
 
-  if (! initialized )
+  if (!initialized)
     throw pofdExcept("PDFactory","getPD",
 		     "Must call initPD first",1);
-  if (sigma > max_sigma) {
+  if (n0 > max_n0) {
     std::stringstream errstr("");
-    errstr << "Sigma value " << sigma
-	   << " larger than maximum prepared value " << max_sigma
+    errstr << "N_0 " << n0
+	   << " larger than maximum prepared value " << max_n0
 	   << std::endl;
-    errstr << "initPD should have been called with at least " << sigma;
+    errstr << "initPD should have been called with at least " << n0;
     throw pofdExcept("PDFactory","getPD",errstr.str(),2);
   }
-
+  double n0ratio = n0 / base_n0;
+  
   //Output array from 2D FFT is n/2+1
   unsigned int n = lastfftlen;
   unsigned int ncplx = n/2 + 1;
       
-  //Calculate p(omega) = exp( r(omega) - r(0) ),
+  //Calculate p(omega) = exp(r(omega) - r(0)),
   // convolving together all the bits into pval, which
   // is what we will transform back into pofd.
   // The forward transform of R are stored in rtrans in the
-  //  usual sign order.
+  //  usual sign order, but for the base model.
   // There are some complications because of shifts and all that.
   // The frequencies are:
   //  f = i/dflux*n  
@@ -467,8 +500,8 @@ void PDFactory::getPD( double sigma, PD& pd, bool setLog,
 #endif
 
   double r0, expfac, rval, ival;
-  r0 = rtrans[0][0]; //r[0] is pure real
-  double iflux = pofd_delta::two_pi / (n * dflux);
+  r0 = n0ratio * rtrans[0][0]; //r[0] is pure real
+  double iflux = pofd_coverage::two_pi / (n * dflux);
 
   if (doshift) {
     //This should be the most common case,
@@ -477,17 +510,17 @@ void PDFactory::getPD( double sigma, PD& pd, bool setLog,
     double w;
     for (unsigned int idx = 1; idx < ncplx; ++idx) {
       w    = iflux * static_cast<double>(idx);
-      rval = rtrans[idx][0] - r0 - sigfac*w*w;
-      ival = rtrans[idx][1] - shift*w;
-      expfac = exp( rval );
-      pval[idx][0] = expfac*cos(ival);
-      pval[idx][1] = expfac*sin(ival);
+      rval = n0ratio * rtrans[idx][0] - r0 - sigfac*w*w;
+      ival = n0ratio * rtrans[idx][1] - shift*w;
+      expfac = exp(rval);
+      pval[idx][0] = expfac * cos(ival);
+      pval[idx][1] = expfac * sin(ival);
     } 
   } else {
     //No shift, sigma must be zero
     for (unsigned int idx = 1; idx < ncplx; ++idx) {
-      expfac = exp(rtrans[idx][0]-r0);
-      ival = rtrans[idx][1];
+      expfac = exp(n0ratio * rtrans[idx][0] - r0);
+      ival = n0ratio * rtrans[idx][1];
       pval[idx][0] = expfac*cos(ival);
       pval[idx][1] = expfac*sin(ival);
     }
@@ -548,7 +581,7 @@ void PDFactory::getPD( double sigma, PD& pd, bool setLog,
 #endif
   if (edgeFix) pd.edgeFix();
 #ifdef TIMING
-  edgeTime += std::clock() - starttime;
+edgeTime += std::clock() - starttime;
 #endif
 
   //Now mean subtract flux axis

@@ -26,15 +26,17 @@ class PDFactory {
 
   unsigned int currsize; //!< Current memory allocation
   unsigned int lastfftlen; //!< FFT length of last transform
-  double max_sigma; //!< Current supported max sigma
-  double mn; //!< Expected mean
-  double sg; //!< Expected sigma, inc instrument noise
+  double sigma; //!< Current supported instrumental \f$\sigma\f$
+  double max_n0; //!< Current maximum supported model \f$N_0\f$
+  double base_n0; //!< Model base \f$N_0\f$
+  double mn; //!< Expected mean, base model
+  double sg; //!< Expected sigma, inc instrument noise, base model
 
   //Working variables for transformation
   fftw_plan plan, plan_inv; //!< Hold plans
   bool plans_valid; //!< Are the current plans valid
-  double* rvals; //!< Working space for R computation 
-  fftw_complex *rtrans; //!< Holds FFTed rvals 
+  double* rvals; //!< Working space for R computation
+  fftw_complex *rtrans; //!< Holds forward transformed base R
   fftw_complex* pval; //!< Working variable holding p = exp( stuff )
   double* pofd; //!< Internal P(D) variable.  
   bool isRTransAllocated; //!< Is rtrans allocated
@@ -59,7 +61,7 @@ class PDFactory {
   
   //*! \brief Initializes R*/
   void initR(unsigned int n, double maxflux, const numberCounts& model,
-	     const beam& bm);
+	     const beam& bm, double, double, unsigned int);
 
 #ifdef TIMING
   std::clock_t RTime, p0Time, fftTime, posTime, copyTime, normTime, edgeTime;
@@ -80,16 +82,18 @@ class PDFactory {
   bool addWisdom(const std::string& filename);
 
   /*! \brief Initializes P(D) by computing R */
-  void initPD(unsigned int, double, double, 
-	      const numberCounts&, const beam&);
+  void initPD(unsigned int, double, double, double,
+	      const numberCounts&, const beam&, 
+	      double, double, unsigned int);
 
   /*! \brief Gets P(D) of specified transform size */
   void getPD(double, PD&, bool setLog=true, 
 	     bool edgeFix=false);
 
   /*! \brief Get first n integrals of R*/
-  void getRIntegrals(unsigned int n, double maxflux, const numberCounts& model,
-		     const beam& bm, std::vector<double>& vec, 
+  void getRIntegrals(unsigned int, double, const numberCounts&,
+		     const beam&, double, double, unsigned int,
+		     std::vector<double>& vec, 
 		     unsigned int nmom=7);
 
 #ifdef TIMING

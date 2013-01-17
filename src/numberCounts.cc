@@ -6,7 +6,6 @@
 #include<sstream>
 
 #include<pofdExcept.h>
-#include<global_settings.h>
 #include<numberCounts.h>
 #include<utility.h>
 

@@ -1,5 +1,5 @@
 bin_PROGRAMS = pofd_coverage_makeCat pofd_coverage_makeSim \
-	pofd_coverage_getPD
+	pofd_coverage_getPD pofd_coverage_runSim
 
 pofd_coverage_makeCat_SOURCES = global_settings.h ran.h pofdExcept.h \
 	numberCounts.h utility.h beam.h \
@@ -15,3 +15,10 @@ pofd_coverage_getPD_SOURCES = global_settings.h ran.h pofdExcept.h \
 	numberCounts.h beam.h PDFactory.h PD.h utility.h \
 	pofdExcept.cc numberCounts.cc beam.cc PDFactory.cc PD.cc utility.cc \
 	pofd_coverage_getPD.cc
+
+pofd_coverage_runSim_SOURCES = global_settings.h ran.h pofdExcept.h \
+	numberCounts.h beam.h PDFactory.h PD.h utility.h simImage.h \
+	simManager.h \
+	pofdExcept.cc numberCounts.cc beam.cc PDFactory.cc PD.cc utility.cc \
+	simImage.cc simManager.cc \
+	pofd_coverage_runSim.cc

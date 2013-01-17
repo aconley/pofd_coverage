@@ -336,7 +336,7 @@ int main( int argc, char** argv ) {
   if (!twod)
     return getPDSingle(argc,argv);
   else {
-    std::cerr << "2D broken power law model not supported" << std::endl;
+    std::cerr << "2D model not supported" << std::endl;
     return 1;
   }
 }

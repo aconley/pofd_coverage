@@ -77,6 +77,7 @@ class PDFactory {
   void unsetVerbose() { verbose = false; } //!< Unset verbose mode
 
   unsigned int getLastFFTLen() const { return lastfftlen; }
+  double getMaxN0() const { return max_n0; }
 
   /*! \brief Adds wisdom file*/
   bool addWisdom(const std::string& filename);

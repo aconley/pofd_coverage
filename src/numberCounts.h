@@ -7,6 +7,7 @@
 #include<ostream>
 
 #include<paramSet.h>
+#include<global_settings.h>
 #include<beam.h>
 
 /*!
@@ -54,25 +55,41 @@ class numberCounts {
   /*! \brief Get number of sources per area in base model*/
   double getBaseN0() const;
 
-  /*! \brief Get Mean Flux per unit area */
+  /*! \brief Get Mean Flux per unit area for base model*/
   double getMeanFluxPerArea() const;
 
-  /*! \brief Get Mean Flux squared per unit area */
+  /*! \brief Get Mean Flux squared per unit area for base model*/
   double getMeanFluxSqPerArea() const;
 
-  /*!\brief Get differential number counts*/
+  /*!\brief Get differential number counts for base model*/
   double getdNdS(double) const;
 
-  /*!\brief Get number of source responses */
+  /*!\brief Get number of source responses for base model */
   double getR(double, const beam&, double, double,
 	      unsigned int) const;
 
-  /*!\brief Get number of source responses, general case, array*/
+  /*!\brief Get number of source responses for base model, general case, array*/
   void getR(unsigned int, double, double, const beam&, 
 	    double, double, unsigned int, double*) const;
   
   /*! \brief Generate a source flux from model */
   double genSource(double val) const;
+
+  /*! \brief Get minimum knot position*/
+  double getMinKnotPosition() const { return knotpos[0]; }
+
+  /*! \brief Get maximum knot position*/
+  double getMaxKnotPosition() const { return knotpos[nknots-1]; }
+
+  /*! \brief Get number of knots */
+  unsigned int getNKnots() const { return nknots; }
+
+  /*! \brief Get Knot position */
+  double getKnotPosition(unsigned int idx) const { return knotpos[idx]; }
+
+  /*! \brief Get Log10 differential number counts knot value */
+  double getLog10KnotValue(unsigned int idx) const { 
+    return logknotvals[idx] * pofd_coverage::ilogfac; }
 
   bool writeToStream(std::ostream& os) const; //!< Output to stream
 

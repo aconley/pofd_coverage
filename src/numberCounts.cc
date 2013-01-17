@@ -354,7 +354,7 @@ void numberCounts::getR(unsigned int n, double minflux,
   double dflux = (maxflux - minflux) / static_cast<int>(n - 1);
   if (n == 1) dflux = 0.0;
 
-  //Get the inverse binned beam histogram
+  //Get the inverse beam histogram (binned)
   if (nwrk < nbins) {
     //Must expand
     if (wrk_wts == NULL) delete[] wrk_wts;

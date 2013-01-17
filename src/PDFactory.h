@@ -90,6 +90,9 @@ class PDFactory {
   void getPD(double, PD&, bool setLog=true, 
 	     bool edgeFix=false);
 
+  /*! \brief Write out current R to text file*/
+  void writeRToFile(const std::string&) const;
+
   /*! \brief Get first n integrals of R*/
   void getRIntegrals(unsigned int, double, const numberCounts&,
 		     const beam&, double, double, unsigned int,

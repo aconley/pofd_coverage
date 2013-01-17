@@ -25,13 +25,14 @@ static struct option long_options[] = {
   {"nfwhm", required_argument, 0, 'N'},
   {"nbins", required_argument, 0, '0'},
   {"pixsize", required_argument, 0, 'p'},
+  {"rfile", required_argument, 0, 'r'},
   {"sigma", required_argument, 0, 's'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'},
   {"wisdom", required_argument, 0, 'w'},
   {0,0,0,0}
 };
-char optstring[] = "dhe:fln:N:0:p:s:vVw:";
+char optstring[] = "dhe:fln:N:0:p:r:s:vVw:";
 
 ///////////////////////////////
 
@@ -43,19 +44,20 @@ int getPDSingle(int argc, char **argv) {
   double sigma; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins;
-  bool has_wisdom, verbose, return_log, write_fits, has_user_pixsize;
-  std::string wisdom_file;
+  bool has_wisdom, verbose, return_log, write_fits, has_user_pixsize, write_r;
+  std::string wisdom_file, r_file;
 
   //Defaults
   sigma               = 2e-3;
   has_wisdom          = false;
   nflux               = 131072;
-  nbins               = 40.0;
+  nbins               = 80;
   nfwhm               = 3.5;
   verbose             = false;
   return_log          = false;
   write_fits          = false;
   has_user_pixsize    = false;
+  write_r             = false;
 
   int c;
   int option_index = 0;
@@ -82,6 +84,9 @@ int getPDSingle(int argc, char **argv) {
       has_user_pixsize = true;
       pixsize = atof(optarg);
       break;
+    case 'r':
+      write_r = true;
+      r_file = std::string(optarg);
     case 's' :
       sigma = atof(optarg);
       break;
@@ -92,7 +97,7 @@ int getPDSingle(int argc, char **argv) {
       break;
     case 'w' :
       has_wisdom = true;
-      wisdom_file = std::string( optarg );
+      wisdom_file = std::string(optarg);
       break;
     }
 
@@ -174,8 +179,8 @@ int getPDSingle(int argc, char **argv) {
       printf("   Beam area:          %0.3e\n", bm.getEffectiveArea());
       printf("   Mean flux per area: %0.2f\n",
 	     model.getMeanFluxPerArea());
-      printf("   Base N0:            %0.3e\n", model.getBaseN0());
-      printf("   N0:                 %0.5f\n", n0);
+      printf("   Base N0:            %0.4e\n", model.getBaseN0());
+      printf("   N0:                 %0.4e\n", n0);
       printf("sigma:                 %0.4f\n", sigma);
       if (return_log) 
 	printf("  Returning log( P(D) ) rather than P(D)\n");
@@ -188,6 +193,11 @@ int getPDSingle(int argc, char **argv) {
     pfactory.initPD(nflux, sigma, maxflux, n0, model, bm,
 		    pixsize, nfwhm, nbins);
     pfactory.getPD(n0, pd, return_log, true);
+    
+   if (write_r) {
+      if (verbose) std::cout << "Writing R to " << r_file << std::endl;
+      pfactory.writeRToFile(r_file);
+    }
     
     //Write it
     if (verbose) std::cout << "Writing P(D) to " << outputfile 
@@ -242,7 +252,7 @@ int main( int argc, char** argv ) {
       std::cerr << std::endl;
       std::cerr << "SYNOPSIS" << std::endl;
       std::cerr << "\t  pofd_coverage_getPD [options] modelfile n0 fwhm maxflux"
-		<< "outfile" << std::endl; 
+		<< " outfile" << std::endl; 
       std::cerr << std::endl;
       std::cerr << "DESCRIPTION" << std::endl;
       std::cerr << "\tEvaluates P(D) for the specified model and writes it to" 
@@ -295,10 +305,14 @@ int main( int argc, char** argv ) {
       std::cerr << "\t\tNumber of beam FWHM out to go when computing beam."
 		<< "(def: 3.5)" << std::endl;
       std::cerr << "\t--nbins value" << std::endl;
-      std::cerr << "\t\tNumber of bins to use in histogrammed beam. (def: 40)"
+      std::cerr << "\t\tNumber of bins to use in histogrammed beam. (def: 80)"
 		<< std::endl;
       std::cerr << "\t-p, --pixsize value" << std::endl;
       std::cerr << "\t\tPixel size in arcsec. (def: FWHM/3.0)" << std::endl;
+      std::cerr << "\t-r, --rfile FILENAME" << std::endl;
+      std::cerr << "\t\tWrite the R used to this file as text." << std::endl;
+      std::cerr << "\t-s, --sigma VALUE" << std::endl;
+      std::cerr << "\t\tThe assumed per-pixel noise (def: 0.002)" << std::endl;
       std::cerr << "\t-v, --verbose" << std::endl;
       std::cerr << "\t\tPrint informational messages while running"
 		<< std::endl;
@@ -307,8 +321,6 @@ int main( int argc, char** argv ) {
       std::cerr << "\t-w, --wisdom wisdomfile" << std::endl;
       std::cerr << "\t\tName of wisdom file (prepared with fftw-wisdom)." 
 		<< std::endl;
-      std::cerr << "\t--sigma VALUE" << std::endl;
-      std::cerr << "\t\tThe assumed per-pixel noise (def: 0.002)" << std::endl;
       return 0;
       break;
     case 'd' :

@@ -1,6 +1,7 @@
 #include<sstream>
 #include<cmath>
 #include<cstring>
+#include<fstream>
 #include<limits>
 
 #include<global_settings.h>
@@ -179,7 +180,8 @@ bool PDFactory::addWisdom(const std::string& filename) {
   \param[in] nfwhm   Number of FWHM out to go in beam
   \param[in] nbins   Number of bins used in histogrammed beam
   \param[out] vec    Returns moments
-  \param[in] nmom    Number of moments
+  \param[in] nmom    Number of moments.  Note we start with the 0th one,
+                      so if you want the 2nd moment, nmom must be at least 3.
 
 */
 void PDFactory::getRIntegrals(unsigned int n, double maxflux,
@@ -196,32 +198,29 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
 		     "nmom must be positive", 2);
 
   vec.resize(nmom);
-  initR(n, maxflux, model, bm, pixsize, nfwhm, nbins);
+  initR(n, maxflux, model, bm, pixsize, nfwhm, nbins); //Set R and dflux
 
-  double dx = RFlux[1] - RFlux[0];
-
-  //We use the trap rule
+  //We use the trap rule.  Note R already is multiplied by dflux
   //Do zeroth integral
   double mom;
   mom = 0.5 * rvals[0];
-  for (unsigned int i = 1; i < n-1; ++i)
-    mom += rvals[i];
+  for (unsigned int i = 1; i < n-1; ++i) mom += rvals[i];
   mom += 0.5 * rvals[n-1];
-  vec[0] = mom * dx;
+  vec[0] = mom;
 
-  //Need a working array for the flux product
+  //Need a working array for the flux product.  The idea is to steadily
+  // accumulate Rflux^n * R in wrkarr.
   double *wrkarr = new double[n];
   for (unsigned int i = 0; i < n; ++i)
-    wrkarr[i] = 1.0;
+    wrkarr[i] = rvals[i];
 
   for (unsigned int i = 1; i < nmom; ++i) {
     for (unsigned int j = 0; j < n; ++j)
-      wrkarr[j] *= RFlux[j];  //so for i=1 it is Rflux, for i=2 Rflux^2, etc.
-    mom = 0.5 * wrkarr[0] * rvals[0];
-    for (unsigned int j = 1; j < n-1; ++j)
-      mom += wrkarr[j] * rvals[j];
-    mom += 0.5 * wrkarr[n-1] * rvals[n-1];
-    vec[i] = mom * dx;
+      wrkarr[j] *= RFlux[j];  //so for i=1 it is Rflux*R, for i=2 Rflux^2*R
+    mom = 0.5 * wrkarr[0];
+    for (unsigned int j = 1; j < n-1; ++j) mom += wrkarr[j];
+    mom += 0.5 * wrkarr[n-1];
+    vec[i] = mom;
   }
 }
 
@@ -235,6 +234,9 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
   \param[in] pixsize Pixel size in arcseconds
   \param[in] nfwhm   Number of FWHM out to go in beam
   \param[in] nbins   Number of bins used in histogrammed beam
+
+  The R value that is set is actually R * dflux for convenience.
+  dflux is also set.
 
   Note that n is the transform size; the output array will generally
   be smaller because of padding.  Furthermore, because of mean shifting,
@@ -261,6 +263,7 @@ void PDFactory::initR(unsigned int n, double maxflux,
   std::clock_t starttime = std::clock();
 #endif
   model.getR(n, 0.0, maxflux, bm, pixsize, nfwhm, nbins, rvals);
+  for (unsigned int i = 1; i < n; ++i) rvals[i] *= dflux;
 #ifdef TIMING
   RTime += std::clock() - starttime;
 #endif
@@ -332,24 +335,20 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   est_shift = mn + pofd_coverage::n_sigma_shift * sg;
   maxflux_R = maxflux + est_shift;
 
-  //Compute R integrals to update values
-  std::vector<double> mom(2);
-  getRIntegrals(n, maxflux_R, model, bm, pixsize, nfwhm, nbins, mom, 2);
-  mn = n0ratio * mom[0];
-  sg = sqrt(n0ratio * n0ratio * mom[2] + inst_sigma * inst_sigma);
+  //Compute R integrals to update estimates for shift
+  std::vector<double> mom(3); //0th, 1st, 2nd moment
+  getRIntegrals(n, maxflux_R, model, bm, pixsize, nfwhm, nbins, mom, 3);
+
+  mn = n0ratio * mom[1];
+  //Note the variance goes up as n0ratio, not the sigma
+  sg = sqrt(n0ratio * mom[2] + inst_sigma * inst_sigma);
   est_shift = mn + pofd_coverage::n_sigma_shift * sg;
   maxflux_R = maxflux + est_shift;
 
   //Now prepare final R.  Note this uses the base model, even
   // though we computed the maximum R value based on the maximum n0 value
+  // The returned value is R * dflux, and dflux is set
   initR(n, maxflux_R, model, bm, pixsize, nfwhm, nbins);
-  double inm1 = 1.0 / static_cast<double>(n - 1);
-  dflux = maxflux_R * inm1;
-  
-  //Multiply R by dflux factor to represent the actual
-  // number of sources in each bin
-  for (unsigned int i = 0; i < n; ++i)
-    rvals[i] *= dflux;
 
   //Make the plans, or keep the old ones if possible
   //Note that the forward transform dumps into rtrans
@@ -615,3 +614,26 @@ edgeTime += std::clock() - starttime;
 #endif
 }
  
+/*!
+  Writes out current R
+ 
+  \param[in] filename File to write to
+
+  You must call initPD first, or bad things will probably happen.
+*/
+void PDFactory::writeRToFile(const std::string& filename) const {
+  if (! initialized )
+    throw pofdExcept("PDFactory","writeRToFile",
+		     "Must call initPD first",1);
+
+  std::ofstream ofs(filename.c_str());
+  if (!ofs)
+    throw pofdExcept("PDFactory","writeRToFile",
+		     "Couldn't open output file",2);
+
+  //Recall after initPD we are storing R * dflux
+  for (unsigned int i = 0; i < lastfftlen; ++i)
+    ofs << RFlux[i] << " " << rvals[i] / dflux << std::endl;
+
+  ofs.close();
+}

@@ -86,12 +86,21 @@ void beam::getBeam(unsigned int n, double pixsize,
 		   double* const bm) const {
 
   //Input checks
-  if (n == 0)
-    throw pofdExcept("beam", "getBeam", "n should be positive", 1);
-  if (n % 2 != 0)
-    throw pofdExcept("beam", "getBeam", "n should be odd", 2);
-  if (pixsize <= 0.0)
-    throw pofdExcept("beam", "getBeam", "pixsize must be positive", 3);
+  if (n == 0) {
+    std::stringstream errstr;
+    errstr << "n (" << n << ") should be positive";
+    throw pofdExcept("beam", "getBeam", errstr.str(), 1);
+  }
+  if (n % 2 == 0) {
+    std::stringstream errstr;
+    errstr << "n (" << n << ") should be odd";
+    throw pofdExcept("beam", "getBeam", errstr.str(), 2);
+  }
+  if (pixsize <= 0.0) {
+    std::stringstream errstr;
+    errstr << "pixsize (" << pixsize << ") should be positive";
+    throw pofdExcept("beam", "getBeam", errstr.str(), 3);
+  }
   if (bm == NULL)
     throw pofdExcept("beam", "getBeam", "bm is not allocated", 4);
 
@@ -144,13 +153,24 @@ void beam::getBeamHist(unsigned int n, double pixsize,
 		       double* const bm,
 		       bool inverse) const {
 
+  const double minval = 1e-5; //Always ignore beam values below this
+
   //Input checks
-  if (n == 0)
-    throw pofdExcept("beam", "getBeamHist", "n should be positive", 1);
-  if (n % 2 != 0)
-    throw pofdExcept("beam", "getBeamHist", "n should be odd", 2);
-  if (pixsize <= 0.0)
-    throw pofdExcept("beam", "getBeamHist", "pixsize must be positive", 3);
+  if (n == 0) {
+    std::stringstream errstr;
+    errstr << "n (" << n << ") should be positive";
+    throw pofdExcept("beam", "getBeamHist", errstr.str(), 1);
+  }
+  if (n % 2 == 0) {
+    std::stringstream errstr;
+    errstr << "n (" << n << ") should be odd";
+    throw pofdExcept("beam", "getBeamHist", errstr.str(), 2);
+  }
+  if (pixsize <= 0.0) {
+    std::stringstream errstr;
+    errstr << "pixsize (" << pixsize << ") should be positive";
+    throw pofdExcept("beam", "getBeamHist", errstr.str(), 3);
+  }
   if (nbins == 0)
     throw pofdExcept("beam", "getBeamHist", "nbins must be positive", 4);
   if (wt == NULL)
@@ -177,9 +197,10 @@ void beam::getBeamHist(unsigned int n, double pixsize,
     fac[i] = exp(expfac * dist * dist);
   }
 
-  double minbinval = log2(0.999 * fac[0] * fac[0]); //Farthest from center
+  double cminval = (minval > fac[0]*fac[0]) ? minval : 0.999 * fac[0]*fac[0];
+  double minbinval = log2(cminval); //Farthest from center
   double maxbinval = log2(1.001); //Assuming beam peaks at one.
-  double histstep = (maxbinval - minbinval) / static_cast<int>(nbins+2);
+  double histstep = (maxbinval - minbinval) / static_cast<double>(nbins);
 
   unsigned int* initwt = new unsigned int[nbins];
   double* meanbinval = new double[nbins];
@@ -188,13 +209,16 @@ void beam::getBeamHist(unsigned int n, double pixsize,
 
   unsigned int idx;
   double fval, val;
+  double maxval = 0.0;
   for (unsigned int i = 0; i < n; ++i) {
     fval = fac[i];
     for (unsigned int j = 0; j < n; ++j) {
       val = fval * fac[j];
+      if (val < cminval) continue;  //Ignore
+      if (val > maxval) maxval = val;
       idx = static_cast<unsigned int>((log2(val) - minbinval) / histstep);
       meanbinval[idx] += val;
-      initwt[i] += 1;
+      initwt[idx] += 1;
     }
   }
   delete[] fac;

@@ -541,7 +541,7 @@ int simManager::writeToFits(const std::string& outputfile) const {
   char* mttype[] = {"KNOTPOS","LOG10KNOTVAL"};
   char* mtform[] = {"1D", "1D"};
   fits_create_tbl(fp, BINARY_TBL, 0, 2, mttype, mtform, NULL, 
-		  "MODEL", &status);
+		  "BASEMODEL", &status);
   //Base model parameters, write to this extension header as well
   dtmp = model.getBaseN0();
   fits_write_key(fp, TDOUBLE, const_cast<char*>("BASEN0"), &dtmp, 

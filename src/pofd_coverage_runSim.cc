@@ -182,8 +182,12 @@ int runSimSingle(int argc, char **argv) {
 
   try {
     if (verbose) {
+      //Use model to get base n0
+      numberCounts model(modelfile);
+
       double area = n1*n2*std::pow(pixsize/3600.0,2);
       printf("   base model file:    %s\n", modelfile.c_str());
+      printf("   base n0:            %0.3e\n", model.getBaseN0());
       printf("   nsims:              %u\n",nsims);
       printf("   n0initrange         %0.3f\n",n0initrange);
       printf("   Beam fwhm:          %0.2f\n",fwhm);
@@ -256,8 +260,8 @@ int main(int argc, char **argv) {
 		<< std::endl;
       std::cerr << std::endl;
       std::cerr << "SYNOPSIS" << std::endl;
-      std::cerr << "\t pofd_coverage_runSim [options] n0 modelfile fwhm pixsize "
-		<< "n1 n2" << std::endl;
+      std::cerr << "\t pofd_coverage_runSim [options] n0 modelfile "
+		<< "fwhm pixsize n1 n2" << std::endl;
       std::cerr << "\t  outputfile" << std::endl;
       std::cerr << std::endl;
       std::cerr << "DESCRIPTION" << std::endl;
@@ -270,7 +274,8 @@ int main(int argc, char **argv) {
       std::cerr << "\tmapping out a range of n0 values around the best fit and"
 		<< " storing" << std::endl;
       std::cerr << "\tthe resulting log likelihood.  The results are written to"
-		<< " outputfile." << std::endl;
+		<< " outputfile" << std::endl;
+      std::cerr << "\tas a FITS binary table." << std::endl;
       std::cerr << std::endl;
       std::cerr << "\tThe number counts model is a broken power law model"
 		<< std::endl;
@@ -291,7 +296,7 @@ int main(int argc, char **argv) {
       std::cerr << "\tline are ignored, and # denotes a comment line."
 		<< std::endl;
       std::cerr << std::endl;
-      std::cerr << "\tfwhm is the beam FWHM in arcsec , and the beams is "
+      std::cerr << "\tfwhm is the beam FWHM in arcsec , and the beam is "
 		<< "Gaussian."
 		<< std::endl;
       std::cerr << std::endl;
@@ -309,7 +314,7 @@ int main(int argc, char **argv) {
       std::cerr << "\t-f, --fftsize FFTSIZE" << std::endl;
       std::cerr << "\t\tSize of FFT to use when computing P(D) (def: 131072 in"
 		<< std::endl;
-      std::cerr << "\t\tone dimension and 2048 in two dimensions." 
+      std::cerr << "\t\tone dimension and 2048 in two dimensions.)" 
 		<< std::endl;
       std::cerr << "\t--nbins NBINS" << std::endl;
       std::cerr << "\t\tNumber of bins to use if binning simulated image."

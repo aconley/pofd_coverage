@@ -369,14 +369,16 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
 				    fftw_plan_style);
     if (plan == NULL) {
       std::stringstream str;
-      str << "Plan creation failed for forward transform of size: " << 
-	n << std::endl;
+      str << "Plan creation failed for forward transform of size: " << n;
+      if (has_wisdom) str << std::endl << "Your wisdom file may not have"
+			  << " that size";
       throw pofdExcept("PDFactory","initPD",str.str(),4);
     }
     if (plan_inv == NULL) {
       std::stringstream str;
-      str << "Plan creation failed for inverse transform of size: " << 
-	n << std::endl;
+      str << "Plan creation failed for inverse transform of size: " << n;
+      if (has_wisdom) str << std::endl << "Your wisdom file may not have"
+			  << " that size";
       throw pofdExcept("PDFactory","initPD",str.str(),5);
     }
     plans_valid = true;

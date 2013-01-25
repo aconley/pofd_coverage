@@ -6,7 +6,6 @@
 #include<string>
 #include<ostream>
 
-#include<paramSet.h>
 #include<global_settings.h>
 #include<beam.h>
 

@@ -12,9 +12,6 @@
 
 #include<numberCounts.h>
 #include<PD.h>
-#include<paramSet.h>
-
-
 
 /*!
   Always call initPD before using getPD for a given model.

@@ -12,7 +12,6 @@
 #include<PDFactory.h>
 #include<beam.h>
 #include<numberCounts.h>
-#include<paramSet.h>
 #include<pofdExcept.h>
 
 static struct option long_options[] = {

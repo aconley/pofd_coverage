@@ -2,8 +2,9 @@ bin_PROGRAMS = pofd_coverage_makeCat pofd_coverage_makeSim \
 	pofd_coverage_getPD pofd_coverage_runSim
 
 pofd_coverage_makeCat_SOURCES = global_settings.h ran.h pofdExcept.h \
-	numberCounts.h utility.h beam.h \
-	pofdExcept.cc numberCounts.cc utility.cc beam.cc \
+	numberCounts.h numberCountsDouble.h utility.h beam.h doublebeam.h \
+	pofdExcept.cc numberCounts.cc numberCountsDouble.cc utility.cc \
+	beam.cc doublebeam.cc \
 	pofd_coverage_makeCat.cc
 
 pofd_coverage_makeSim_SOURCES = global_settings.h ran.h pofdExcept.h \

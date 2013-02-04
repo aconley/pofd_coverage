@@ -1,6 +1,6 @@
 //beam.h
 
-//1-band factorizable PSF 
+//1-band Gaussian PSF 
 
 #ifndef __beam__
 #define __beam__
@@ -18,7 +18,7 @@ class beam {
   double rhosq; //!< Convenience variable \f$\rho = 4 \log\left(2\right) 3600^2/FWHM^2)\f$
   
  public :
-  beam( double FWHM=10.0 ); //!< Constructor with FWHM
+  beam(double FWHM=10.0); //!< Constructor with FWHM
 
   void setFWHM(double); //!< Set the FWHM
 

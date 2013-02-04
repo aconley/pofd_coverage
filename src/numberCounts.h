@@ -19,7 +19,7 @@ class numberCounts {
   static const double ftol; //!< General floating point tolerance for equality
 
   // Internally we represent the number counts as a_i S^-gamma_i
-  double base_n0; //!< Total number of sources in initial computation
+  double base_n0; //!< Total number of sources in base model
   unsigned int nknots; //!< Number of flux density knots
   double* knotpos; //!< Positions of knots, length nknots
   double* knotvals; //!< Values of differential number counts at knotpos
@@ -39,14 +39,12 @@ class numberCounts {
   double base_meanfluxsq; //!< Mean flux squared per area for base model
 
   //Working variables for histogrammed beam
-  mutable unsigned int nwrk; //!< Number of elements in working arrays
-  mutable unsigned int* wrk_wts; //!< Histogrammed beam weights
-  mutable double* wrk_bm; //!< Histogrammed beam
+  mutable unsigned int nbm; //!< Number of elements in inverse beam
+  mutable unsigned int* bm_wts; //!< Histogrammed inverse beam weights
+  mutable double* inv_bm; //!< Histogrammed inverse beam
 
  public:
   explicit numberCounts(const std::string&);  //!< Constructor with model file
-  explicit numberCounts(unsigned int, const double* const, 
-			const double* const); 
   ~numberCounts();
 
   bool isValid() const; //!< See if model params are valid

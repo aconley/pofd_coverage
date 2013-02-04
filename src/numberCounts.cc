@@ -11,6 +11,9 @@
 
 const double numberCounts::ftol = 1e-4;
 
+/*!
+  \param[in] modelfile Name of file to read base model from
+ */
 numberCounts::numberCounts(const std::string& modelfile) {
 
   //We have to read in the input file
@@ -62,53 +65,24 @@ numberCounts::numberCounts(const std::string& modelfile) {
   initMParams();
 
   //Don't set histogrammed beam currently
-  nwrk = 0;
-  wrk_wts = NULL;
-  wrk_bm = NULL;
-
+  nbm = 0;
+  bm_wts = NULL;
+  inv_bm = NULL;
 }
 
-/*!
-  \param[in] NKNOTS Number of knots
-  \param[in] KNOTPOS Knot positions, in Jy
-  \param[in] KNOTVAL log 10 differential counts in Jy^-1 deg^-2
- */
-numberCounts::numberCounts(unsigned int NKNOTS, const double* const KNOTPOS,
-			   const double* const KNOTVAL) {
-
-  //Input checks
-  if (NKNOTS < 2)
-    throw pofdExcept("numberCounts","numberCounts",
-		     "nknots must be >= 2",1);
-
-  for (unsigned int i = 0; i < NKNOTS; ++i)
-    if (KNOTPOS[i] <= 0.0)
-      throw pofdExcept("numberCounts","numberCounts",
-		       "knot positions must all be positive",2);
-
-  for (unsigned int i = 1; i < NKNOTS; ++i)
-    if (KNOTPOS[i] <= KNOTPOS[i-1])
-      throw pofdExcept("numberCounts","numberCounts",
-		       "knot positions must be monotonically increasing",3);
-
-  //Now construct internal model parameters
-  nknots = NKNOTS;
-  knotpos = new double[nknots];
-  for (unsigned int i = 0; i < nknots; ++i) knotpos[i] = KNOTPOS[i];
-  //Input values are log10, convert to log_e
-  logknotvals = new double[nknots];
-  for (unsigned int i = 0; i < nknots; ++i) 
-    logknotvals[i] = pofd_coverage::logfac * KNOTVAL[i];
-  knotvals = new double[nknots];
-  for (unsigned int i = 0; i < nknots; ++i) knotvals[i] = exp(logknotvals[i]);
-
-  a = gamma = omg = iomg = fk = powarr = NULL;
-  gamone = NULL;
-  initMParams();
-
-  nwrk = 0;
-  wrk_wts = NULL;
-  wrk_bm = NULL;
+numberCounts::~numberCounts() {
+  delete[] knotpos;
+  delete[] knotvals;
+  delete[] logknotvals;
+  delete[] gamma;
+  delete[] a;
+  delete[] omg;
+  delete[] iomg;
+  delete[] gamone;
+  delete[] fk;
+  delete[] powarr;
+  if (bm_wts != NULL) delete[] bm_wts;
+  if (inv_bm != NULL) delete[] inv_bm;
 }
 
 void numberCounts::initMParams() {
@@ -185,21 +159,6 @@ void numberCounts::initMParams() {
   }
 }
 
-numberCounts::~numberCounts() {
-  delete[] knotpos;
-  delete[] knotvals;
-  delete[] logknotvals;
-  delete[] gamma;
-  delete[] a;
-  delete[] omg;
-  delete[] iomg;
-  delete[] gamone;
-  delete[] fk;
-  delete[] powarr;
-  if (wrk_wts != NULL) delete[] wrk_wts;
-  if (wrk_bm != NULL) delete[] wrk_bm;
-}
-
 bool numberCounts::isValid() const {
   if (std::isnan(base_n0)) return false;
   if (std::isinf(base_n0)) return false;
@@ -273,39 +232,45 @@ double numberCounts::getR(double x, const beam& bm,
   if (nbins == 0)
     throw pofdExcept("numberCounts", "getR", "Invalid (zero) nbins",
 		     3);
+  if (!isValid())
+    throw pofdExcept("numberCounts", "getR", "Invalid model",
+		     4);
 
   double s_min = knotpos[0];
   double s_max = knotpos[nknots-1];
   if (x >= s_max) return 0.0;
   if (x <= 0.0) return 0.0;
 
-  //Get the inverse binned beam histogram
-  if (nwrk < nbins) {
+  if (nbm < nbins) {
     //Must expand
-    if (wrk_wts == NULL) delete[] wrk_wts;
-    if (wrk_bm == NULL) delete[] wrk_bm;
-    wrk_wts = new unsigned int[nbins];
-    wrk_bm = new double[nbins];
-    nwrk = nbins;
+    if (bm_wts == NULL) delete[] bm_wts;
+    if (inv_bm == NULL) delete[] inv_bm;
+    bm_wts = new unsigned int[nbins];
+    inv_bm = new double[nbins];
+    nbm = nbins;
   }
+
+  //Get number of pixels out we will go
   unsigned int npix = static_cast<unsigned int>(nfwhm * bm.getFWHM()/pixsize + 
 						0.9999999999);
   npix = 2 * npix + 1;
   unsigned int nnonzero;
-  bm.getBeamHist(npix, pixsize, nbins, nnonzero, wrk_wts, wrk_bm, true);
+
+  //Load inverse histogrammed beam
+  bm.getBeamHist(npix, pixsize, nbins, nnonzero, bm_wts, inv_bm, true);
 
   //And now the actual computation
   double cval, cR, R, ibm;
   unsigned int loc;
   R = 0.0;
   for (unsigned int i = 0; i < nnonzero; ++i) {
-    ibm = wrk_bm[i]; //1 / eta
+    ibm = inv_bm[i]; //1 / eta
     cval = x * ibm;
     if (cval < s_min) continue;
     if (cval >= s_max) continue;
     loc = utility::binary_search_lte(cval, knotpos, nknots);
     cR = a[loc] * pow(cval, -gamma[loc]);
-    R += wrk_wts[i] * cR * ibm;
+    R += bm_wts[i] * cR * ibm;
   }
 
   double prefac = pixsize / 3600.0;
@@ -353,20 +318,20 @@ void numberCounts::getR(unsigned int n, double minflux,
   double dflux = (maxflux - minflux) / static_cast<int>(n - 1);
   if (n == 1) dflux = 0.0;
 
-  //Get the inverse beam histogram (binned)
-  if (nwrk < nbins) {
+  //Space for the inverse beam
+  if (nbm < nbins) {
     //Must expand
-    if (wrk_wts == NULL) delete[] wrk_wts;
-    if (wrk_bm == NULL) delete[] wrk_bm;
-    wrk_wts = new unsigned int[nbins];
-    wrk_bm = new double[nbins];
-    nwrk = nbins;
+    if (bm_wts == NULL) delete[] bm_wts;
+    if (inv_bm == NULL) delete[] inv_bm;
+    bm_wts = new unsigned int[nbins];
+    inv_bm = new double[nbins];
+    nbm = nbins;
   }
   unsigned int npix = static_cast<unsigned int>(nfwhm * bm.getFWHM()/pixsize + 
 						0.9999999999);
   npix = 2 * npix + 1;
   unsigned int nnonzero;
-  bm.getBeamHist(npix, pixsize, nbins, nnonzero, wrk_wts, wrk_bm, true);
+  bm.getBeamHist(npix, pixsize, nbins, nnonzero, bm_wts, inv_bm, true);
 
   double prefac = pixsize / 3600.0;
   prefac = prefac * prefac;
@@ -383,13 +348,13 @@ void numberCounts::getR(unsigned int n, double minflux,
     }
     workR = 0.0;
     for (unsigned int j = 0; j < nnonzero; ++j) {
-      ibm = wrk_bm[j]; //1 / eta
+      ibm = inv_bm[j]; //1 / eta
       cval = cflux * ibm;
       if (cval < s_min) continue;
       if (cval >= s_max) continue;
       loc = utility::binary_search_lte(cval, knotpos, nknots);
       cR = a[loc] * pow(cval, -gamma[loc]);
-      workR += wrk_wts[j] * cR * ibm;
+      workR += bm_wts[j] * cR * ibm;
     }
     R[i] = prefac * workR;
   }

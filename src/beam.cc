@@ -198,7 +198,7 @@ void beam::getBeamHist(unsigned int n, double pixsize,
   }
 
   double cminval = (minval > fac[0]*fac[0]) ? minval : 0.999 * fac[0]*fac[0];
-  double minbinval = log2(cminval); //Farthest from center
+  double minbinval = log2(cminval);
   double maxbinval = log2(1.001); //Assuming beam peaks at one.
   double histstep = (maxbinval - minbinval) / static_cast<double>(nbins);
 
@@ -209,13 +209,11 @@ void beam::getBeamHist(unsigned int n, double pixsize,
 
   unsigned int idx;
   double fval, val;
-  double maxval = 0.0;
   for (unsigned int i = 0; i < n; ++i) {
     fval = fac[i];
     for (unsigned int j = 0; j < n; ++j) {
       val = fval * fac[j];
       if (val < cminval) continue;  //Ignore
-      if (val > maxval) maxval = val;
       idx = static_cast<unsigned int>((log2(val) - minbinval) / histstep);
       meanbinval[idx] += val;
       initwt[idx] += 1;

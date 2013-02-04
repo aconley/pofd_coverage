@@ -37,22 +37,39 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile) {
   }
 
   //Read in number of knots in band1, sigmas, offsets
-  initfs >> nk >> ns >> no;
+  bool has_nknots = false;
+  while (!initfs.eof()) {
+    std::getline(initfs,line);
+    if (line[0] == '#') continue; //Comment
+    utility::stringwords(line,words);
+    if (words.size() == 0) continue; //Nothing on line (with spaces removed)
+    if (words.size() < 3) continue; //Has wrong number of entries
+    str.str(words[0]); str.clear(); str >> nk;
+    str.str(words[1]); str.clear(); str >> ns;
+    str.str(words[2]); str.clear(); str >> no;
+    has_nknots = true;
+    break;
+  }
+  if (!has_nknots) {
+    initfs.close();
+    throw pofdExcept("numberCountsDouble","numberCountsDouble",
+		     "Unable to find number of knots line",2);
+  }
   if ( nk < 2 ) {
     initfs.close();
     throw pofdExcept("numberCountsDouble","numberCountsDouble",
-		       "Need at least 2 band 1 knots",2);
+		       "Need at least 2 band 1 knots",3);
   }
   if ( ns < 1 ) {
     initfs.close();
     throw pofdExcept("numberCountsDouble","numberCountsDouble",
-		       "Need at least one sigma color model knot",3);
+		       "Need at least one sigma color model knot",4);
 
   }
   if ( no < 1 ) {
     initfs.close();
     throw pofdExcept("numberCountsDouble","numberCountsDouble",
-		       "Need at least one offset color model knot",4);
+		       "Need at least one offset color model knot",5);
   }
   
   //Read in values
@@ -76,7 +93,7 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile) {
     errstr << "Expected " << ntot << " values, got: " 
 	   << wvec1.size();
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
-		       errstr.str(), 5);
+		       errstr.str(), 6);
   }
 
   //Set up band 1
@@ -106,11 +123,14 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile) {
   sigmavals = new double[nsigma];
   for (unsigned int i = 0; i < nsigma; ++i) sigmavals[i] = wvec2[i+nk];
   if (nsigma > 2)
-    sigmainterp = gsl_interp_alloc( gsl_interp_cspline,
-				    static_cast<size_t>(nsigma));
+    sigmainterp = gsl_interp_alloc(gsl_interp_cspline,
+				   static_cast<size_t>(nsigma));
   else
-    sigmainterp = gsl_interp_alloc( gsl_interp_linear,
-				    static_cast<size_t>(nsigma));
+    sigmainterp = gsl_interp_alloc(gsl_interp_linear,
+				   static_cast<size_t>(nsigma));
+  if (nsigma > 1)
+    gsl_interp_init(sigmainterp, sigmapos, sigmavals,
+		    static_cast<size_t>(nsigma));
   accsigma = gsl_interp_accel_alloc();
 
   // Offset spline
@@ -120,18 +140,20 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile) {
   offsetvals = new double[noffset];
   for (unsigned int i = 0; i < noffset; ++i) offsetvals[i] = wvec2[i+nk+ns];
   if (noffset > 2)
-    offsetinterp = gsl_interp_alloc( gsl_interp_cspline,
-				     static_cast<size_t>(noffset));
+    offsetinterp = gsl_interp_alloc(gsl_interp_cspline,
+				    static_cast<size_t>(noffset));
   else
-    offsetinterp = gsl_interp_alloc( gsl_interp_linear,
-				     static_cast<size_t>(noffset));
+    offsetinterp = gsl_interp_alloc(gsl_interp_linear,
+				    static_cast<size_t>(noffset));
+  if (noffset > 1)
+    gsl_interp_init(offsetinterp, offsetpos, offsetvals,
+		    static_cast<size_t>(noffset));
   accoffset = gsl_interp_accel_alloc();
-
-
+  
   //Make sure what we read makes sense
   if (!isValidLoaded())
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
-		     "Invalid base model parameters",6);
+		     "Invalid base model parameters",7);
 
   gsl_work = gsl_integration_workspace_alloc(1000);
   varr = new void*[nvarr];
@@ -432,6 +454,7 @@ double numberCountsDouble::powerInt(double alpha, double beta) const {
   gsl_function F;
   double minknot = knotpos[0];
   double maxknot = knotpos[nknots-1];
+  unsigned int n = nknots;
   unsigned int noff = noffset;
   unsigned int nsig = nsigma;
   
@@ -449,7 +472,6 @@ double numberCountsDouble::powerInt(double alpha, double beta) const {
   // evalfN knows what to do in detail (minima, maxima, etc.)
 
   //Stuff we always need
-  unsigned int n = nknots;
   varr[0] = static_cast<void*>(&power);
   varr[1] = static_cast<void*>(&const1);
   varr[2] = static_cast<void*>(&const2);
@@ -656,7 +678,7 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
 std::pair<double, double> 
 numberCountsDouble::genSource(double udev, double gdev) const {
 
-  double f1, f2;
+  double f1, f2of1;
 
   //We first generate a flux from band 1.  This is fairly easy
   // for a power law model.
@@ -668,7 +690,7 @@ numberCountsDouble::genSource(double udev, double gdev) const {
     if (gamone[0])
       f1 = knotpos[0] * exp(prod / a[0]);
     else
-      f2 = pow(omg[0] * prod / a[0] + powarr[0], iomg[0]);
+      f1 = pow(omg[0] * prod / a[0] + powarr[0], iomg[0]);
   } else {
     unsigned int km1 = utility::binary_search_lte(prod, fk, nknots-1);
   
@@ -682,7 +704,7 @@ numberCountsDouble::genSource(double udev, double gdev) const {
       if (gamone[k]) 
 	f1 = knotpos[k] * exp(delta);
       else 
-        f2 = pow(omg[k] * delta + powarr[k], iomg[k]);
+        f1 = pow(omg[k] * delta + powarr[k], iomg[k]);
     }
   }
 
@@ -691,9 +713,10 @@ numberCountsDouble::genSource(double udev, double gdev) const {
   // a gaussian distribution -- that is, we generate a Gaussian
   // variable with the appropriate mean and sigma, then exponentiate it.
   //Fortunately, one of the inputs is supposed to be a Gaussian deviate
-  f2 = exp(getSigmaInner(f1) * gdev + getOffsetInner(f1));
+  //Keep in mind that the log normal distribution is in f2/f1, not f2 alone.
+  f2of1 = exp(getSigmaInner(f1) * gdev + getOffsetInner(f1));
 
-  return std::make_pair(f1, f2);
+  return std::make_pair(f1, f2of1 * f1);
 }
 
 
@@ -754,6 +777,7 @@ static double evalPowfNDoubleLogNormal(double s1, void* params) {
   double *knotpos = static_cast<double*>(vptr[4]);
   double minknot = knotpos[0];
   double maxknot = knotpos[nknots-1];
+
   if (s1 < minknot || s1 >= maxknot) return 0.0;
 
   //Get coeffs
@@ -763,7 +787,6 @@ static double evalPowfNDoubleLogNormal(double s1, void* params) {
 
   //Construct thing we multiply n1 counts by
   double prefac;
-  
   //Construct s1^power part
   if (power == 0) 
     prefac = 1.0; 
@@ -772,6 +795,7 @@ static double evalPowfNDoubleLogNormal(double s1, void* params) {
     else if (fabs(power-2.0) < 1e-6) prefac = s1*s1;
     else prefac = pow(s1,power);
   }
+
 
   //Now exponential part
   if (const1 != 0 || const2 != 0) {

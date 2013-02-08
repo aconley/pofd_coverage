@@ -18,17 +18,17 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   ngen1 = n1 * oversample;
   ngen2 = n2 * oversample;
   data = new double[n1*n2];
-  work  = new double[ngen1 * ngen2];
+  work = new double[ngen1 * ngen2];
   if (oversample > 1)
-    work2 = new double[ngen1 * ngen2];
+    gen_image = new double[ngen1 * ngen2];
   else
-    work2 = NULL;
+    gen_image = NULL;
   pixsize = PIXSIZE;
   pixsize_gen = PIXSIZE / static_cast<double>(oversample);
   fwhm = FWHM;
   sigi = SIGI;
-  esmooth = ESMOOTH;
   is_full = false;
+  esmooth = ESMOOTH;
   smooth_applied = false;
   is_binned = false;
   nbins = NBINS;
@@ -69,7 +69,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 simImage::~simImage() {
   delete[] data;
   delete[] work;
-  if (work2 != NULL) delete[] work2;
+  if (gen_image != NULL) delete[] gen_image;
   delete[] gauss;
   if (gauss_add != NULL) delete[] gauss_add;
   if (binval != NULL) delete[] binval;
@@ -87,7 +87,7 @@ bool simImage::isValid() const {
 }
 
 /*!
-  Downsample the internal image (in work2) into data.
+  Downsample the internal image into data.
   This rebinning preserves the mean flux per pixel
   
  */
@@ -134,6 +134,9 @@ void simImage::convolveInner(unsigned int n, const double* const arr,
 			     double* const inarr,
 			     double* const outarr) {
   //inarr, outarr must be same size (ni1 by ni2)
+  //This makes use of the work array to hold the intermediate product
+  //The input array may be data (if we aren't oversampling) or gen_image
+  // (if we are oversampling)
 
   //Here we take major advantage of the fact that a Gaussian beam factorizes
   //to do this as two 1D convolutions, along rows then columns
@@ -197,7 +200,7 @@ void simImage::convolveInner(unsigned int n, const double* const arr,
 
   //Now convolve along the first index in the array, store that
   // into output array
-  // either into data (if we aren't oversampling) or work2 (if we are).
+  // either into data (if we aren't oversampling) or gen_image (if we are).
   // Basically the same thing over again
   double *workptr;
   for (unsigned int j = 0; j < ni2; ++j) {
@@ -239,11 +242,12 @@ void simImage::convolveInner(unsigned int n, const double* const arr,
 void simImage::convolveWithBeam(unsigned int ni1, unsigned int ni2,
 				double* const input, unsigned int no1,
 				unsigned int no2, double* const output) {
+
   if (ni1 != no1 || ni2 != no2) {
     //From input to work2 via work
-    convolveInner(ngauss, gauss, ni1, ni2, input, work2);
-    //From work2 to output
-    downSample(ni1, ni2, work2, no1, no2, output);
+    convolveInner(ngauss, gauss, ni1, ni2, input, gen_image);
+    //From gen_work2 to output
+    downSample(ni1, ni2, gen_image, no1, no2, output);
   } else {
     //Simpler case -- from input to output via work
     convolveInner(ngauss, gauss, ni1, ni2, input, output);
@@ -318,16 +322,16 @@ void simImage::realize(const numberCounts& model, double n0,
   
   //Inject sources
   if (oversample > 1) {
-    //Generate in oversampled work2
-    for (unsigned int i = 0; i < ngen1 * ngen2; ++i) work2[i] = 0.0;
+    //Generate in oversampled gen_image
+    for (unsigned int i = 0; i < ngen1 * ngen2; ++i) gen_image[i] = 0.0;
     if (nsrcs > 0) {
       unsigned int idx1, idx2;
       for (unsigned int i = 0; i < nsrcs; ++i) {
 	idx1 = static_cast<unsigned int>(rangen.doub() * ngen1);
 	idx2 = static_cast<unsigned int>(rangen.doub() * ngen2);
-	work2[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
+	gen_image[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
       }
-      convolveWithBeam(ngen1, ngen2, work2, n1, n2, data);
+      convolveWithBeam(ngen1, ngen2, gen_image, n1, n2, data);
     }
   } else {
     //Generate in data

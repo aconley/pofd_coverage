@@ -43,7 +43,7 @@ class simImage {
   
   //Working variables
   double *work; //!< Holds temporary array during convolution
-  double *work2; //!< Target of final convolution
+  double *gen_image; //!< Used to generate raw image if oversampling
 
   //Working arrays for holding beam
   unsigned int ngauss; //!< Number of elements in gauss
@@ -57,12 +57,13 @@ class simImage {
   /*! \brief Downsample array */
   void downSample(unsigned int, unsigned int, double* const,
 		  unsigned int, unsigned int, double* const); 
-  void convolveInner(unsigned int, const double* const,
-		     unsigned int, unsigned int, double* const,
-		     double* const); //!< Inner convolution function
 
   /*! \brief Does model have valid params */
   bool isValid() const;
+
+  void convolveInner(unsigned int, const double* const,
+		     unsigned int, unsigned int, double* const,
+		     double* const); //!< Inner convolution function
 
   /*! \brief Do convolution with beams */
   void convolveWithBeam(unsigned int, unsigned int, double* const,

@@ -7,9 +7,10 @@
 
 #include<getopt.h>
 
-#include<simImage.h>
 #include<pofdExcept.h>
 #include<global_settings.h>
+#include<simImage.h>
+#include<simImageDouble.h>
 
 //Set up global option index that can be used for both single and double case
 static struct option long_options[] = {
@@ -144,6 +145,144 @@ int makeSimSingle(int argc, char **argv) {
 
 ///////////////////////////////////
 
+int makeSimDouble(int argc, char **argv) {
+
+  unsigned int n1, n2;
+  double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2;
+  double extra_smooth1, extra_smooth2; //Additional smoothing
+  std::string modelfile, outputfile; 
+  unsigned long long int user_seed;
+  bool verbose, do_extra_smooth, have_user_seed;
+  unsigned int oversample;
+
+  //Defaults
+  do_extra_smooth     = false;
+  extra_smooth1       = 0.0;
+  extra_smooth2       = 0.0;
+  sigma1              = 0.0;
+  sigma2              = 0.0;
+  verbose             = false;
+  user_seed           = 0;
+  have_user_seed      = false;
+  oversample          = 1;
+
+  int c;
+  int option_index = 0;
+  optind = 1; //Reset parse
+  while ( ( c = getopt_long(argc,argv,optstring,long_options,
+			    &option_index ) ) != -1 ) 
+    switch(c) {
+    case '1' :
+      do_extra_smooth = true;
+      extra_smooth1 = atof(optarg);
+      break;
+    case '2' :
+      do_extra_smooth = true;
+      extra_smooth2 = atof(optarg);
+      break;
+    case 'o':
+      oversample = atoi(optarg);
+      break;
+    case 'S' :
+      have_user_seed = true;
+      user_seed = static_cast<unsigned long long int>( atoi(optarg) );
+      break;
+    case '3' :
+      sigma1 = atof(optarg);
+      break;
+    case '4' :
+      sigma2 = atof(optarg);
+      break;
+    case 'v' :
+      verbose = true;
+      break;
+    }
+
+  if (optind >= argc-7 ) {
+    std::cerr << "Some required arguments missing" << std::endl;
+    std::cerr << " Use --help for description of inputs and options"
+	      << std::endl;
+    return 1;
+  }
+  modelfile  = std::string(argv[optind]);
+  n0         = atof(argv[optind + 1]);
+  fwhm1      = atof(argv[optind + 2]);
+  fwhm2      = atof(argv[optind + 3]);
+  pixsize    = atof(argv[optind + 4]);
+  n1         = atoi(argv[optind + 5]);
+  n2         = atoi(argv[optind + 6]);
+  outputfile = std::string(argv[optind + 7]);
+
+  if (n0 <= 0.0) {
+    std::cerr << "Invalid (non-positive) n0: " << n0 << std::endl;
+    return 1;
+  }
+  if (std::isnan(n0) || std::isinf(n0)) {
+    std::cerr << "Invalid (non-finite) n0: " << n0 << std::endl;
+    return 1;
+  }
+  if (sigma1 < 0.0) {
+    std::cerr << "Invalid band 1 noise level: must be >= 0.0" << std::endl;
+    return 1;
+  }
+  if (sigma2 < 0.0) {
+    std::cerr << "Invalid band 2 noise level: must be >= 0.0" << std::endl;
+    return 1;
+  }
+  if (fwhm1 < 0.0) {
+    std::cerr << "Invalid (non-positive) FWHM band 1" << std::endl;
+    return 1;
+  }
+  if (fwhm2 < 0.0) {
+    std::cerr << "Invalid (non-positive) FWHM band 1" << std::endl;
+    return 1;
+  }
+  if (do_extra_smooth && extra_smooth1 < 0.0) {
+    std::cerr << "Invalid (non-positive) extra smoothing FWHM band 1" 
+	      << std::endl;
+    return 1;
+  }
+  if (do_extra_smooth && extra_smooth2 < 0.0) {
+    std::cerr << "Invalid (non-positive) extra smoothing FWHM band 2" 
+	      << std::endl;
+    return 1;
+  }
+  if (oversample == 0) {
+    std::cerr << "Invalid (non-positive) oversampling" << std::endl;
+    return 1;
+  }
+  
+
+  try {
+    numberCountsDouble model(modelfile);
+    if (verbose)
+      std::cout << "Base model n0: " << model.getBaseN0()
+		<< " Your value: " << n0 << std::endl;
+
+    simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, 
+		       extra_smooth1, extra_smooth2, oversample);
+    if (have_user_seed) dim.setSeed( user_seed );
+    dim.realize(model, n0, do_extra_smooth, true, false); //Do mean subtract
+
+    //Write it
+    if (verbose) std::cout << "Writing simulated image to " << outputfile 
+			   << std::endl;
+    int status = dim.writeToFits(outputfile);
+    if (status != 0) return status;
+  } catch ( const pofdExcept& ex ) {
+    std::cerr << "Error encountered" << std::endl;
+    std::cerr << ex << std::endl;
+    return 8;
+  } catch (const std::bad_alloc& ba) {
+    std::cerr << "Bad allocation error: " << ba.what() << std::endl;
+    return 16;
+  } 
+
+  return 0;
+}
+
+///////////////////////////////////
+
 int main( int argc, char** argv ) {
   bool twod;
 
@@ -160,24 +299,41 @@ int main( int argc, char** argv ) {
       std::cerr << "NAME" << std::endl;
       std::cerr << "\tpofd_coverage_makeSim -- make simulated images for"
 		<< " a broken" << std::endl;
-      std::cerr << "\t power law type model with Gaussian beams."
+      std::cerr << "\t power law type model with Gaussian beams (1D) or the"
 		<< std::endl;
+      std::cerr << "\t same type of model paired with a log-normal color model"
+		<< std::endl;
+      std::cerr << "\t in flux_2 / flux_1." << std::endl;
       std::cerr << std::endl;
       std::cerr << "SYNOPSIS" << std::endl;
+      std::cerr << "\t One-dimensional case:" << std::endl;
       std::cerr << "\t  pofd_coverage_makeSim [options] modelfile n0 fwhm "
 		<< "pixsize" << std::endl;
       std::cerr << "\t    n1 n2 outputfile" << std::endl;
       std::cerr << std::endl;
+      std::cerr << "\t Two-dimensional case:" << std::endl;
+      std::cerr << "\t  pofd_coverage_makeSim [options] -d modelfile n0 fwhm1 "
+		<< "fwhm2" << std::endl;
+      std::cerr << "\t    pixsize n1 n2 outputfile" << std::endl;
+      std::cerr << std::endl;
       std::cerr << "DESCRIPTION" << std::endl;
       std::cerr << "\tCreates a simulated image for a given model, and writes"
 		<< " them" << std::endl;
-      std::cerr << "\tto outfile.  The number counts model is a broken power" 
-		<< std::endl;
+      std::cerr << "\tto outfile.  The number counts model in 1D is a broken "
+		<< "power" << std::endl;
       std::cerr << "\ta law model specified by modelfile, and by the number of"
 		<< std::endl;
       std::cerr << "\tsources per unit area n0." << std::endl;
       std::cerr << std::endl;
-      std::cerr << "\tmodelfile should be a text file that consists of"
+      std::cerr << "\tIn the 2D case the model is the 1D model in band 1 times"
+		<< " a" << std::endl;
+      std::cerr << "\tLog-Normal distribution in flux2/flux1.  The mu and sigma"
+		<< " Log-Normal" << std::endl;
+      std::cerr << "\tmodel parameters are stored as splines as a function of"
+		<< " the" << std::endl;
+      std::cerr << "\tflux in the first band." << std::endl;
+      std::cerr << std::endl;
+      std::cerr << "\tmodelfile should be a text file.  For 1D it consists of"
 		<< " nknots" << std::endl;
       std::cerr << "\tlines of the form:" << std::endl << std::endl;
       std::cerr << "\t\tflux_density n" << std::endl << std::endl;
@@ -190,7 +346,25 @@ int main( int argc, char** argv ) {
       std::cerr << "\tline are ignored, and # denotes a comment line."
 		<< std::endl;
       std::cerr << std::endl;
-      std::cerr << "\tfwhm is the beam FWHM in arcsec.  The beam is assumed "
+      std::cerr << "\tIn the 2D case the file should start with a line giving"
+		<< " the" << std::endl;
+      std::cerr << "\tnumber of knots in the band 1 model, the number of"
+		<< " knots in" << std::endl;
+      std::cerr << "\tthe sigma spline, and then the number in the mu spline."
+		<< " This" << std::endl;
+      std::cerr << "\tshould be followed by nknots + nspline + nmu lines"
+		<< std::endl;
+      std::cerr << "\tof the same form as the 1D model, with the first nknots"
+		<< std::endl;
+      std::cerr << "\tspecifying the band 1 model as in the 1D case, and the"
+		<< std::endl;
+      std::cerr << "\tfollowing lines giving the knot positions and values"
+		<< " for" << std::endl;
+      std::cerr << "\tof the sigma and mu splines." << std::endl;
+      std::cerr << std::endl;
+      std::cerr << "\tfwhm is the beam FWHM in arcsec (1D), and fwhm1, fwhm2"
+		<< " the values" << std::endl;
+      std::cerr << "\tin each band in the 2D case.  The beams are assumed "
 		<< "Gaussian. " << std::endl;
       std::cerr << "\tPixsize gives the pixel size (in arcsec), while n1 and "
 		<< "n2 are the" << std::endl;
@@ -199,19 +373,14 @@ int main( int argc, char** argv ) {
       std::cerr << "OPTIONS" << std::endl;
       std::cerr << "\t-h --help" << std::endl;
       std::cerr << "\t\tPrint this message and exit." << std::endl;
-      std::cerr << "\t-e, --extra_smooth FWHM" << std::endl;
-      std::cerr << "\t\tApply additional smoothing with a gaussian of this"
-		<< " FWHM" << std::endl;
-      std::cerr << "\t\t(in arcseconds); this is applied after noise is added."
-		<< std::endl;
+      std::cerr << "\t-d, --double" << std::endl;
+      std::cerr << "\t\tUse the 2D model instead of the 1D one." << std::endl;
       std::cerr << "\t-o, --oversample VALUE" << std::endl;
       std::cerr << "\t\tAmount of oversampling to use (integral) when " 
 		<< "generating" << std::endl;
       std::cerr << "\t\timage.  The data is then down-binned to the specified"
 		<< "size." << std::endl;
       std::cerr << "\t\tThe default is to apply no oversampling." << std::endl;
-      std::cerr << "\t--sigma NOISE" << std::endl;
-      std::cerr << "\t\tThe assumed per-pixel noise (def: 0)." << std::endl;
       std::cerr << "\t--S, --seed SEED" << std::endl;
       std::cerr << "\t\tUse this seed for the random number generator." 
 		<< std::endl;
@@ -220,7 +389,31 @@ int main( int argc, char** argv ) {
 		<< std::endl;
       std::cerr << "\t-V, --version" << std::endl;
       std::cerr << "\t\tOutput version number and exit" << std::endl;
-      std::cerr << "ONE-DIMENSIONAL OPTIONS" << std::endl;
+      std::cerr << "\tONE-D MODEL OPTIONS" << std::endl;
+      std::cerr << "\t-e, --extra_smooth FWHM" << std::endl;
+      std::cerr << "\t\tApply additional smoothing with a gaussian of this"
+		<< " FWHM" << std::endl;
+      std::cerr << "\t\t(in arcseconds); this is applied after noise is added."
+		<< std::endl;
+      std::cerr << "\t--sigma NOISE" << std::endl;
+      std::cerr << "\t\tThe assumed per-pixel noise (def: 0)." << std::endl;
+      std::cerr << "\tTWO-D MODEL OPTIONS" << std::endl;
+      std::cerr << "\t--extra_smooth1 FWHM" << std::endl;
+      std::cerr << "\t\tApply additional smoothing in band 1 with a gaussian of"
+		<< std::endl;
+      std::cerr << " this FWHM (in arcseconds); this is applied after noise is"
+		<< " added."<< std::endl;
+      std::cerr << "\t--extra_smooth2 FWHM" << std::endl;
+      std::cerr << "\t\tApply additional smoothing in band 2 with a gaussian of"
+		<< std::endl;
+      std::cerr << " this FWHM (in arcseconds); this is applied after noise is"
+		<< " added."<< std::endl;
+      std::cerr << "\t--sigma1 NOISE" << std::endl;
+      std::cerr << "\t\tThe assumed per-pixel noise, band 1 (def: 0)." 
+		<< std::endl;
+      std::cerr << "\t--sigma2 NOISE" << std::endl;
+      std::cerr << "\t\tThe assumed per-pixel noise, band 2 (def: 0)." 
+		<< std::endl;
       return 0;
       break;
     case 'd' :
@@ -235,10 +428,8 @@ int main( int argc, char** argv ) {
 
   if (!twod)
     return makeSimSingle(argc,argv);
-  else {
-    std::cerr << "2D broken power law model not supported" << std::endl;
-    return 1;
-  }
+  else 
+    return makeSimDouble(argc,argv);
 
 }
 

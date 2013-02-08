@@ -8,8 +8,10 @@ pofd_coverage_makeCat_SOURCES = global_settings.h ran.h pofdExcept.h \
 	pofd_coverage_makeCat.cc
 
 pofd_coverage_makeSim_SOURCES = global_settings.h ran.h pofdExcept.h \
-	simImage.h numberCounts.h beam.h utility.h \
+	simImage.h numberCounts.h beam.h simImageDouble.h numberCountsDouble.h \
+	doublebeam.h utility.h \
 	pofdExcept.cc simImage.cc numberCounts.cc utility.cc beam.cc \
+	simImageDouble.cc numberCountsDouble.cc doublebeam.cc \
 	pofd_coverage_makeSim.cc
 
 pofd_coverage_getPD_SOURCES = global_settings.h ran.h pofdExcept.h \

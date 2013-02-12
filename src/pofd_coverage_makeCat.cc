@@ -320,7 +320,7 @@ int main( int argc, char** argv ) {
       std::cerr << std::endl;
       std::cerr << "\tIn the 2D case the model is the 1D model in band 1 times"
 		<< " a" << std::endl;
-      std::cerr << "\tLog-Normal distribution in band 2.  The mu and sigma"
+      std::cerr << "\tLog-Normal distribution in flux2/flux1.  The mu and sigma"
 		<< " Log-Normal" << std::endl;
       std::cerr << "\tmodel parameters are stored as splines as a function of"
 		<< " the" << std::endl;

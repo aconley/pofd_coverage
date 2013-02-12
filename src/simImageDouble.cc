@@ -275,7 +275,7 @@ void simImageDouble::convolveInner(unsigned int n, const double* const arr,
 }
 
 void simImageDouble::convolveWithBeam() {
-  if (! is_full )
+  if (!is_full)
     throw pofdExcept("simImageDouble","convolveWithBeam",
 		     "Trying to convolve empty image",1);
   if (oversample > 1) {
@@ -400,7 +400,6 @@ void simImageDouble::realize(const numberCountsDouble& model,
 	gen_1[combidx] += src.first;
 	gen_2[combidx] += src.second;
       }
-      convolveWithBeam();  
     }
   } else {
     //Generate in data1, data2
@@ -419,9 +418,9 @@ void simImageDouble::realize(const numberCountsDouble& model,
 	data2[combidx] += src.second;
       }
     }
-    convolveWithBeam();
   }
   is_full = true;
+  convolveWithBeam();
 
   //Add instrument noise
   if (sigi1 > 0.0)

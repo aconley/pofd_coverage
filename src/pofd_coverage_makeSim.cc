@@ -391,7 +391,7 @@ int main( int argc, char** argv ) {
       std::cerr << "\t\tOutput version number and exit" << std::endl;
       std::cerr << "\tONE-D MODEL OPTIONS" << std::endl;
       std::cerr << "\t-e, --extra_smooth FWHM" << std::endl;
-      std::cerr << "\t\tApply additional smoothing with a gaussian of this"
+      std::cerr << "\t\tApply additional smoothing with a Gaussian of this"
 		<< " FWHM" << std::endl;
       std::cerr << "\t\t(in arcseconds); this is applied after noise is added."
 		<< std::endl;
@@ -399,15 +399,15 @@ int main( int argc, char** argv ) {
       std::cerr << "\t\tThe assumed per-pixel noise (def: 0)." << std::endl;
       std::cerr << "\tTWO-D MODEL OPTIONS" << std::endl;
       std::cerr << "\t--extra_smooth1 FWHM" << std::endl;
-      std::cerr << "\t\tApply additional smoothing in band 1 with a gaussian of"
+      std::cerr << "\t\tApply additional smoothing in band 1 with a Gaussian of"
 		<< std::endl;
-      std::cerr << " this FWHM (in arcseconds); this is applied after noise is"
-		<< " added."<< std::endl;
+      std::cerr << "\t\tthis FWHM (in arcseconds); this is applied after noise "
+		<< "is added."<< std::endl;
       std::cerr << "\t--extra_smooth2 FWHM" << std::endl;
-      std::cerr << "\t\tApply additional smoothing in band 2 with a gaussian of"
+      std::cerr << "\t\tApply additional smoothing in band 2 with a Gaussian of"
 		<< std::endl;
-      std::cerr << " this FWHM (in arcseconds); this is applied after noise is"
-		<< " added."<< std::endl;
+      std::cerr << "\t\tthis FWHM (in arcseconds); this is applied after noise "
+		<< "is added."<< std::endl;
       std::cerr << "\t--sigma1 NOISE" << std::endl;
       std::cerr << "\t\tThe assumed per-pixel noise, band 1 (def: 0)." 
 		<< std::endl;

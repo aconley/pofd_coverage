@@ -17,6 +17,8 @@
 #include<pofdExcept.h>
 #include<global_settings.h>
 
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+
 //Set up global option index that can be used for both single and double case
 static struct option long_options[] = {
   {"double",no_argument,0,'d'},

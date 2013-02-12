@@ -9,6 +9,8 @@
 #include<global_settings.h>
 #include<pofdExcept.h>
 
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+
 //This is the function we call to find the best fitting n0
 /*!
   \param[in] x Value of n0
@@ -361,8 +363,8 @@ int simManager::writeToFits(const std::string& outputfile) const {
     char* tform2 = new char[ndigits+5];
     sprintf(tform2,"%uD",nlike);
     tform[4] = tform2;
-    fits_create_tbl( fp, BINARY_TBL, 0, 5, ttype, tform, NULL, "RESULTS", 
-		     &status );
+    fits_create_tbl(fp, BINARY_TBL, 0, 5, ttype, tform, NULL, "RESULTS", 
+		    &status );
     delete[] tform2;
   } else {
     char* ttype[] = {"BEST_N0","BEST_LOGLIKE"};

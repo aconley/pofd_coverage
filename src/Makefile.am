@@ -15,8 +15,11 @@ pofd_coverage_makeSim_SOURCES = global_settings.h ran.h pofdExcept.h \
 	pofd_coverage_makeSim.cc
 
 pofd_coverage_getPD_SOURCES = global_settings.h ran.h pofdExcept.h \
-	numberCounts.h beam.h PDFactory.h PD.h utility.h \
-	pofdExcept.cc numberCounts.cc beam.cc PDFactory.cc PD.cc utility.cc \
+	numberCounts.h beam.h PDFactory.h PD.h numberCountsDouble.h \
+	doublebeam.h PDFactoryDouble.h PDDouble.h utility.h \
+	pofdExcept.cc numberCounts.cc beam.cc PDFactory.cc PD.cc \
+	numberCountsDouble.cc doublebeam.cc PDFactoryDouble.cc PDDouble.cc \
+	utility.cc \
 	pofd_coverage_getPD.cc
 
 pofd_coverage_runSim_SOURCES = global_settings.h ran.h pofdExcept.h \

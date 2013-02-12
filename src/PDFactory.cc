@@ -634,6 +634,7 @@ void PDFactory::writeRToFile(const std::string& filename) const {
 		     "Couldn't open output file",2);
 
   //Recall after initPD we are storing R * dflux
+  ofs << lastfftlen << std::endl;
   for (unsigned int i = 0; i < lastfftlen; ++i)
     ofs << RFlux[i] << " " << rvals[i] / dflux << std::endl;
 

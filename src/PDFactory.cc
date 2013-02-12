@@ -31,7 +31,7 @@ PDFactory::~PDFactory() {
 }
 
 void PDFactory::init() {
-  lastfftlen = 0;
+  plan_size = 0;
   currsize = 0;
 
 #ifdef TIMING
@@ -360,7 +360,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   //If we resized, we must make the new plans because the
   // addresses changed
   int intn = static_cast<int>(n);
-  if ( (!plans_valid) || (lastfftlen != n) ) {
+  if ( (!plans_valid) || (plan_size != n) ) {
     if (plan != NULL) fftw_destroy_plan(plan);
     plan = fftw_plan_dft_r2c_1d(intn, rvals, rtrans,
 				fftw_plan_style);
@@ -440,7 +440,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   
   max_n0 = maxn0;
   sigma = inst_sigma;
-  lastfftlen = n;
+  plan_size = n;
   initialized = true;
 }
 
@@ -480,7 +480,7 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
   double n0ratio = n0 / base_n0;
   
   //Output array from 2D FFT is n/2+1
-  unsigned int n = lastfftlen;
+  unsigned int n = plan_size;
   unsigned int ncplx = n/2 + 1;
       
   //Calculate p(omega) = exp(r(omega) - r(0)),
@@ -634,8 +634,8 @@ void PDFactory::writeRToFile(const std::string& filename) const {
 		     "Couldn't open output file",2);
 
   //Recall after initPD we are storing R * dflux
-  ofs << lastfftlen << std::endl;
-  for (unsigned int i = 0; i < lastfftlen; ++i)
+  ofs << plan_size << std::endl;
+  for (unsigned int i = 0; i < plan_size; ++i)
     ofs << RFlux[i] << " " << rvals[i] / dflux << std::endl;
 
   ofs.close();

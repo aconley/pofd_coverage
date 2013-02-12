@@ -485,7 +485,7 @@ int main( int argc, char** argv ) {
 		<< std::endl;
       std::cerr << "\toutfile.  The number counts model in 1D is a broken "
 		<< "power" << std::endl;
-      std::cerr << "\ta law model specified by modelfile, and by the number of"
+      std::cerr << "\tlaw model specified by modelfile, and by the number of"
 		<< std::endl;
       std::cerr << "\tsources per unit area n0." << std::endl;
       std::cerr << std::endl;
@@ -525,7 +525,6 @@ int main( int argc, char** argv ) {
       std::cerr << "\tfollowing lines giving the knot positions and values"
 		<< " for" << std::endl;
       std::cerr << "\tof the sigma and mu splines." << std::endl;
-      std::cerr << std::endl;
       std::cerr << std::endl;
       std::cerr << "\tfwhm is the beam FWHM in arcsec.  The beam is assumed "
 		<< "Gaussian. " << std::endl;

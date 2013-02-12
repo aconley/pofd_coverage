@@ -22,7 +22,6 @@ class PDFactory {
   bool initialized; //!< forward transformed R is filled
 
   unsigned int currsize; //!< Current memory allocation
-  unsigned int lastfftlen; //!< FFT length of last transform
   double sigma; //!< Current supported instrumental \f$\sigma\f$
   double max_n0; //!< Current maximum supported model \f$N_0\f$
   double base_n0; //!< Model base \f$N_0\f$
@@ -30,6 +29,7 @@ class PDFactory {
   double sg; //!< Expected sigma, inc instrument noise, base model
 
   //Working variables for transformation
+  unsigned int plan_size; //!< Size of plans
   fftw_plan plan, plan_inv; //!< Hold plans
   bool plans_valid; //!< Are the current plans valid
   double* rvals; //!< Working space for R computation
@@ -73,7 +73,7 @@ class PDFactory {
   void setVerbose() { verbose = true; } //!< Sets verbose mode
   void unsetVerbose() { verbose = false; } //!< Unset verbose mode
 
-  unsigned int getLastFFTLen() const { return lastfftlen; }
+  unsigned int getPlanSize() const { return plan_size; }
   double getMaxN0() const { return max_n0; }
 
   /*! \brief Adds wisdom file*/

@@ -422,6 +422,21 @@ double numberCountsDouble::getMeanFluxSqPerArea2() const {
   return base_meanfluxsq2; 
 }
 
+std::pair<double, double> numberCountsDouble::getMaxFluxEstimate() const {
+  if (!isValid())
+    throw pofdExcept("numberCountsDouble", "getMaxFluxEstimate",
+		     "Invalid model", 1);
+  //Easy in band one. 
+  double mflux1 = knotpos[nknots-1];
+
+  //In band 2 take some number of sigma out
+  double sig = getSigmaInner(mflux1);
+  double off = getOffsetInner(mflux1);
+  double mflux2 = mflux1 * exp(off + 3.0 * sig); //3 sigma
+  return std::make_pair(mflux1, mflux2);
+}
+
+
 /*!
   Compute
   \f[

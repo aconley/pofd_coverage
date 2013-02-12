@@ -116,6 +116,8 @@ class PDFactoryDouble {
   void setVerbose() { verbose = true; } //!< Sets verbose mode
   void unsetVerbose() { verbose = false; } //!< Unset verbose mode
 
+  double getMaxN0() const { return max_n0; }
+
   /*! \brief Get size of last FFT */
   unsigned int getPlanSize() const { return plan_size; }
 

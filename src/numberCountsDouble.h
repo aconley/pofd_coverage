@@ -13,6 +13,7 @@
 #include<gsl/gsl_integration.h>
 
 #include<doublebeam.h>
+#include<global_settings.h>
 
 /*!
   \brief Broken power law times log normal number counts
@@ -132,6 +133,9 @@ class numberCountsDouble {
   /*! \brief Get Mean Flux squared per unit area for base model, band 2*/
   double getMeanFluxSqPerArea2() const;
 
+  /*! \brief Crude estimate of maximum flux from model */
+  std::pair<double, double> getMaxFluxEstimate() const;
+
   /*!\brief Get differential number counts for base model*/
   double getdNdS(double, double) const;
 
@@ -140,6 +144,28 @@ class numberCountsDouble {
 
   /*!\brief Evaluate offset*/
   double getOffset(double) const;
+
+  /*! \brief Get number of knots in 1D model, sigma, and offset*/
+  unsigned int getNTotalKnots() const { return nknots + nsigma + noffset; }
+  /*! \brief Get number of knots */
+  unsigned int getNKnots() const { return nknots; }
+  /*! \brief Get Knot position */
+  double getKnotPosition(unsigned int idx) const { return knotpos[idx]; }
+  /*! \brief Get number of sigma knots */
+  unsigned int getNSigmaKnots() const { return nsigma; }
+  /*! \brief Get Sigma Knot position */
+  double getSigmaKnotPosition(unsigned int idx) const { return sigmapos[idx]; }
+  /*! \brief Get number of offset knots */
+  unsigned int getNOffsetKnots() const { return noffset; }
+  /*! \brief Get Offset Knot position */
+  double getOffsetKnotPosition(unsigned int idx) const { return offsetpos[idx]; }
+  /*! \brief Get Log10 differential number counts knot value */
+  double getLog10KnotValue(unsigned int idx) const { 
+    return logknotvals[idx] * pofd_coverage::ilogfac; }
+  /*! \brief Get sigma knot value */
+  double getSigmaKnotValue(unsigned int idx) const { return sigmavals[idx]; }
+  /*! \brief Get offset knot value */
+  double getOffsetKnotValue(unsigned int idx) const { return offsetvals[idx]; }
 
   /*! \brief Get number of source responses, single value version */
   double getR(double, double, const doublebeam&, double, double,

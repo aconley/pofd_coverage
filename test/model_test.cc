@@ -1,5 +1,7 @@
 //Model testing
+#include<string>
 #include<iostream>
+#include<cmath>
 
 #include<gtest/gtest.h>
 
@@ -216,6 +218,146 @@ TEST(beam2DTest, GetBeam) {
     EXPECT_NEAR(expfac2[i] * expfac2[j], bmarr[i * n + j], 1e-4) <<
       "Got unexpected beam value in band 2 at pixel number " << i << " " << j;
 
+}
+
+////////////////////////////////////
+// numberCounts
+
+//Basic Instantiation
+TEST(model1DTest, Init) {
+  const std::string modelfile("testdata/test1D.txt");
+  const unsigned int nknots = 5;
+  const double knotpos[nknots] = { 0.002, 0.005, 0.010, 0.020, 0.040 };
+  const double knotval[nknots] = { 10.0, 7.0, 5.0, 4.0, -1.0 };
+
+  numberCounts model(modelfile);
+
+  EXPECT_TRUE(model.isValid()) << "Model test case should be valid";
+  EXPECT_EQ(5U, model.getNKnots()) << "Unexpected number of model knots";
+  EXPECT_NEAR(knotpos[0], model.getMinKnotPosition(), 1e-5) <<
+    "Unexpected minimum knot position";
+  EXPECT_NEAR(knotpos[nknots-1], model.getMaxKnotPosition(), 1e-5) <<
+    "Unexpected maximum knot position";
+  for (unsigned int i = 0; i < nknots; ++i)
+    EXPECT_NEAR(knotpos[i], model.getKnotPosition(i), 1e-5) <<
+      "Unexpected knot position at index " << i;
+  for (unsigned int i = 0; i < nknots; ++i)
+    EXPECT_NEAR(knotval[i], model.getLog10KnotValue(i), 1e-5) <<
+      "Unexpected knot value at index " << i;
+  
+}
+
+//Number of sources
+TEST(model1DTest, Counts) {
+  const std::string modelfile("testdata/test1D.txt");
+  numberCounts model(modelfile);
+  const unsigned int nknots = 5;
+  const double knotpos[nknots] = { 0.002, 0.005, 0.010, 0.020, 0.040 };
+  const double knotval[nknots] = { 10.0, 7.0, 5.0, 4.0, -1.0 };
+
+  EXPECT_NEAR(3.06005e6, model.getBaseN0(), 1e4) <<
+    "Unexpected base number of sources per area";
+
+  //First check right at knots -- have to skip highest knot where model
+  // evaluates to zero.
+  for (unsigned int i = 0; i < nknots-1; ++i)
+    EXPECT_NEAR(knotval[i], log10(model.getdNdS(knotpos[i])), 1e-3) <<
+      "Unexpected counts at knot " << i;
+
+  //Now try some off knot positions
+  const unsigned int ntest = 3;
+  const double testpos[ntest] = { 0.003, 0.0075, 0.030 };
+  const double testval[ntest] = { 8.67247885195, 5.8300749986, 1.07518749639 };
+  for (unsigned int i = 0; i < ntest-1; ++i)
+    EXPECT_NEAR(testval[i], log10(model.getdNdS(testpos[i])), 1e-3) <<
+      "Unexpected counts at position " << testpos[i];
+}
+
+//Flux density per area
+TEST(model1DTest, MeanFlux) {
+  const std::string modelfile("testdata/test1D.txt");
+  numberCounts model(modelfile);
+
+  EXPECT_NEAR(7233.11, model.getMeanFluxPerArea(), 0.1) <<
+    "Unexpected mean flux per area";
+  EXPECT_NEAR(17.7339, model.getMeanFluxSqPerArea(), 0.1) <<
+    "Unexpected mean flux^2 per area";
+}
+
+//R testing, single value version
+TEST(model1DTest, RSingle) {
+  const std::string modelfile("testdata/test1D.txt");
+  const double fwhm = 15.0;
+  const double pixsize = 5.0;
+  const double nfwhm = 3.5;
+  const unsigned int nbins = 50;
+  numberCounts model(modelfile);
+  beam bm(fwhm);
+
+  ASSERT_TRUE(model.isValid()) << "Model should be valid";
+  EXPECT_THROW(model.getR(0.5, bm, -1.0, nfwhm, nbins), pofdExcept) <<
+    "Asking for negative pixel size should throw exception";
+  EXPECT_THROW(model.getR(0.5, bm, pixsize, -1.0, nbins), pofdExcept) <<
+    "Asking for negative nfwhm should throw exception";
+  EXPECT_THROW(model.getR(0.5, bm, pixsize, nfwhm, 0), pofdExcept) <<
+    "Asking for no bins should throw exception";
+
+  const unsigned int ntest = 4;
+  const double testx[ntest] = {0.002, 0.003, 0.004, 0.015};
+  const double expR[ntest] = {31000.6, 1467.39, 175.788, 0.125615};
+  double rval, reldiff;
+  for (unsigned int i = 0; i < ntest; ++i) {
+    rval = model.getR(testx[i], bm, pixsize, nfwhm, nbins);
+    reldiff = fabs((rval - expR[i]) / expR[i]);
+    EXPECT_NEAR(0.0, reldiff, 1e-3) << "Unexpectedly large relative R" << 
+      "difference for x value " << testx[i] << "; expected " <<
+      expR[i] << " got " << rval;
+  }
+
+  //Test dependence on nbins -- shouldn't be too sensitive
+  const unsigned int nbins2 = nbins * 2;
+  for (unsigned int i = 0; i < ntest; ++i) {
+    rval = model.getR(testx[i], bm, pixsize, nfwhm, nbins2);
+    reldiff = fabs((rval - expR[i]) / expR[i]);
+    EXPECT_NEAR(0.0, reldiff, 1e-3) << "Unexpectedly large relative R" << 
+      "difference for x value " << testx[i] << "; expected " <<
+      expR[i] << " got " << rval << " in nbins doubling test";
+  }
+}
+
+//R testing, array version
+TEST(model1DTest, RArray) {
+  const std::string modelfile("testdata/test1D.txt");
+  const double fwhm = 15.0;
+  const double pixsize = 5.0;
+  const double nfwhm = 3.5;
+  const unsigned int nbins = 50;
+  numberCounts model(modelfile);
+  beam bm(fwhm);
+
+  const unsigned int ntest = 3;
+  const double testx[ntest] = {0.002, 0.003, 0.004};
+  double rval[ntest];
+
+  ASSERT_TRUE(model.isValid()) << "Model should be valid";
+  EXPECT_THROW(model.getR(ntest, 0.002, 0.004, bm, -1.0, nfwhm, nbins, rval), 
+	       pofdExcept) << "Asking for negative pixel size should "
+			   << "throw exception";
+  EXPECT_THROW(model.getR(ntest, 0.002, 0.004, bm, pixsize, -1.0, nbins, rval), 
+	       pofdExcept) << "Asking for negative nfwhm should "
+			   << "throw exception";
+  EXPECT_THROW(model.getR(ntest, 0.002, 0.004, bm, pixsize, nfwhm, 0, rval), 
+	       pofdExcept) << "Asking for no bins should throw exception";
+
+  const double expR[ntest] = {31000.6, 1467.39, 175.788};
+  model.getR(ntest, 0.002, 0.004, bm, pixsize, nfwhm, nbins, rval);
+  double reldiff;
+  for (unsigned int i = 0; i < ntest; ++i) {
+    reldiff = fabs((rval[i] - expR[i]) / expR[i]);
+    EXPECT_NEAR(0.0, reldiff, 1e-3) << "Unexpectedly large relative R" << 
+      "difference for x value " << testx[i] << "; expected " <<
+      expR[i] << " got " << rval[i];
+  }
 }
 
 ////////////////////////////////////////////

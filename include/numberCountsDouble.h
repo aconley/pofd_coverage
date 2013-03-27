@@ -12,8 +12,8 @@
 #include<gsl/gsl_interp.h>
 #include<gsl/gsl_integration.h>
 
-#include<doublebeam.h>
-#include<global_settings.h>
+#include "../include/doublebeam.h"
+#include "../include/global_settings.h"
 
 /*!
   \brief Broken power law times log normal number counts

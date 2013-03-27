@@ -2,9 +2,9 @@
 
 #include<sstream>
 
-#include<beam.h>
-#include<global_settings.h>
-#include<pofdExcept.h>
+#include "../include/beam.h"
+#include "../include/global_settings.h"
+#include "../include/pofdExcept.h"
 
 /*!
   \param[in] FWHM     FWHM of beam, in arcsec

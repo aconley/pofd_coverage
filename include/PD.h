@@ -6,7 +6,7 @@
 #include<string>
 #include<ostream>
 
-#include<simImage.h>
+#include "../include/simImage.h"
 
 /*!
   \brief Class to hold P(D).  Supports interpolation.

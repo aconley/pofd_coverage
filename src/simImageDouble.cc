@@ -6,9 +6,9 @@
 
 #include<fitsio.h>
 
-#include<global_settings.h>
-#include<simImageDouble.h>
-#include<pofdExcept.h>
+#include "../include/global_settings.h"
+#include "../include/simImageDouble.h"
+#include "../include/pofdExcept.h"
 
 simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 			       double FWHM1, double FWHM2, double SIGI1, 

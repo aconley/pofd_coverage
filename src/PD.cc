@@ -4,9 +4,9 @@
 #include<fitsio.h>
 #include<fftw3.h>
 
-#include<global_settings.h>
-#include<PD.h>
-#include<pofdExcept.h>
+#include "../include/global_settings.h"
+#include "../include/PD.h"
+#include "../include/pofdExcept.h"
 
 const double PD::lowsigval = 3.0;
 

@@ -10,8 +10,8 @@
 #include<gsl/gsl_errno.h>
 #include<fftw3.h>
 
-#include<numberCounts.h>
-#include<PD.h>
+#include "../include/numberCounts.h"
+#include "../include/PD.h"
 
 /*!
   Always call initPD before using getPD for a given model.

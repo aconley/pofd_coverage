@@ -12,11 +12,11 @@
 #include<gsl/gsl_math.h>
 #include<gsl/gsl_min.h>
 
-#include<simImage.h>
-#include<beam.h>
-#include<PD.h>
-#include<PDFactory.h>
-#include<numberCounts.h>
+#include "../include/simImage.h"
+#include "../include/beam.h"
+#include "../include/PD.h"
+#include "../include/PDFactory.h"
+#include "../include/numberCounts.h"
 
 /*!
   \brief Class for managing simulations of single band maps and mapping

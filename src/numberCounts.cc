@@ -5,9 +5,9 @@
 #include<string>
 #include<sstream>
 
-#include<pofdExcept.h>
-#include<numberCounts.h>
-#include<utility.h>
+#include "../include/pofdExcept.h"
+#include "../include/numberCounts.h"
+#include "../include/utility.h"
 
 const double numberCounts::ftol = 1e-4;
 

@@ -7,10 +7,10 @@
 
 #include<getopt.h>
 
-#include<pofdExcept.h>
-#include<global_settings.h>
-#include<simImage.h>
-#include<simImageDouble.h>
+#include "../include/pofdExcept.h"
+#include "../include/global_settings.h"
+#include "../include/simImage.h"
+#include "../include/simImageDouble.h"
 
 //Set up global option index that can be used for both single and double case
 static struct option long_options[] = {

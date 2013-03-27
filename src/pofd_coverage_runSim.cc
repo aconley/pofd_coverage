@@ -7,10 +7,10 @@
 
 #include<getopt.h>
 
-#include<simManager.h>
-#include<simManagerDouble.h>
-#include<pofdExcept.h>
-#include<global_settings.h>
+#include "../include/simManager.h"
+#include "../include/simManagerDouble.h"
+#include "../include/pofdExcept.h"
+#include "../include/global_settings.h"
 
 static struct option long_options[] = {
   {"help", no_argument, 0, 'h'},

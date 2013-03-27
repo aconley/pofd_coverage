@@ -6,7 +6,7 @@
 #include<string>
 #include<ostream>
 
-#include<simImageDouble.h>
+#include "../include/simImageDouble.h"
 
 /*!
   \brief Class to hold P(D) in 2 dimensions.  Supports interpolation.

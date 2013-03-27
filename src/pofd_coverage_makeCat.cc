@@ -11,11 +11,11 @@
 
 #include<fitsio.h>
 
-#include<numberCounts.h>
-#include<numberCountsDouble.h>
-#include<ran.h>
-#include<pofdExcept.h>
-#include<global_settings.h>
+#include "../include/numberCounts.h"
+#include "../include/numberCountsDouble.h"
+#include "../include/ran.h"
+#include "../include/pofdExcept.h"
+#include "../include/global_settings.h"
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 

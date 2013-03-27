@@ -1,7 +1,7 @@
 #include<iostream>
 #include<sstream>
 
-#include<pofdExcept.h>
+#include "../include/pofdExcept.h"
 
 //Cheerfully stolen from deepexcpt, written by Rob Knop
 

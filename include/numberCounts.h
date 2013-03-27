@@ -6,8 +6,8 @@
 #include<string>
 #include<ostream>
 
-#include<global_settings.h>
-#include<beam.h>
+#include "../include/global_settings.h"
+#include "../include/beam.h"
 
 /*!
   \brief Broken power law number counts

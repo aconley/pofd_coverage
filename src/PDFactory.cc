@@ -4,9 +4,9 @@
 #include<fstream>
 #include<limits>
 
-#include<global_settings.h>
-#include<PDFactory.h>
-#include<pofdExcept.h>
+#include "../include/global_settings.h"
+#include "../include/PDFactory.h"
+#include "../include/pofdExcept.h"
 
 /*!
  */

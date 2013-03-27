@@ -4,7 +4,8 @@
 #include<cstdlib>
 #include<algorithm>
 
-#include<utility.h>
+#include "../include/utility.h"
+
 /*! 
   Breaks an input string up into a vector of string, which correspond
   to the input string split on spaces.  Cheerfully stolen from Rob

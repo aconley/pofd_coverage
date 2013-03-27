@@ -4,10 +4,10 @@
 
 #include<fitsio.h>
 
-#include<global_settings.h>
-#include<simImage.h>
-#include<beam.h>
-#include<pofdExcept.h>
+#include "../include/global_settings.h"
+#include "../include/simImage.h"
+#include "../include/beam.h"
+#include "../include/pofdExcept.h"
 
 simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 		   double FWHM, double SIGI, double ESMOOTH, 

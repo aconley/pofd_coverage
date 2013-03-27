@@ -10,11 +10,11 @@
 #include<gsl/gsl_math.h>
 #include<gsl/gsl_min.h>
 
-#include<simImageDouble.h>
-#include<doublebeam.h>
-#include<PDDouble.h>
-#include<PDFactoryDouble.h>
-#include<numberCountsDouble.h>
+#include "../include/simImageDouble.h"
+#include "../include/doublebeam.h"
+#include "../include/PDDouble.h"
+#include "../include/PDFactoryDouble.h"
+#include "../include/numberCountsDouble.h"
 
 /*!
   \brief Class for managing simulations of double maps and mapping

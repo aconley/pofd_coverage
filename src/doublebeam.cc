@@ -2,9 +2,9 @@
 
 #include<sstream>
 
-#include<doublebeam.h>
-#include<global_settings.h>
-#include<pofdExcept.h>
+#include "../include/doublebeam.h"
+#include "../include/global_settings.h"
+#include "../include/pofdExcept.h"
 
 /*!
   \param[in] FWHM1     FWHM of beam, in arcsec, band 1

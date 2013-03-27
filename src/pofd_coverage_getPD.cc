@@ -7,15 +7,15 @@
 
 #include<getopt.h>
 
-#include<global_settings.h>
-#include<utility.h>
-#include<PDFactory.h>
-#include<beam.h>
-#include<numberCounts.h>
-#include<PDFactoryDouble.h>
-#include<doublebeam.h>
-#include<numberCountsDouble.h>
-#include<pofdExcept.h>
+#include "../include/global_settings.h"
+#include "../include/utility.h"
+#include "../include/PDFactory.h"
+#include "../include/beam.h"
+#include "../include/numberCounts.h"
+#include "../include/PDFactoryDouble.h"
+#include "../include/doublebeam.h"
+#include "../include/numberCountsDouble.h"
+#include "../include/pofdExcept.h"
 
 static struct option long_options[] = {
   {"double", no_argument, 0, 'd'},

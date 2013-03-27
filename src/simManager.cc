@@ -5,9 +5,9 @@
 #include<gsl/gsl_errno.h>
 #include<fitsio.h>
 
-#include<simManager.h>
-#include<global_settings.h>
-#include<pofdExcept.h>
+#include "../include/simManager.h"
+#include "../include/global_settings.h"
+#include "../include/pofdExcept.h"
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 

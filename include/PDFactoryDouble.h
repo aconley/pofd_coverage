@@ -10,8 +10,8 @@
 #include<gsl/gsl_errno.h>
 #include<fftw3.h>
 
-#include<numberCountsDouble.h>
-#include<PDDouble.h>
+#include "../include/numberCountsDouble.h"
+#include "../include/PDDouble.h"
 
 /*!
   \brief Class for computing P(D) values from a set of parameters,

@@ -2,11 +2,12 @@
 #include<iomanip>
 #include<sstream> 
 #include<fstream>
+#include<limits>
 
-#include<utility.h>
-#include<numberCountsDouble.h>
-#include<global_settings.h>
-#include<pofdExcept.h>
+#include "../include/utility.h"
+#include "../include/numberCountsDouble.h"
+#include "../include/global_settings.h"
+#include "../include/pofdExcept.h"
 
 //Function to pass to GSL integrator
 /*! \brief Evaluates flux1^power1 * exp(const1*mu + const2*sigma^2) dN/dS1 */

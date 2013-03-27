@@ -4,9 +4,9 @@
 #include<limits>
 #include<iomanip>
 
-#include<global_settings.h>
-#include<PDFactoryDouble.h>
-#include<pofdExcept.h>
+#include "../include/global_settings.h"
+#include "../include/PDFactoryDouble.h"
+#include "../include/pofdExcept.h"
 
 const double PDFactoryDouble::lowEdgeRMult=1e-9;
 //Control of how we do the edge integrals -- linear or log?

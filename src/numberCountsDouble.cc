@@ -123,16 +123,19 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile) {
   for (unsigned int i = 0; i < nsigma; ++i) sigmapos[i] = wvec1[i+nk];
   sigmavals = new double[nsigma];
   for (unsigned int i = 0; i < nsigma; ++i) sigmavals[i] = wvec2[i+nk];
-  if (nsigma > 2)
+  sigmainterp = NULL;
+  accsigma = NULL;
+  if (nsigma == 2)
+      sigmainterp = gsl_interp_alloc(gsl_interp_linear,
+				     static_cast<size_t>(nsigma));
+  else if (nsigma > 2)
     sigmainterp = gsl_interp_alloc(gsl_interp_cspline,
 				   static_cast<size_t>(nsigma));
-  else
-    sigmainterp = gsl_interp_alloc(gsl_interp_linear,
-				   static_cast<size_t>(nsigma));
-  if (nsigma > 1)
+  if (nsigma > 1) {
     gsl_interp_init(sigmainterp, sigmapos, sigmavals,
 		    static_cast<size_t>(nsigma));
-  accsigma = gsl_interp_accel_alloc();
+    accsigma = gsl_interp_accel_alloc();
+  }
 
   // Offset spline
   noffset = no;
@@ -140,17 +143,20 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile) {
   for (unsigned int i = 0; i < noffset; ++i) offsetpos[i] = wvec1[i+nk+ns];
   offsetvals = new double[noffset];
   for (unsigned int i = 0; i < noffset; ++i) offsetvals[i] = wvec2[i+nk+ns];
-  if (noffset > 2)
+  offsetinterp = NULL;
+  accoffset = NULL;
+  if (noffset == 2)
+      offsetinterp = gsl_interp_alloc(gsl_interp_linear,
+				      static_cast<size_t>(noffset));
+  else if (noffset > 2)
     offsetinterp = gsl_interp_alloc(gsl_interp_cspline,
 				    static_cast<size_t>(noffset));
-  else
-    offsetinterp = gsl_interp_alloc(gsl_interp_linear,
-				    static_cast<size_t>(noffset));
-  if (noffset > 1)
+  if (noffset > 1) {
     gsl_interp_init(offsetinterp, offsetpos, offsetvals,
 		    static_cast<size_t>(noffset));
-  accoffset = gsl_interp_accel_alloc();
-  
+    accoffset = gsl_interp_accel_alloc();
+  }
+
   //Make sure what we read makes sense
   if (!isValidLoaded())
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
@@ -170,9 +176,9 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile) {
 }
 
 numberCountsDouble::~numberCountsDouble() {
-  gsl_interp_accel_free(accsigma);
-  gsl_interp_accel_free(accoffset);
+  if (accsigma != NULL) gsl_interp_accel_free(accsigma);
   if (sigmainterp != NULL) gsl_interp_free(sigmainterp);
+  if (accoffset != NULL) gsl_interp_accel_free(accoffset);
   if (offsetinterp != NULL) gsl_interp_free(offsetinterp);
   gsl_integration_workspace_free(gsl_work);
   delete[] varr;

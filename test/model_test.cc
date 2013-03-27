@@ -291,6 +291,7 @@ TEST(model1DTest, RSingle) {
   const double pixsize = 5.0;
   const double nfwhm = 3.5;
   const unsigned int nbins = 50;
+
   numberCounts model(modelfile);
   beam bm(fwhm);
 
@@ -332,6 +333,7 @@ TEST(model1DTest, RArray) {
   const double pixsize = 5.0;
   const double nfwhm = 3.5;
   const unsigned int nbins = 50;
+
   numberCounts model(modelfile);
   beam bm(fwhm);
 
@@ -359,6 +361,67 @@ TEST(model1DTest, RArray) {
       expR[i] << " got " << rval[i];
   }
 }
+
+////////////////////////////////////
+// numberCountsDouble
+
+//Basic Instantiation
+TEST(model2DTest, Init) {
+  const std::string modelfile("testdata/test2D.txt");
+  const unsigned int nknots = 5;
+  const double knotpos[nknots] = { 0.002, 0.005, 0.010, 0.020, 0.040 };
+  const double knotval[nknots] = { 10.0, 7.0, 5.0, 4.0, -1.0 };
+  const unsigned int nsigmas = 3;
+  const double sigmapos[nsigmas] = { 0.003, 0.005, 0.020 };
+  const double sigmaval[nsigmas] = { 0.1, 0.15, 0.2 };
+  const unsigned int noffsets = 1;
+  const double offsetpos[noffsets] = { 0.010 };
+  const double offsetval[noffsets] = { -0.5 };
+
+  numberCountsDouble model(modelfile);
+
+  EXPECT_TRUE(model.isValid()) << "Model test case should be valid";
+  EXPECT_EQ(nknots, model.getNKnots()) << "Unexpected number of model knots";
+  EXPECT_EQ(nsigmas, model.getNSigmaKnots()) << 
+    "Unexpected number of sigma knots";
+  EXPECT_EQ(noffsets, model.getNOffsetKnots()) << 
+    "Unexpected number of offset knots";
+  EXPECT_EQ(nknots + nsigmas + noffsets, model.getNTotalKnots()) <<
+    "Unexpected total number of knots";
+
+  for (unsigned int i = 0; i < nknots; ++i)
+    EXPECT_NEAR(knotpos[i], model.getKnotPosition(i), 1e-5) <<
+      "Unexpected knot position at index " << i;
+  for (unsigned int i = 0; i < nknots; ++i)
+    EXPECT_NEAR(knotval[i], model.getLog10KnotValue(i), 1e-5) <<
+      "Unexpected knot value at index " << i;
+  
+  for (unsigned int i = 0; i < nsigmas; ++i)
+    EXPECT_NEAR(sigmapos[i], model.getSigmaKnotPosition(i), 1e-5) <<
+      "Unexpected sigma position at index " << i;
+  for (unsigned int i = 0; i < nsigmas; ++i)
+    EXPECT_NEAR(sigmaval[i], model.getSigmaKnotValue(i), 1e-5) <<
+      "Unexpected sigma value at index " << i;
+  
+  for (unsigned int i = 0; i < noffsets; ++i)
+    EXPECT_NEAR(offsetpos[i], model.getOffsetKnotPosition(i), 1e-5) <<
+      "Unexpected offset position at index " << i;
+  for (unsigned int i = 0; i < noffsets; ++i)
+    EXPECT_NEAR(offsetval[i], model.getOffsetKnotValue(i), 1e-5) <<
+      "Unexpected offset value at index " << i;
+  
+
+}
+
+//Number of sources
+TEST(model2DTest, Counts) {
+  const std::string modelfile("testdata/test2D.txt");
+  numberCountsDouble model(modelfile);
+
+  EXPECT_NEAR(3.06005e6, model.getBaseN0(), 1e4) <<
+    "Unexpected base number of sources per area";
+}
+
 
 ////////////////////////////////////////////
 

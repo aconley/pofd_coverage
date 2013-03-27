@@ -61,6 +61,7 @@ int getPDSingle(int argc, char **argv) {
   return_log          = false;
   write_fits          = false;
   has_user_pixsize    = false;
+  pixsize             = 3.0;
   write_r             = false;
 
   int c;
@@ -257,6 +258,7 @@ int getPDDouble(int argc, char **argv) {
   return_log          = false;
   write_fits          = false;
   has_user_pixsize    = false;
+  pixsize             = 3.0;
   write_r             = false;
 
   int c;

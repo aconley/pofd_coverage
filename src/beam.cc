@@ -20,11 +20,11 @@ void beam::setFWHM(double fwhm_) {
 }
 
 double beam::getEffectiveArea() const {
-  return pofd_coverage::pi/rhosq;
+  return pofd_coverage::pi / rhosq;
 }
 
 double beam::getEffectiveAreaSq() const {
-  return 0.5*pofd_coverage::pi/rhosq;
+  return 0.5*pofd_coverage::pi / rhosq;
 }
 
 /*!

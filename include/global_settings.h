@@ -9,7 +9,7 @@
   \brief Global convenience variables
 */
 namespace pofd_coverage {
-  const char version[] = "0.2.0"; //Version number
+  const char version[] = "0.2.1"; //Version number
 
   const double n_sigma_shift = 8.0; //!< Shift amount
   const double n_sigma_pad = 10.0; //!< Noise padding size in sigma

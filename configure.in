@@ -1,7 +1,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(pofd_coverage,0.2.0, alexander.conley@colorado.edu)
+AC_INIT(pofd_coverage,0.2.1, alexander.conley@colorado.edu)
 AC_LANG_CPLUSPLUS
 AC_CONFIG_SRCDIR([src])
 AM_INIT_AUTOMAKE
@@ -35,7 +35,6 @@ AC_ARG_ENABLE(timing,
 
 dnl FFTW
 AC_LANG_C
-
 AC_ARG_WITH(fftwinc,
 	[AC_HELP_STRING([--with-fftwinc=VAL],
 	                [VAL=-IVAL, has fftw3 include files ]) ], 
@@ -157,9 +156,55 @@ AC_CHECK_HEADER(fitsio.h,,
       AC_MSG_ERROR("Can't find cfitsio includes; use --with-cfitsioinc")
    fi ] )
 
+dnl Tests
+AC_LANG_CPLUSPLUS
+AM_CONDITIONAL(DOTEST, false)
+AC_ARG_ENABLE(test,
+        [  --enable-test=DIR         Enable testing],
+        usetest=$enableval, usetest="")
+if test $usetest; then
+   AC_MSG_RESULT(Enabling testing, unit and other)
+   AM_CONDITIONAL(DOTEST, true)
+
+   dnl Find gtest library
+   AC_ARG_WITH(gtestlib,
+               [  --with-gtestlib=DIR       DIR=-LDIR, has libgtest],
+               gtestlib="$withval/",gtestlib= )
+   if test $gtestlib; then
+      AC_MSG_RESULT( Checking User Specified gtest )
+      LDFLAGS="$LDFLAGS -L$gtestlib"
+      AC_CHECK_LIB( gtest, main, ,
+                    AC_MSG_ERROR("libgtest not in location specified by --with-gtestlib: $gtestlib"),
+                    [ -lgtest -lgtest_main -L$gtestlib ] )
+   else
+      AC_MSG_RESULT( Checking gtest )
+      AC_CHECK_LIB( gtest, main, ,
+      AC_MSG_ERROR("libgtest not found -- use --with-gtestlib"),
+                   [ -lgtest -lgtest_main ] )
+   fi
+
+   dnl Find gtest includes
+   AC_ARG_WITH(gtestinc,
+        [  --with-gtestinc=VAL      VAL=-IVAL, has gtest include files ],
+        [gtestinc="$withval/" CPPFLAGS="$CPPFLAGS -I$gtestinc"],
+        [gtestinc=] )
+   AC_MSG_RESULT( Checking gtest Headers )
+   AC_CHECK_HEADERS([gtest/gtest.h],,
+     [ if test $gtestinc; then
+         AC_MSG_ERROR("gtest headers not in location specified by --with-gtestinc")
+       elif test $gtestlib; then
+         AC_CHECK_HEADER($gtestlib/../include/test.h,
+            [gtestinc="$gtestlib/../include/" CPPFLAGS="$CPPFLAGS -I$gtestinc"],
+             AC_MSG_ERROR("Can't find gtest includes in user specified location; use --with-gtestinc"))
+       else
+          AC_MSG_ERROR("Can't find gtest includes; use --with-gtestinc")
+       fi ] )
+fi
+
+
+
 # Checks for header files.
 AC_HEADER_STDC
 
-AC_CONFIG_FILES([Makefile
-                 src/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
 AC_OUTPUT

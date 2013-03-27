@@ -18,6 +18,7 @@ pofd_coverage_makeCat
 pofd_coverage_makeSim
 pofd_coverage_getPD
 pofd_coverage_runSim
+model_test
 
 INSTALL
 Makefile
@@ -30,6 +31,7 @@ config.status
 confscript.sh
 libtool
 src/.deps/
+test/.deps/
 configure
 depcomp
 install-sh

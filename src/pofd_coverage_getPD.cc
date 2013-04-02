@@ -317,7 +317,7 @@ int getPDDouble(int argc, char **argv) {
   fwhm1      = atof(argv[optind + 2]);
   fwhm2      = atof(argv[optind + 3]);
   maxflux1   = atof(argv[optind + 4]);
-  maxflux1   = atof(argv[optind + 5]);
+  maxflux2   = atof(argv[optind + 5]);
   outputfile = std::string(argv[optind + 6]);
 
   if (!has_user_pixsize)

@@ -139,6 +139,9 @@ class numberCountsDouble {
   /*!\brief Get differential number counts for base model*/
   double getdNdS(double, double) const;
 
+  /*!\brief Evaluate band 1 counts*/
+  double getBand1dNdS(double) const;
+
   /*!\brief Evaluate sigma*/
   double getSigma(double) const;
 

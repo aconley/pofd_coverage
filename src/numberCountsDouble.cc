@@ -167,8 +167,8 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile) {
 
   //Compute band 2 mean flux and mean flux^2.  Band 1 was taken
   // care of in initM1Params
-  base_meanflux2 = powerInt(0.0, 1.0) / base_n0;
-  base_meanfluxsq2 = powerInt(0.0, 2.0) / base_n0;
+  base_meanflux2 = powerInt(0.0, 1.0);
+  base_meanfluxsq2 = powerInt(0.0, 2.0);
 
   nbm = 0;
   bm_wts = NULL;
@@ -384,7 +384,7 @@ getNumberCountsInner(double f1, double f2) const {
   double cnts = a[loc] * pow(f1, -gamma[loc]);
 
   //Counts in band 2, Log Normal in f2/f1, multiply them onto n_1
-  double if1 = 1.0/f1;
+  double if1 = 1.0 / f1;
   double isigma = 1.0 / getSigmaInner(f1);
   double tfac = (log(f2 * if1) - getOffsetInner(f1)) * isigma;
   cnts *= normfac * isigma * exp(-0.5 * tfac * tfac) / f2; //yes, it's 1/f2 here
@@ -400,14 +400,35 @@ getNumberCountsInner(double f1, double f2) const {
 */
 double numberCountsDouble::getdNdS(double f1, double f2) 
   const {
+  if ((nknots < 2) || (nsigma < 1) || (noffset < 1))
+    return std::numeric_limits<double>::quiet_NaN();
+  if (!isValid()) return std::numeric_limits<double>::quiet_NaN();
+  if (std::isnan(f1) || std::isinf(f1)) 
+    return std::numeric_limits<double>::quiet_NaN();
+  if (std::isnan(f2) || std::isinf(f2)) 
+    return std::numeric_limits<double>::quiet_NaN();
+  return getNumberCountsInner(f1,f2);
+}
+
+/*!
+  \param[in] f1 Flux density in band 1
+  \returns Band 1 differential number counts at f1
+
+  The input is checked.
+ */
+double numberCountsDouble::getBand1dNdS(double f1) const {
   if ( (nknots < 2) || (nsigma < 1) || (noffset < 1) )
     return std::numeric_limits<double>::quiet_NaN();
   if (!isValid()) return std::numeric_limits<double>::quiet_NaN();
-  if ( std::isnan(f1) || std::isinf(f1)) 
+  if (std::isnan(f1) || std::isinf(f1)) 
     return std::numeric_limits<double>::quiet_NaN();
-  if ( std::isnan(f2) || std::isinf(f2)) 
-    return std::numeric_limits<double>::quiet_NaN();
-  return getNumberCountsInner(f1,f2);
+  if (f1 < knotpos[0] || f1 >= knotpos[nknots-1])
+    return 0.0; //Out of range
+
+  //This is the n_1 bit
+  unsigned int loc;
+  loc = utility::binary_search_lte(f1, knotpos, nknots);
+  return a[loc] * pow(f1, -gamma[loc]);
 }
 
 /*!
@@ -485,10 +506,10 @@ double numberCountsDouble::powerInt(double alpha, double beta) const {
   // const1 = beta
   // const2 = 1/2 beta^2
   //So it evaluates 
-  // S_1^power1 n_1(S_1) exp( const1*mu(S_1) + const2*sigma^2(S_2) )
-  double power = alpha+beta;
+  // S_1^power1 n_1(S_1) exp( const1*mu(S_1) + const2*sigma^2(S_1) )
+  double power = alpha + beta;
   double const1 = beta;
-  double const2 = 0.5*beta*beta;
+  double const2 = 0.5 * beta * beta;
 
   //There are a -ton- of other things to set though, so that
   // evalfN knows what to do in detail (minima, maxima, etc.)
@@ -810,14 +831,13 @@ static double evalPowfNDoubleLogNormal(double s1, void* params) {
   //Construct thing we multiply n1 counts by
   double prefac;
   //Construct s1^power part
-  if (power == 0) 
-    prefac = 1.0; 
-  else {
-    if (fabs(power-1.0) < 1e-6) prefac = s1; 
-    else if (fabs(power-2.0) < 1e-6) prefac = s1*s1;
-    else prefac = pow(s1,power);
-  }
-
+  if (fabs(power) < 1e-6)
+    prefac = 1.0;
+  else if (fabs(power - 1.0) < 1e-6) 
+    prefac = s1; 
+  else if (fabs(power - 2.0) < 1e-6) 
+    prefac = s1 * s1;
+  else prefac = pow(s1, power);
 
   //Now exponential part
   if (const1 != 0 || const2 != 0) {
@@ -834,13 +854,13 @@ static double evalPowfNDoubleLogNormal(double s1, void* params) {
       else {
 	gsl_interp* ospl = static_cast<gsl_interp*>(vptr[7]);
 	gsl_interp_accel* oacc = static_cast<gsl_interp_accel*>(vptr[8]);
-	mu = gsl_interp_eval( ospl, offsetpos, offsetval, s1, oacc );
+	mu = gsl_interp_eval(ospl, offsetpos, offsetval, s1, oacc);
       }
       expbit = const1 * mu;
     } else expbit = 0.0;
 
     if (const2 != 0) {
-      //Get sigma bit -> const2* sigma^2
+      //Get sigma bit -> const2 * sigma^2
       double sigma;
       unsigned int nsigmas = *static_cast<unsigned int*>(vptr[14]);
       double *sigmapos = static_cast<double*>(vptr[15]);
@@ -851,7 +871,7 @@ static double evalPowfNDoubleLogNormal(double s1, void* params) {
       else {
 	gsl_interp* sspl = static_cast<gsl_interp*>(vptr[12]);
 	gsl_interp_accel* sacc = static_cast<gsl_interp_accel*>(vptr[13]);
-	sigma = gsl_interp_eval( sspl, sigmapos, sigmaval, s1, sacc );
+	sigma = gsl_interp_eval(sspl, sigmapos, sigmaval, s1, sacc);
       }
       expbit += const2 * sigma * sigma;
     } 

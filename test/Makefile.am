@@ -9,4 +9,4 @@ model_test_LDADD = $(OTHERDIR)/libcover.la
 
 endif
 
-EXTRA_DIST=testdata/test1D.txt testdata/test2D.txt
+EXTRA_DIST=testdata/test1D.txt testdata/test2D.txt testdata/test2D_simple.txt

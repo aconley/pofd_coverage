@@ -268,7 +268,7 @@ TEST(model1DTest, Counts) {
   const unsigned int ntest = 3;
   const double testpos[ntest] = { 0.003, 0.0075, 0.030 };
   const double testval[ntest] = { 8.67247885195, 5.8300749986, 1.07518749639 };
-  for (unsigned int i = 0; i < ntest-1; ++i)
+  for (unsigned int i = 0; i < ntest; ++i)
     EXPECT_NEAR(testval[i], log10(model.getdNdS(testpos[i])), 1e-3) <<
       "Unexpected counts at position " << testpos[i];
 }
@@ -389,37 +389,128 @@ TEST(model2DTest, Init) {
   EXPECT_EQ(nknots + nsigmas + noffsets, model.getNTotalKnots()) <<
     "Unexpected total number of knots";
 
+  // Band 1 model
   for (unsigned int i = 0; i < nknots; ++i)
     EXPECT_NEAR(knotpos[i], model.getKnotPosition(i), 1e-5) <<
       "Unexpected knot position at index " << i;
   for (unsigned int i = 0; i < nknots; ++i)
     EXPECT_NEAR(knotval[i], model.getLog10KnotValue(i), 1e-5) <<
       "Unexpected knot value at index " << i;
-  
+  for (unsigned int i = 0; i < nknots-1; ++i) //Highest knot evaluates to 0
+    EXPECT_NEAR(knotval[i], log10(model.getBand1dNdS(knotpos[i])), 1e-3) <<
+        "Unexpected band 1 counts from getBand1dNdS at f1 " << knotpos[i];
+
+  // Sigma
   for (unsigned int i = 0; i < nsigmas; ++i)
     EXPECT_NEAR(sigmapos[i], model.getSigmaKnotPosition(i), 1e-5) <<
       "Unexpected sigma position at index " << i;
   for (unsigned int i = 0; i < nsigmas; ++i)
     EXPECT_NEAR(sigmaval[i], model.getSigmaKnotValue(i), 1e-5) <<
-      "Unexpected sigma value at index " << i;
+      "Unexpected sigma value from getSigmaKnotValue at index " << i;
+  for (unsigned int i = 0; i < nsigmas; ++i)
+    EXPECT_NEAR(sigmaval[i], model.getSigma(sigmapos[i]), 1e-5) <<
+      "Unexpected sigma value from getSigma at f1 " << sigmapos[i];
   
+  // Offset
   for (unsigned int i = 0; i < noffsets; ++i)
     EXPECT_NEAR(offsetpos[i], model.getOffsetKnotPosition(i), 1e-5) <<
       "Unexpected offset position at index " << i;
   for (unsigned int i = 0; i < noffsets; ++i)
     EXPECT_NEAR(offsetval[i], model.getOffsetKnotValue(i), 1e-5) <<
-      "Unexpected offset value at index " << i;
-  
-
+      "Unexpected offset value from getOffsetKnotValue at index " << i;
+  for (unsigned int i = 0; i < noffsets; ++i)
+    EXPECT_NEAR(offsetval[i], model.getOffset(offsetpos[i]), 1e-5) <<
+      "Unexpected offset value from getOffsetKnot at f1 " << offsetpos[i];
 }
 
 //Number of sources
 TEST(model2DTest, Counts) {
   const std::string modelfile("testdata/test2D.txt");
+
   numberCountsDouble model(modelfile);
 
   EXPECT_NEAR(3.06005e6, model.getBaseN0(), 1e4) <<
     "Unexpected base number of sources per area";
+
+  //Evaluate at exact value of sigma_i: at f1=0.005 sigma_i is 0.15
+  // and offset is -0.5.  The number counts are then the 1D value there
+  // (10**7.0) times L(f2 / 0.005; -0.5, 0.15)/0.
+  double currf1, sig, off, b1cnts;
+  currf1 = 0.005;
+  sig = 0.15;
+  off = -0.5;
+  ASSERT_NEAR(sig, model.getSigma(currf1), 1e-4) <<
+    "Unexpected sigma at band 1 flux density " << currf1;
+  ASSERT_NEAR(off, model.getOffset(currf1), 1e-4) <<
+    "Unexpected offset at band 1 flux density " << currf1;
+  b1cnts = 1e7; //Band 1 counts at f1=0.005 
+  ASSERT_NEAR(log10(b1cnts), log10(model.getBand1dNdS(currf1)), 1e-3) <<
+    "Got unexpected band 1 differential counts at " << currf1;
+
+  // Test for various f2 values
+  const unsigned int n2 = 5;
+  const double f2[n2] = {0.003, 0.005, 0.006, 0.010, 0.020};
+  double expval[n2];
+  double frat, expon, cnts;
+  for (unsigned int i = 0; i < n2; ++i) {
+    frat = f2[i] / currf1;
+    expon = (log(frat) - off) / sig;
+    cnts = b1cnts * pofd_coverage::isqrt_two_pi / (f2[i] * sig) * 
+      exp(-0.5 * expon * expon);
+    expval[i] = log10(cnts);
+  }
+  for (unsigned int i = 0; i < n2; ++i)
+    EXPECT_NEAR(expval[i], log10(model.getdNdS(currf1, f2[i])), 1e-3)
+  		<< "Unexpected counts for flux 2 value: " << f2[i];
+  
+  //Now we try a range of f1 values, no longer relying on knowing sig/off
+  // ahead of time, but asking the model class for them
+  const unsigned int n1 = 5;
+  const double f1[n1] = {0.002, 0.003, 0.007, 0.011, 0.03};
+  for (unsigned int i = 0; i < n1; ++i) {
+    sig = model.getSigma(f1[i]);
+    off = model.getOffset(f1[i]);
+    b1cnts = model.getBand1dNdS(f1[i]);
+    for (unsigned int j = 0; j < n2; ++j) {
+      frat = f2[j] / f1[i];
+      expon = (log(frat) - off) / sig;
+      cnts = b1cnts * pofd_coverage::isqrt_two_pi / (f2[j] * sig) * 
+	exp(-0.5 * expon * expon);
+      EXPECT_NEAR(log10(cnts), log10(model.getdNdS(f1[i], f2[j])), 1e-3) <<
+	"Got unexpected band 2 counts at flux densities " << f1[i] << 
+	" " << f2[j];
+    }
+  }
+}
+
+//Flux density per area
+TEST(model2DTest, MeanFlux) {
+  //Test band 1 fluxes, since they should be the same as
+  // for the 1D model in model1DTest::MeanFlux, as test2D
+  // is the same model with a colour model appended
+  const std::string modelfile1("testdata/test2D.txt");
+  numberCountsDouble model1(modelfile1);
+
+  EXPECT_NEAR(7233.11, model1.getMeanFluxPerArea1(), 0.1) <<
+    "Unexpected mean flux per area, band 1";
+  EXPECT_NEAR(17.7339, model1.getMeanFluxSqPerArea1(), 0.001) <<
+    "Unexpected mean flux^2 per area, band 1";
+
+  //Now switch over to a simplified model with constant offset and sigma
+  const std::string modelfile2("testdata/test2D_simple.txt");
+  numberCountsDouble model2(modelfile2);
+  double sig = model2.getSigma(0.1);
+  ASSERT_NEAR(sig, 0.15, 1e-5) << "Unexpected sigma value";
+  double off = model2.getOffset(0.1);
+  ASSERT_NEAR(off, -0.4, 1e-5) << "Unexpected offset value";
+  double expfac;
+  expfac = exp(off + 0.5 * sig * sig);
+  EXPECT_NEAR(7233.11 * expfac, model2.getMeanFluxPerArea2(), 0.1) <<
+    "Unexpected band 2 mean flux per area";
+  expfac = exp(2 * off + 2.0 * sig * sig);
+  EXPECT_NEAR(17.7339 * expfac, model2.getMeanFluxSqPerArea2(), 0.001) <<
+    "Unexpected band 2 mean flux^2 per area";
+  
 }
 
 

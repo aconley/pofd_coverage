@@ -284,8 +284,9 @@ TEST(model1DTest, FluxPerArea) {
     "Unexpected flux^2 per area";
 }
 
-//R testing, single value version
-TEST(model1DTest, RSingle) {
+//R testing, single value version.
+//These are based on comparisons with IDL code that computes R
+TEST(model1DTest, RScalar) {
   const std::string modelfile("testdata/test1D.txt");
   const double fwhm = 15.0;
   const double pixsize = 5.0;
@@ -303,9 +304,14 @@ TEST(model1DTest, RSingle) {
   EXPECT_THROW(model.getR(0.5, bm, pixsize, nfwhm, 0), pofdExcept) <<
     "Asking for no bins should throw exception";
 
-  const unsigned int ntest = 4;
-  const double testx[ntest] = {0.002, 0.003, 0.004, 0.015};
-  const double expR[ntest] = {31000.6, 1467.39, 175.788, 0.125615};
+  const unsigned int ntest = 13;
+  const double testx[ntest] = {0.001, 0.002, 0.003, 0.004, 0.005,
+			       0.006, 0.007, 0.008, 0.009, 0.010,
+			       0.015, 0.020, 0.030};
+  const double expR[ntest] = {5765.3663, 31000.585, 1467.3891, 175.78777, 
+			      35.731806, 10.958402, 4.1296338, 2.0301393,
+			      1.1860079, 0.75482242, 0.12561533, 0.019924714,
+			      2.2936243e-5};
   double rval, reldiff;
   for (unsigned int i = 0; i < ntest; ++i) {
     rval = model.getR(testx[i], bm, pixsize, nfwhm, nbins);
@@ -337,22 +343,26 @@ TEST(model1DTest, RArray) {
   numberCounts model(modelfile);
   beam bm(fwhm);
 
-  const unsigned int ntest = 3;
-  const double testx[ntest] = {0.002, 0.003, 0.004};
+  const unsigned int ntest = 10;
+  // Computed using IDL code
+  const double testx[ntest] = {0.001, 0.002, 0.003, 0.004, 0.005,
+			       0.006, 0.007, 0.008, 0.009, 0.010};
+  const double expR[ntest] = {5765.3663, 31000.585, 1467.3891, 175.78777, 
+			      35.731806, 10.958402, 4.1296338, 2.0301393,
+			      1.1860079, 0.75482242};
   double rval[ntest];
 
   ASSERT_TRUE(model.isValid()) << "Model should be valid";
-  EXPECT_THROW(model.getR(ntest, 0.002, 0.004, bm, -1.0, nfwhm, nbins, rval), 
+  EXPECT_THROW(model.getR(ntest, 0.001, 0.010, bm, -1.0, nfwhm, nbins, rval), 
 	       pofdExcept) << "Asking for negative pixel size should "
 			   << "throw exception";
-  EXPECT_THROW(model.getR(ntest, 0.002, 0.004, bm, pixsize, -1.0, nbins, rval), 
+  EXPECT_THROW(model.getR(ntest, 0.001, 0.010, bm, pixsize, -1.0, nbins, rval), 
 	       pofdExcept) << "Asking for negative nfwhm should "
 			   << "throw exception";
-  EXPECT_THROW(model.getR(ntest, 0.002, 0.004, bm, pixsize, nfwhm, 0, rval), 
+  EXPECT_THROW(model.getR(ntest, 0.001, 0.010, bm, pixsize, nfwhm, 0, rval), 
 	       pofdExcept) << "Asking for no bins should throw exception";
 
-  const double expR[ntest] = {31000.6, 1467.39, 175.788};
-  model.getR(ntest, 0.002, 0.004, bm, pixsize, nfwhm, nbins, rval);
+  model.getR(ntest, 0.001, 0.010, bm, pixsize, nfwhm, nbins, rval);
   double reldiff;
   for (unsigned int i = 0; i < ntest; ++i) {
     reldiff = fabs((rval[i] - expR[i]) / expR[i]);
@@ -477,10 +487,38 @@ TEST(model2DTest, Counts) {
       cnts = b1cnts * pofd_coverage::isqrt_two_pi / (f2[j] * sig) * 
 	exp(-0.5 * expon * expon);
       EXPECT_NEAR(log10(cnts), log10(model.getdNdS(f1[i], f2[j])), 1e-3) <<
-	"Got unexpected band 2 counts at flux densities " << f1[i] << 
+	"Got unexpected 2 band counts at flux densities " << f1[i] << 
 	" " << f2[j];
     }
   }
+
+  //Now compare with an IDL code.  This only supports single sigma/offset
+  // values, so we need a different input file
+  const std::string modelfile_idl("testdata/test2D_simple.txt");
+  numberCountsDouble model_idl(modelfile_idl);
+
+  const unsigned int ntest_idl = 7;
+  const double f1_idl[ntest_idl] = {0.002, 0.002, 0.004, 0.006, 0.007,
+				    0.010, 0.030};
+  const double f2_idl[ntest_idl] = {0.0015, 0.0021, 0.0035, 0.0065, 0.008, 
+				    0.011, 0.022};
+  const double log10_b1_idl[ntest_idl] = {10, 10, 7.7305874, 6.4739311,
+					  6.0291462, 5.0, 1.0751873};
+  const double log10_idl[ntest_idl] = {13.126978, 11.158770, 9.9260647,
+				       6.8618526, 5.8036657, 5.0157282,
+				       3.0796793};
+  //First do band 1
+  for (unsigned int i = 0; i < ntest_idl; ++i)
+    ASSERT_NEAR(log10_b1_idl[i], log10(model_idl.getBand1dNdS(f1_idl[i])), 
+		1e-3) << "Got unexpected band 1 differential counts at " 
+		      << f1_idl[i];
+  
+  //Now 2 band
+  for (unsigned int i = 0; i < ntest_idl; ++i)
+    EXPECT_NEAR(log10_idl[i], log10(model_idl.getdNdS(f1_idl[i], f2_idl[i])),
+		1e-3) << "Got unexpected differential counts with "
+		      << f1_idl[i] << " " << f2_idl[i];
+
 }
 
 //Flux density per area
@@ -511,6 +549,73 @@ TEST(model2DTest, BaseFlux) {
   EXPECT_NEAR(17.7339 * expfac, model2.getBaseFluxSqPerArea2(), 0.001) <<
     "Unexpected band 2 flux^2 per area";
   
+}
+
+//Test R, scalar version, against IDL code
+TEST(model2DTest, RScalar) {
+  //IDL version supports only constant sigma, offset, so use that
+  const std::string modelfile("testdata/test2D_simple.txt");
+  numberCountsDouble model(modelfile);
+  doublebeam bm(15.0, 20.0);
+  const double pixsize = 5.0;
+  const double nfwhm = 3.5;
+  const unsigned int nbins = 80;
+
+  const unsigned int ntest = 3;
+  const double x1[ntest] = {0.001, 0.003, 0.004};
+  const double x2[ntest] = {0.0011, 0.004, 0.005};
+  const double log10R[ntest] = {7.0781536, 3.5896604, 3.1435221};
+
+  ASSERT_TRUE(model.isValid()) << "Model should be valid";
+  EXPECT_THROW(model.getR(x1[0], x2[0], bm, -1.0, nfwhm, nbins), pofdExcept) <<
+    "Expected negative pixel size to throw exception";
+  EXPECT_THROW(model.getR(x1[0], x2[0], bm, pixsize, -1.0, nbins), 
+	       pofdExcept) << "Expected negative nfwhm to throw exception";
+  EXPECT_THROW(model.getR(x1[0], x2[0], bm, pixsize, nfwhm, 0), 
+	       pofdExcept) << "Expected 0 nbins to throw exception";
+
+  for (unsigned int i = 0; i < ntest; ++i)
+    EXPECT_NEAR(log10R[i], log10(model.getR(x1[i], x2[i], bm, pixsize, 
+					    nfwhm, nbins)), 1e-3) <<
+      "Unexpected R value for x1: " << x1[i] << " x2: " << x2[i];
+
+}
+
+
+//Test R, array version, against IDL code
+TEST(model2DTest, RArray) {
+  //IDL version supports only constant sigma, offset, so use that
+  const std::string modelfile("testdata/test2D_simple.txt");
+  numberCountsDouble model(modelfile);
+  doublebeam bm(15.0, 20.0);
+  const double pixsize = 5.0;
+  const double nfwhm = 3.5;
+  const unsigned int nbins = 80;
+
+  const unsigned int n1 = 2;
+  const unsigned int n2 = 3;
+  const double x1[n1] = {0.001, 0.010};
+  const double x2[n2] = {0.0011, 0.004, 0.008};
+  const double log10R[n1 * n2] = {  7.078154, 0.94494006, -9.9229534, // x1[0]
+				  -28.853694,-0.43926033,  2.3081361}; //x1[1]
+  double rarr[n1 * n2];
+
+  //Test failure modes
+  ASSERT_TRUE(model.isValid()) << "Model should be valid";
+  EXPECT_THROW(model.getR(n1, x1, n2, x2, bm, -1, nfwhm, nbins, rarr), 
+	       pofdExcept) << "Expected negative pixel size to throw exception";
+  EXPECT_THROW(model.getR(n1, x1, n2, x2, bm, pixsize, -1, nbins, rarr), 
+	       pofdExcept) << "Expected negative nfwhm to throw exception";
+  EXPECT_THROW(model.getR(n1, x1, n2, x2, bm, pixsize, nfwhm, 0, rarr), 
+	       pofdExcept) << "Expected zero bins to throw exception";
+
+  //Test R values
+  model.getR(n1, x1, n2, x2, bm, pixsize, nfwhm, nbins, rarr);
+  for (unsigned int i = 0; i < n1; ++i)
+    for (unsigned int j = 0; j < n2; ++j)
+      EXPECT_NEAR(log10R[i * n2 + j], log10(rarr[i * n2 + j]), 1e-3) <<
+	"Unexpected R value for x1: " << x1[i] << " x2: " << x2[j];
+
 }
 
 

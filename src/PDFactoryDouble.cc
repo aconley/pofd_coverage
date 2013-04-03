@@ -168,10 +168,10 @@ void PDFactoryDouble::allocateRvars() {
 		     "Invalid (0) currsize",1);
   RFlux1 = (double*) fftw_malloc(sizeof(double)*currsize);
   RFlux2 = (double*) fftw_malloc(sizeof(double)*currsize);
-  unsigned int fsize = currsize*currsize;
+  unsigned int fsize = currsize * currsize;
   rvals = (double*) fftw_malloc(sizeof(double)*fsize);
   pofd  = (double*) fftw_malloc(sizeof(double)*fsize);
-  fsize = currsize*(currsize/2+1);
+  fsize = currsize * (currsize / 2 + 1);
   rtrans = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);
   pval = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);
 
@@ -275,9 +275,9 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
   //Fill in flux values for main and edge pieces
   //Main bit
   for (unsigned int i = 0; i < n; ++i)
-    RFlux1[i] = static_cast<double>(i)*dflux1;
+    RFlux1[i] = static_cast<double>(i) * dflux1;
   for (unsigned int i = 0; i < n; ++i)
-    RFlux2[i] = static_cast<double>(i)*dflux2;
+    RFlux2[i] = static_cast<double>(i) * dflux2;
 
   //Now fill in R.  The edges require special care.  This
   // first call will fill nonsense values into the lower edges, which
@@ -348,10 +348,10 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
     if (use_edge_log_y) {
       for (unsigned int i = 0; i < nedge; ++i) {
 	rptr = REdgeWork + i*nedge; //row pointer
-	scriptr = 0.5*(REdgeFlux2[0]*rptr[0] + 
-		       REdgeFlux2[nedge-1]*rptr[nedge-1]);
+	scriptr = 0.5*(REdgeFlux2[0] * rptr[0] + 
+		       REdgeFlux2[nedge-1] * rptr[nedge-1]);
 	for (unsigned int j = 1; j < nedge-1; ++j)
-	  scriptr += REdgeFlux2[j]*rptr[j];
+	  scriptr += REdgeFlux2[j] * rptr[j];
 	REdgeWork[i] = scriptr;
       }
     } else {
@@ -366,16 +366,16 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
     //Now X integral, put in integral step size and area
     // of bin, store in R[0,0]
     if (use_edge_log_x) {
-      scriptr = 0.5*(REdgeFlux1[0]*REdgeWork[0]+
-		     REdgeFlux1[nedge-1]*REdgeWork[nedge-1]);
+      scriptr = 0.5*(REdgeFlux1[0] * REdgeWork[0]+
+		     REdgeFlux1[nedge-1] * REdgeWork[nedge-1]);
       for (unsigned int i = 1; i < nedge-1; ++i)
-	scriptr += REdgeFlux1[i]*REdgeWork[i];
-      rvals[0] = scriptr*iR00norm;
+	scriptr += REdgeFlux1[i] * REdgeWork[i];
+      rvals[0] = scriptr * iR00norm;
     } else {
-      scriptr = 0.5*(REdgeWork[0]+REdgeWork[nedge-1]);
+      scriptr = 0.5*(REdgeWork[0] + REdgeWork[nedge-1]);
       for (unsigned int i = 1; i < nedge-1; ++i)
 	scriptr += REdgeWork[i];
-      rvals[0] = scriptr*iR00norm;
+      rvals[0] = scriptr * iR00norm;
     }
     
     //Now do Rx = R[0,y], integral along x
@@ -438,13 +438,14 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
 
   //Multiply R by dflux1 * dflux2
   double fluxfac = dflux1 * dflux2;
-  for (unsigned int i = 0; i < rsize; ++i) {
-    rptr = rvals + i * rsize;
-    for (unsigned int j = 0; j < rsize; ++j)
+  for (unsigned int i = 0; i < n; ++i) {
+    rptr = rvals + i * n;
+    for (unsigned int j = 0; j < n; ++j)
       rptr[j] *= fluxfac;
   }
   
   is_r_set = true;
+  rsize = n;
   return did_resize;
 
 }
@@ -513,15 +514,16 @@ void PDFactoryDouble::getRIntegralsInternal(unsigned int n,
 
       //Now, core of x values
       for (unsigned int i = 1; i < rsize-1; ++i) {
-	rowptr = rvals + i*rsize;
+	rowptr = rvals + i * rsize;
 	xp = std::pow(RFlux1[i], xpower);
 	if (xp == 0)
 	  continue;
 	else {
-	  val += 0.5 * ypowvals[0] * rowptr[0]; //0.5 for trap
+	  val2 = 0.5 * ypowvals[0] * rowptr[0]; //0.5 for trap
 	  for (unsigned int j = 1; j < rsize-1; ++j)
-	    val += ypowvals[j] * rowptr[j];
-	  val += 0.5 * ypowvals[rsize-1] * rvals[rsize-1];
+	    val2 += ypowvals[j] * rowptr[j];
+	  val2 += 0.5 * ypowvals[rsize-1] * rowptr[rsize-1];
+	  val += xp * val2;
 	}
       }
       
@@ -599,9 +601,12 @@ void PDFactoryDouble::initPD(unsigned int n,
   //This will cause R wrapping problems, so check maxn0 relative to
   // the model base n0 value
   base_n0 = model.getBaseN0();
-  if (maxn0 < base_n0)
-    throw pofdExcept("PDFactoryDouble", "initPD",
-		     "maxn0 must be greater than model baseN0", 8);
+  if (maxn0 < base_n0) {
+    std::stringstream errstr;
+    errstr << "maxn0 (" << maxn0 << ") must be greater than model base N0 ("
+	   << base_n0 << ")";
+    throw pofdExcept("PDFactoryDouble", "initPD", errstr.str(), 8);
+  }
 
   double n0ratio = maxn0 / base_n0;
 
@@ -679,8 +684,14 @@ void PDFactoryDouble::initPD(unsigned int n,
 	      << mn2 << std::endl;
     std::cout << " Initial stdev estimate band1: " << sg1 << " band2: "
 	      << sg2 << std::endl;
-    std::cout << " Additional shift applied band1: " << shift1 << " band2: "
-	      << shift2 << std::endl;
+    if (doshift1)
+      std::cout << " Additional shift applied in band 1: " 
+		<< shift1 << std::endl;
+    else std::cout << " Not applying additional shift in band 1" << std::endl;
+    if (doshift2)
+      std::cout << " Additional shift applied in band 2: " 
+		<< shift2 << std::endl;
+    else std::cout << " Not applying additional shift in band 2" << std::endl;
   }
 
   //Make sure that maxflux is large enough that we don't get

@@ -340,12 +340,12 @@ int runSimDouble(int argc, char **argv) {
   }
   n0         = atof(argv[optind]);
   modelfile  = std::string(argv[optind + 1]);
-  fwhm1      = atof(argv[optind + 3]);
-  fwhm2      = atof(argv[optind + 4]);
-  pixsize    = atof(argv[optind + 3]);
-  n1         = atoi(argv[optind + 4]);
-  n2         = atoi(argv[optind + 5]);
-  outputfile = std::string(argv[optind + 6]);
+  fwhm1      = atof(argv[optind + 2]);
+  fwhm2      = atof(argv[optind + 3]);
+  pixsize    = atof(argv[optind + 4]);
+  n1         = atoi(argv[optind + 5]);
+  n2         = atoi(argv[optind + 6]);
+  outputfile = std::string(argv[optind + 7]);
 
   if (sigma1 < 0.0) {
     std::cerr << "Invalid instrument noise level, band 1: must be >= 0.0 "

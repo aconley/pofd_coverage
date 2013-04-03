@@ -301,9 +301,12 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
 
   //This will cause R wrapping problems, so check maxn0 relative to
   // the model base n0 value
-  if (maxn0 < model.getBaseN0())
-    throw pofdExcept("PDFactory", "initPD",
-		     "maxn0 must be greater than model baseN0", 3);
+  if (maxn0 < model.getBaseN0()) {
+    std::stringstream errstr;
+    errstr << "maxn0 (" << maxn0 << ") must be greater than model base N0 ("
+	   << base_n0 << ")";
+    throw pofdExcept("PDFactory", "initPD", errstr.str(), 3);
+  }
 
   //Allocate/resize internal arrays
   resize(n);
@@ -397,6 +400,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
     std::cout << " Initial stdev estimate: " << sg << std::endl;
     if (doshift)
       std::cout << " Additional shift applied: " << shift << std::endl;
+    else std::cout << " Not applying additional shift" << std::endl;
   }
 
   //Make sure that maxflux is large enough that we don't get

@@ -195,8 +195,9 @@ int getPDSingle(int argc, char **argv) {
     if (verbose) std::cout << "Getting P(D) with transform length: " 
 			   << nflux << " and max flux: " 
 			   << maxflux << std::endl;
-    pfactory.initPD(nflux, sigma, maxflux, n0, model, bm,
-		    pixsize, nfwhm, nbins);
+    double base_n0 = model.getBaseN0();
+    pfactory.initPD(nflux, sigma, maxflux, base_n0 > n0 ? base_n0 : n0, 
+		    model, bm, pixsize, nfwhm, nbins);
     pfactory.getPD(n0, pd, return_log, true);
     
    if (write_r) {
@@ -411,11 +412,13 @@ int getPDDouble(int argc, char **argv) {
     if (verbose) std::cout << "Getting P(D) with transform length: " 
 			   << nflux << " and max fluxes: " 
 			   << maxflux1 << " " << maxflux2 << std::endl;
+    double base_n0 = model.getBaseN0();
     pfactory.initPD(nflux, sigma1, sigma2, maxflux1, maxflux2, 
-		    n0, model, bm, pixsize, nfwhm, nbins);
+		    base_n0 > n0 ? base_n0 : n0, model, bm, pixsize, 
+		    nfwhm, nbins);
     pfactory.getPD(n0, pd, return_log, true);
-    
-   if (write_r) {
+
+    if (write_r) {
       if (verbose) std::cout << "Writing R to " << r_file << std::endl;
       pfactory.writeRToFile(r_file);
     }

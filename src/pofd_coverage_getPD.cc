@@ -182,8 +182,8 @@ int getPDSingle(int argc, char **argv) {
     if (verbose) {
       printf("   Beam fwhm:          %0.2f\n", bm.getFWHM());
       printf("   Beam area:          %0.3e\n", bm.getEffectiveArea());
-      printf("   Mean flux per area: %0.2f\n",
-	     model.getMeanFluxPerArea());
+      printf("   Flux per area:      %0.2f\n",
+	     model.getBaseFluxPerArea());
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
       printf("   N0:                 %0.4e\n", n0);
       printf("sigma:                 %0.4f\n", sigma);
@@ -395,10 +395,10 @@ int getPDDouble(int argc, char **argv) {
       printf("   Beam fwhm2:         %0.2f\n", bm.getFWHM2());
       printf("   Beam area1:         %0.3e\n", bm.getEffectiveArea1());
       printf("   Beam area2:         %0.3e\n", bm.getEffectiveArea2());
-      printf("   Mean flux per area1:%0.2f\n",
-	     model.getMeanFluxPerArea1());
-      printf("   Mean flux per area2:%0.2f\n",
-	     model.getMeanFluxPerArea2());
+      printf("   Flux per area1:     %0.2f\n",
+	     model.getBaseFluxPerArea1());
+      printf("   Flux per area2:     %0.2f\n",
+	     model.getBaseFluxPerArea2());
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
       printf("   N0:                 %0.4e\n", n0);
       printf("sigma1:                %0.4f\n", sigma1);

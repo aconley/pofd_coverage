@@ -274,14 +274,14 @@ TEST(model1DTest, Counts) {
 }
 
 //Flux density per area
-TEST(model1DTest, MeanFlux) {
+TEST(model1DTest, FluxPerArea) {
   const std::string modelfile("testdata/test1D.txt");
   numberCounts model(modelfile);
 
-  EXPECT_NEAR(7233.11, model.getMeanFluxPerArea(), 0.1) <<
-    "Unexpected mean flux per area";
-  EXPECT_NEAR(17.7339, model.getMeanFluxSqPerArea(), 0.1) <<
-    "Unexpected mean flux^2 per area";
+  EXPECT_NEAR(7233.11, model.getBaseFluxPerArea(), 0.1) <<
+    "Unexpected flux per area";
+  EXPECT_NEAR(17.7339, model.getBaseFluxSqPerArea(), 0.1) <<
+    "Unexpected flux^2 per area";
 }
 
 //R testing, single value version
@@ -484,17 +484,17 @@ TEST(model2DTest, Counts) {
 }
 
 //Flux density per area
-TEST(model2DTest, MeanFlux) {
+TEST(model2DTest, BaseFlux) {
   //Test band 1 fluxes, since they should be the same as
   // for the 1D model in model1DTest::MeanFlux, as test2D
   // is the same model with a colour model appended
   const std::string modelfile1("testdata/test2D.txt");
   numberCountsDouble model1(modelfile1);
 
-  EXPECT_NEAR(7233.11, model1.getMeanFluxPerArea1(), 0.1) <<
-    "Unexpected mean flux per area, band 1";
-  EXPECT_NEAR(17.7339, model1.getMeanFluxSqPerArea1(), 0.001) <<
-    "Unexpected mean flux^2 per area, band 1";
+  EXPECT_NEAR(7233.11, model1.getBaseFluxPerArea1(), 0.1) <<
+    "Unexpected flux per area, band 1";
+  EXPECT_NEAR(17.7339, model1.getBaseFluxSqPerArea1(), 0.001) <<
+    "Unexpected flux^2 per area, band 1";
 
   //Now switch over to a simplified model with constant offset and sigma
   const std::string modelfile2("testdata/test2D_simple.txt");
@@ -505,11 +505,11 @@ TEST(model2DTest, MeanFlux) {
   ASSERT_NEAR(off, -0.4, 1e-5) << "Unexpected offset value";
   double expfac;
   expfac = exp(off + 0.5 * sig * sig);
-  EXPECT_NEAR(7233.11 * expfac, model2.getMeanFluxPerArea2(), 0.1) <<
-    "Unexpected band 2 mean flux per area";
+  EXPECT_NEAR(7233.11 * expfac, model2.getBaseFluxPerArea2(), 0.1) <<
+    "Unexpected band 2 flux per area";
   expfac = exp(2 * off + 2.0 * sig * sig);
-  EXPECT_NEAR(17.7339 * expfac, model2.getMeanFluxSqPerArea2(), 0.001) <<
-    "Unexpected band 2 mean flux^2 per area";
+  EXPECT_NEAR(17.7339 * expfac, model2.getBaseFluxSqPerArea2(), 0.001) <<
+    "Unexpected band 2 flux^2 per area";
   
 }
 

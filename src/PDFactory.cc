@@ -327,9 +327,9 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
 
   //Estimate the mean model flux and sigma crudely
   double maxflux_R, s_ave, est_shift, var;
-  s_ave = n0ratio * model.getMeanFluxPerArea();
+  s_ave = n0ratio * model.getBaseFluxPerArea();
   mn =  s_ave * bm.getEffectiveArea();
-  var = model.getMeanFluxSqPerArea() * bm.getEffectiveArea() - s_ave*s_ave;
+  var = model.getBaseFluxSqPerArea() * bm.getEffectiveArea() - s_ave*s_ave;
   if (var <= 0) var = 0.0;
   sg = sqrt(n0ratio * n0ratio * var + inst_sigma*inst_sigma);
   est_shift = mn + pofd_coverage::n_sigma_shift * sg;

@@ -165,10 +165,10 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile) {
   gsl_work = gsl_integration_workspace_alloc(1000);
   varr = new void*[nvarr];
 
-  //Compute band 2 mean flux and mean flux^2.  Band 1 was taken
+  //Compute band 2 base flux and flux^2.  Band 1 was taken
   // care of in initM1Params
-  base_meanflux2 = powerInt(0.0, 1.0);
-  base_meanfluxsq2 = powerInt(0.0, 2.0);
+  base_flux2 = powerInt(0.0, 1.0);
+  base_fluxsq2 = powerInt(0.0, 2.0);
 
   nbm = 0;
   bm_wts = NULL;
@@ -250,26 +250,26 @@ void numberCountsDouble::initM1Params() {
   }
   base_n0 = fk[nknots-2];
 
-  //Compute the mean flux per area for the base model, band 1
-  base_meanflux1 = 0.0;
+  //Compute the flux per area for the base model, band 1
+  base_flux1 = 0.0;
   double tmg;
   for (unsigned int i = 0; i < nknots-1; ++i) {
     tmg = 2.0 - gamma[i];
     if (fabs(tmg) < ftol)
-      base_meanflux1 += a[i] * log(knotpos[i+1]/knotpos[i]);
+      base_flux1 += a[i] * log(knotpos[i+1]/knotpos[i]);
     else
-      base_meanflux1 += 
+      base_flux1 += 
 	a[i] * (pow(knotpos[i+1], tmg) - pow(knotpos[i], tmg)) / tmg;
   }
 
-  //And the mean flux^2 per area, band 1
-  base_meanfluxsq1 = 0.0;
+  //And the flux^2 per area, band 1
+  base_fluxsq1 = 0.0;
   for (unsigned int i = 0; i < nknots-1; ++i) {
     tmg = 3.0 - gamma[i];
     if (fabs(tmg) < ftol)
-      base_meanfluxsq1 += a[i] * log(knotpos[i+1]/knotpos[i]);
+      base_fluxsq1 += a[i] * log(knotpos[i+1]/knotpos[i]);
     else
-      base_meanfluxsq1 += 
+      base_fluxsq1 += 
 	a[i] * (pow(knotpos[i+1], tmg) - pow(knotpos[i], tmg)) / tmg;
   }
 }
@@ -441,13 +441,13 @@ double numberCountsDouble::getBaseN0() const {
 }
 
 //Currently not set -- needs to be added
-double numberCountsDouble::getMeanFluxPerArea1() const {return base_meanflux1;}
-double numberCountsDouble::getMeanFluxPerArea2() const {return base_meanflux2;}
-double numberCountsDouble::getMeanFluxSqPerArea1() const {
-  return base_meanfluxsq1; 
+double numberCountsDouble::getBaseFluxPerArea1() const {return base_flux1;}
+double numberCountsDouble::getBaseFluxPerArea2() const {return base_flux2;}
+double numberCountsDouble::getBaseFluxSqPerArea1() const {
+  return base_fluxsq1; 
 }
-double numberCountsDouble::getMeanFluxSqPerArea2() const {
-  return base_meanfluxsq2; 
+double numberCountsDouble::getBaseFluxSqPerArea2() const {
+  return base_fluxsq2; 
 }
 
 std::pair<double, double> numberCountsDouble::getMaxFluxEstimate() const {

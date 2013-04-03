@@ -611,18 +611,18 @@ void PDFactoryDouble::initPD(unsigned int n,
   // here is to compute R once, then re-use it many times, we can afford
   // to use an expensive approach of computing R more than once and
   // estimating statistics from it.
-  //Estimate the mean model flux and sigma crudely
+  //Estimate the model flux and sigma crudely
   double maxflux_R1, maxflux_R2, s_ave, est_shift, var;
-  s_ave = n0ratio * model.getMeanFluxPerArea1();
+  s_ave = n0ratio * model.getBaseFluxPerArea1();
   mn1 =  s_ave * bm.getEffectiveArea1();
-  var = model.getMeanFluxSqPerArea1() * bm.getEffectiveArea1() - s_ave*s_ave;
+  var = model.getBaseFluxSqPerArea1() * bm.getEffectiveArea1() - s_ave*s_ave;
   if (var <= 0) var = 0.0;
   sg1 = sqrt(n0ratio * n0ratio * var + inst_sigma1*inst_sigma1);
   est_shift = mn1 + pofd_coverage::n_sigma_shift * sg1;
   maxflux_R1 = maxflux1 + est_shift;
-  s_ave = n0ratio * model.getMeanFluxPerArea2();
+  s_ave = n0ratio * model.getBaseFluxPerArea2();
   mn2 =  s_ave * bm.getEffectiveArea2();
-  var = model.getMeanFluxSqPerArea2() * bm.getEffectiveArea2() - s_ave*s_ave;
+  var = model.getBaseFluxSqPerArea2() * bm.getEffectiveArea2() - s_ave*s_ave;
   if (var <= 0) var = 0.0;
   sg2 = sqrt(n0ratio * n0ratio * var + inst_sigma2*inst_sigma2);
   est_shift = mn2 + pofd_coverage::n_sigma_shift * sg2;

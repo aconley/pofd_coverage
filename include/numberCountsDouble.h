@@ -89,10 +89,10 @@ class numberCountsDouble {
   double *iomg; //!< 1.0 / (1.0 - gamma), len nknots-1
   double *powarr; //!< Internal convenience array, len nknots-1
 
-  double base_meanflux1; //!< Mean flux per area for base model, band 1
-  double base_meanfluxsq1; //!< Mean flux squared per area for base model, b1
-  double base_meanflux2; //!< Mean flux per area for base model, band 2
-  double base_meanfluxsq2; //!< Mean flux squared per area for base model, b2
+  double base_flux1; //!< Flux density per area for base model, band 1
+  double base_fluxsq1; //!< Flux density squared per area for base model, b1
+  double base_flux2; //!< Flux density per area for base model, band 2
+  double base_fluxsq2; //!< Flux density squared per area for base model, b2
 
   //Working variables for histogrammed beam
   mutable unsigned int nbm; //!< Number of elements in beam working arrays 
@@ -124,14 +124,14 @@ class numberCountsDouble {
   double getBaseN0() const;
   bool isValid() const; //!< See if model params are valid
 
-  /*! \brief Get Mean Flux per unit area, band 1 */
-  double getMeanFluxPerArea1() const;
-  /*! \brief Get Mean Flux per unit area, band 2 */
-  double getMeanFluxPerArea2() const;
-  /*! \brief Get Mean Flux squared per unit area for base model, band 1*/
-  double getMeanFluxSqPerArea1() const;
-  /*! \brief Get Mean Flux squared per unit area for base model, band 2*/
-  double getMeanFluxSqPerArea2() const;
+  /*! \brief Get base model flux per unit area, band 1 */
+  double getBaseFluxPerArea1() const;
+  /*! \brief Get base model flux per unit area, band 2 */
+  double getBaseFluxPerArea2() const;
+  /*! \brief Get base model flux squared per unit area for base model, band 1*/
+  double getBaseFluxSqPerArea1() const;
+  /*! \brief Get base model flux squared per unit area for base model, band 2*/
+  double getBaseFluxSqPerArea2() const;
 
   /*! \brief Crude estimate of maximum flux from model */
   std::pair<double, double> getMaxFluxEstimate() const;

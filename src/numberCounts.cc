@@ -135,26 +135,26 @@ void numberCounts::initMParams() {
   }
   base_n0 = fk[nknots-2];
 
-  //Compute the mean flux per area for the base model
-  base_meanflux = 0.0;
+  //Compute the flux per area for the base model
+  base_flux = 0.0;
   double tmg;
   for (unsigned int i = 0; i < nknots-1; ++i) {
     tmg = 2.0 - gamma[i];
     if (fabs(tmg) < ftol)
-      base_meanflux += a[i] * log(knotpos[i+1]/knotpos[i]);
+      base_flux += a[i] * log(knotpos[i+1]/knotpos[i]);
     else
-      base_meanflux += 
+      base_flux += 
 	a[i] * (pow(knotpos[i+1], tmg) - pow(knotpos[i], tmg)) / tmg;
   }
 
-  //And the mean flux^2 per area
-  base_meanfluxsq = 0.0;
+  //And the flux^2 per area
+  base_fluxsq = 0.0;
   for (unsigned int i = 0; i < nknots-1; ++i) {
     tmg = 3.0 - gamma[i];
     if (fabs(tmg) < ftol)
-      base_meanfluxsq += a[i] * log(knotpos[i+1]/knotpos[i]);
+      base_fluxsq += a[i] * log(knotpos[i+1]/knotpos[i]);
     else
-      base_meanfluxsq += 
+      base_fluxsq += 
 	a[i] * (pow(knotpos[i+1], tmg) - pow(knotpos[i], tmg)) / tmg;
   }
 }
@@ -175,19 +175,19 @@ double numberCounts::getBaseN0() const {
 }
 
 /*!
-  \returns Mean flux per square degree for base model
+  \returns Flux density per square degree for base model
  */
-double numberCounts::getMeanFluxPerArea() const {
+double numberCounts::getBaseFluxPerArea() const {
   if (!isValid()) return std::numeric_limits<double>::quiet_NaN();
-  return base_meanflux;
+  return base_flux;
 }
 
 /*!
-  \returns Mean flux^2 per square degree for base model
+  \returns Flux density^2 per square degree for base model
  */
-double numberCounts::getMeanFluxSqPerArea() const {
+double numberCounts::getBaseFluxSqPerArea() const {
   if (!isValid()) return std::numeric_limits<double>::quiet_NaN();
-  return base_meanfluxsq;
+  return base_fluxsq;
 }
 
 /*!

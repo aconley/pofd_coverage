@@ -35,8 +35,8 @@ class numberCounts {
   double *iomg; //!< 1.0 / (1.0 - gamma), len nknots-1
   double *powarr; //!< Internal convenience array, len nknots-1
 
-  double base_meanflux; //!< Mean flux per area for base model
-  double base_meanfluxsq; //!< Mean flux squared per area for base model
+  double base_flux; //!< Flux per area for base model
+  double base_fluxsq; //!< Flux squared per area for base model
 
   //Working variables for histogrammed beam
   mutable unsigned int nbm; //!< Number of elements in inverse beam
@@ -52,11 +52,11 @@ class numberCounts {
   /*! \brief Get number of sources per area in base model*/
   double getBaseN0() const;
 
-  /*! \brief Get Mean Flux per unit area for base model*/
-  double getMeanFluxPerArea() const;
+  /*! \brief Get flux density per unit area for base model*/
+  double getBaseFluxPerArea() const;
 
-  /*! \brief Get Mean Flux squared per unit area for base model*/
-  double getMeanFluxSqPerArea() const;
+  /*! \brief Get flux density squared per unit area for base model*/
+  double getBaseFluxSqPerArea() const;
 
   /*!\brief Get differential number counts for base model*/
   double getdNdS(double) const;

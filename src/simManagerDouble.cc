@@ -381,186 +381,200 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
     char* tform2 = new char[ndigits+5];
     sprintf(tform2,"%uD",nlike);
     tform[4] = tform2;
-    fits_create_tbl( fp, BINARY_TBL, 0, 5, ttype, tform, NULL, NULL, &status );
+    fits_create_tbl(fp, BINARY_TBL, 0, 5, ttype, tform, NULL, NULL, &status);
     delete[] tform2;
   } else {
     char* ttype[] = {"BEST_N0","BEST_LOGLIKE"};
     char* tform[2];
     char* tform0 = "1D";
     tform[0] = tform0; tform[1] = tform0;
-    fits_create_tbl( fp, BINARY_TBL, 0, 2, ttype, tform, NULL, NULL, &status );
+    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, NULL, &status);
   }
 
   //Write header stuff
   unsigned int utmp;
   double dtmp;
-  fits_write_key( fp, TSTRING, const_cast<char*>("MODEL"),
-		  const_cast<char*>("Delta"), 
-		  const_cast<char*>("Model type"),
-		  &status );
+  fits_write_key(fp, TSTRING, const_cast<char*>("MODEL"),
+		 const_cast<char*>("Delta"), 
+		 const_cast<char*>("Model type"),
+		 &status);
   dtmp = n0; //Must copy to temporary for const type handling
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("N0"), &dtmp, 
-		  const_cast<char*>("Number of sources per sq deg"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("N0"), &dtmp, 
+		 const_cast<char*>("Number of sources per sq deg"), 
+		 &status);
 
   //Sim params
   dtmp = bm.getFWHM1();
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp, 
-		  const_cast<char*>("Beam fwhm, band 1 [arcsec]"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp, 
+		 const_cast<char*>("Beam fwhm, band 1 [arcsec]"), 
+		 &status);
   dtmp = bm.getFWHM2();
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp, 
-		  const_cast<char*>("Beam fwhm, band 2 [arcsec]"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp, 
+		 const_cast<char*>("Beam fwhm, band 2 [arcsec]"), 
+		 &status);
   std::pair<double,double> dpr;
   dpr = simim.getBeamSum();
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("BMAREA1"), &dpr.first, 
-		  const_cast<char*>("Beam area, band 1 [pixels]"), 
-		  &status );
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("BMAREA2"), &dpr.second, 
-		  const_cast<char*>("Beam area, band 2 [pixels]"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREA1"), &dpr.first, 
+		 const_cast<char*>("Beam area, band 1 [pixels]"), 
+		 &status);
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREA2"), &dpr.second, 
+		 const_cast<char*>("Beam area, band 2 [pixels]"), 
+		 &status);
   dpr = simim.getBeamSumSq();
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("BMARESQ1"), &dpr.first, 
-		  const_cast<char*>("Beam squared area, band 1 [pixels]"), 
-		  &status );
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("BMARESQ2"), &dpr.second, 
-		  const_cast<char*>("Beam squared area, band 2 [pixels]"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMARESQ1"), &dpr.first, 
+		 const_cast<char*>("Beam squared area, band 1 [pixels]"), 
+		 &status);
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMARESQ2"), &dpr.second, 
+		 const_cast<char*>("Beam squared area, band 2 [pixels]"), 
+		 &status);
 
   if (do_extra_smooth) {
     int tmpi = 1;
-    fits_write_key( fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
-		    const_cast<char*>("Additional smoothing applied"), 
-		    &status );
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+		   const_cast<char*>("Additional smoothing applied"), 
+		   &status);
     dtmp = esmooth1;
-    fits_write_key( fp, TDOUBLE, const_cast<char*>("ESMOOTH1"), &dtmp, 
-		    const_cast<char*>("Extra smoothing fwhm, band 1 [arcsec]"), 
-		    &status );
-    fits_write_key( fp, TDOUBLE, const_cast<char*>("ESMOOTH2"), &dtmp, 
-		    const_cast<char*>("Extra smoothing fwhm, band 2 [arcsec]"), 
-		    &status );
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH1"), &dtmp, 
+		   const_cast<char*>("Extra smoothing fwhm, band 1 [arcsec]"), 
+		   &status);
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH2"), &dtmp, 
+		   const_cast<char*>("Extra smoothing fwhm, band 2 [arcsec]"), 
+		   &status);
   } else {
     int tmpi = 0;
-    fits_write_key( fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
-		    const_cast<char*>("Additional smoothing applied"), 
-		    &status );
-  }
-
-  dtmp = sig_i1;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("SIGI_1"), &dtmp, 
-		  const_cast<char*>("Instrument noise, band 1"), 
-		  &status );
-  dtmp = sig_i2;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("SIGI_2"), &dtmp, 
-		  const_cast<char*>("Instrument noise, band 1"), 
-		  &status );
-  if (do_extra_smooth) {
-    dtmp = sig_i1_sm;
-    fits_write_key( fp, TDOUBLE, const_cast<char*>("SIGISM1"), &dtmp, 
-		    const_cast<char*>("Smoothed instrument noise, band 1"), 
-		    &status );
-    dtmp = sig_i2_sm;
-    fits_write_key( fp, TDOUBLE, const_cast<char*>("SIGISM2"), &dtmp, 
-		    const_cast<char*>("Smoothed instrument noise, band 2"), 
-		    &status );
-  }
-
-  if (use_binning) {
-    int tmpi = 1;
-    fits_write_key( fp, TLOGICAL, const_cast<char*>("USEBIN"), &tmpi,
-		    const_cast<char*>("Use binned likelihood"), 
-		    &status );
-    utmp = simim.getNBins();
-    fits_write_key( fp, TUINT, const_cast<char*>("NBINS"), &utmp,
-		    const_cast<char*>("Number of bins in Likelihood"), 
-		    &status );
-  } else {
-    int tmpi = 0;
-    fits_write_key( fp, TLOGICAL, const_cast<char*>("USEBIN"), &tmpi,
-		    const_cast<char*>("Use binned likelihood"), 
-		    &status );
-  }
-
-
-  dtmp = simim.getPixSize();
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp, 
-		  const_cast<char*>("Simulation pixel size [arcsec]"), 
-		  &status );
-  dtmp = simim.getArea();
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("AREA"), &dtmp, 
-		  const_cast<char*>("Simulation area size [sq deg]"), 
-		  &status );
-
-  utmp = nsims;
-  fits_write_key( fp, TUINT, const_cast<char*>("NSIMS"), &utmp, 
-		  const_cast<char*>("Number of simulations"), 
-		  &status );
-  utmp = fftsize;
-  fits_write_key( fp, TUINT, const_cast<char*>("FFTSIZE"), &utmp, 
-		  const_cast<char*>("Size of FFT transformation"), 
-		  &status );
-  dtmp = n0initrange;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("N0INIRNG"), &dtmp, 
-		  const_cast<char*>("N0 range fraction for minimization"), 
-		  &status );
-  utmp = getN1();
-  fits_write_key( fp, TUINT, const_cast<char*>("N1"), &utmp, 
-		  const_cast<char*>("Image extent, dimension 1"), 
-		  &status );
-  utmp = getN2();
-  fits_write_key( fp, TUINT, const_cast<char*>("N2"), &utmp, 
-		  const_cast<char*>("Image extent, dimension 2"), 
-		  &status );
-
-  if (do_map_like) {
-    int tmpi = 1;
-    fits_write_key( fp, TLOGICAL, const_cast<char*>("MAPLIKE"), &tmpi,
-		    const_cast<char*>("Do map out likelihood"), 
-		    &status );
-    utmp = nlike;
-    fits_write_key( fp, TUINT, const_cast<char*>("NLIKE"), &utmp, 
-		    const_cast<char*>("Number of likelihoods"), 
-		    &status );
-    dtmp = n0rangefrac;
-    fits_write_key( fp, TDOUBLE, const_cast<char*>("N0RANGE"), &dtmp, 
-		    const_cast<char*>("N0 range fraction"), 
-		    &status );
-  } else {
-    int tmpi = 0;
-    fits_write_key( fp, TLOGICAL, const_cast<char*>("MAPLIKE"), &tmpi,
-		    const_cast<char*>("Do map out likelihood"), 
-		    &status );
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+		   const_cast<char*>("Additional smoothing applied"), 
+		   &status);
   }
   
-
-  fits_write_key( fp, TSTRING, const_cast<char*>("VERSION"),
-		  const_cast<char*>(pofd_coverage::version), 
-		  const_cast<char*>("pofd_coverage version"),
-		  &status );
-
-  fits_write_history( fp, 
-		      const_cast<char*>("Simulation results from pofd_delta"),
-		      &status );
-  fits_write_date( fp, &status );
-
-  //Now write out the data
-  fits_insert_rows( fp, 0, nsims, &status );
-  for (unsigned int i = 0; i < nsims; ++i) {
-    double val;
-    val = bestn0[i];
-    fits_write_col(fp,TDOUBLE,1,i+1,1,1,&val,&status);
-    val = bestlike[i];
-    fits_write_col(fp,TDOUBLE,2,i+1,1,1,&val,&status);
-    if (do_map_like) {
-      val = min_n0[i];
-      fits_write_col(fp,TDOUBLE,3,i+1,1,1,&val,&status);
-      val = delta_n0[i];
-      fits_write_col(fp,TDOUBLE,4,i+1,1,1,&val,&status);
-      fits_write_col(fp,TDOUBLE,5,i+1,1,nlike,likearr[i],&status);
-    }
+  dtmp = sig_i1;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_1"), &dtmp, 
+		 const_cast<char*>("Instrument noise, band 1"), 
+		 &status);
+  dtmp = sig_i2;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &dtmp, 
+		 const_cast<char*>("Instrument noise, band 1"), 
+		 &status);
+  if (do_extra_smooth) {
+    dtmp = sig_i1_sm;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGISM1"), &dtmp, 
+		   const_cast<char*>("Smoothed instrument noise, band 1"), 
+		   &status);
+    dtmp = sig_i2_sm;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGISM2"), &dtmp, 
+		   const_cast<char*>("Smoothed instrument noise, band 2"), 
+		   &status);
   }
-
+  
+  if (use_binning) {
+    int tmpi = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("USEBIN"), &tmpi,
+		   const_cast<char*>("Use binned likelihood"), 
+		   &status);
+    utmp = simim.getNBins();
+    fits_write_key(fp, TUINT, const_cast<char*>("NBINS"), &utmp,
+		   const_cast<char*>("Number of bins in Likelihood"), 
+		   &status);
+  } else {
+    int tmpi = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("USEBIN"), &tmpi,
+		   const_cast<char*>("Use binned likelihood"), 
+		   &status);
+  }
+  
+  
+  dtmp = simim.getPixSize();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp, 
+		 const_cast<char*>("Simulation pixel size [arcsec]"), 
+		 &status);
+  dtmp = simim.getArea();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("AREA"), &dtmp, 
+		 const_cast<char*>("Simulation area size [sq deg]"), 
+		 &status);
+  
+  utmp = nsims;
+  fits_write_key(fp, TUINT, const_cast<char*>("NSIMS"), &utmp, 
+		 const_cast<char*>("Number of simulations"), 
+		 &status);
+  utmp = fftsize;
+  fits_write_key(fp, TUINT, const_cast<char*>("FFTSIZE"), &utmp, 
+		 const_cast<char*>("Size of FFT transformation"), 
+		 &status);
+  dtmp = n0initrange;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("N0INIRNG"), &dtmp, 
+		 const_cast<char*>("N0 range fraction for minimization"), 
+		 &status);
+  utmp = getN1();
+  fits_write_key(fp, TUINT, const_cast<char*>("N1"), &utmp, 
+		 const_cast<char*>("Image extent, dimension 1"), 
+		 &status);
+  utmp = getN2();
+  fits_write_key(fp, TUINT, const_cast<char*>("N2"), &utmp, 
+		 const_cast<char*>("Image extent, dimension 2"), 
+		 &status);
+  
+  if (do_map_like) {
+    int tmpi = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MAPLIKE"), &tmpi,
+		   const_cast<char*>("Do map out likelihood"), 
+		   &status);
+    utmp = nlike;
+    fits_write_key(fp, TUINT, const_cast<char*>("NLIKE"), &utmp, 
+		   const_cast<char*>("Number of likelihoods"), 
+		   &status);
+    dtmp = n0rangefrac;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("N0RANGE"), &dtmp, 
+		   const_cast<char*>("N0 range fraction"), 
+		   &status);
+  } else {
+    int tmpi = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MAPLIKE"), &tmpi,
+		   const_cast<char*>("Do map out likelihood"), 
+		   &status);
+  }
+  
+  
+  fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
+		 const_cast<char*>(pofd_coverage::version), 
+		 const_cast<char*>("pofd_coverage version"),
+		 &status);
+  
+  fits_write_history(fp, 
+		     const_cast<char*>("Simulation results from pofd_delta"),
+		     &status);
+  fits_write_date(fp, &status);
+  
+  //Now write out the data We write the actual array of likelihoods
+  // (if present) as the logLikes minus bestlike so that we can use
+  // floats rather than doubles
+  fits_insert_rows(fp, 0, nsims, &status);
+  if (do_map_like) {
+    float *like_row = new float[nlike];
+    double *rowptr;
+    double val, blike;
+    for (unsigned int i = 0; i < nsims; ++i) {
+      val = bestn0[i];
+      fits_write_col(fp, TDOUBLE, 1, i+1, 1, 1, &val, &status);
+      blike = bestlike[i];
+      fits_write_col(fp, TDOUBLE, 2, i+1, 1, 1, &blike, &status);
+      val = min_n0[i];
+      fits_write_col(fp, TDOUBLE, 3, i+1, 1, 1, &val, &status);
+      val = delta_n0[i];
+      fits_write_col(fp, TDOUBLE, 4, i+1, 1, 1, &val, &status);
+      rowptr = likearr[i];
+      for (unsigned int j = 0; j < nlike; ++j)
+	like_row[j] = static_cast<float>(rowptr[j] - blike); 
+      fits_write_col(fp, TFLOAT, 5, i+1, 1, nlike, like_row, &status);
+    }
+    delete[] like_row;
+  } else     
+    for (unsigned int i = 0; i < nsims; ++i) {
+      double val;
+      val = bestn0[i];
+      fits_write_col(fp,TDOUBLE,1,i+1,1,1,&val,&status);
+      val = bestlike[i];
+      fits_write_col(fp,TDOUBLE,2,i+1,1,1,&val,&status);
+    }
 
   //Add the model information to another extension
   char* mttype[] = {"KNOTPOS","LOG10KNOTVAL"};
@@ -592,32 +606,32 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   for (unsigned int i = 0; i < model.getNKnots(); ++i) {
     double val;
     val = model.getKnotPosition(i);
-    fits_write_col(fp,TDOUBLE,1,i+1,1,1,&val,&status);
+    fits_write_col(fp, TDOUBLE, 1, i+1, 1, 1, &val, &status);
     val = model.getLog10KnotValue(i);
-    fits_write_col(fp,TDOUBLE,2,i+1,1,1,&val,&status);
+    fits_write_col(fp, TDOUBLE, 2, i+1, 1, 1, &val, &status);
   }
   int idxoff;
   idxoff = model.getNKnots();
   for (unsigned int i = 0; i < model.getNSigmaKnots(); ++i) {
     double val;
     val = model.getSigmaKnotPosition(i);
-    fits_write_col(fp,TDOUBLE,1,i+idxoff+1,1,1,&val,&status);
+    fits_write_col(fp, TDOUBLE, 1, i+idxoff+1, 1, 1, &val, &status);
     val = model.getSigmaKnotValue(i);
-    fits_write_col(fp,TDOUBLE,2,i+idxoff+1,1,1,&val,&status);
+    fits_write_col(fp, TDOUBLE, 2, i+idxoff+1, 1, 1, &val, &status);
   }
   idxoff += model.getNSigmaKnots();
   for (unsigned int i = 0; i < model.getNOffsetKnots(); ++i) {
     double val;
     val = model.getOffsetKnotPosition(i);
-    fits_write_col(fp,TDOUBLE,1,i+idxoff+1,1,1,&val,&status);
+    fits_write_col(fp, TDOUBLE, 1, i+idxoff+1, 1, 1, &val, &status);
     val = model.getOffsetKnotValue(i);
-    fits_write_col(fp,TDOUBLE,2,i+idxoff+1,1,1,&val,&status);
+    fits_write_col(fp, TDOUBLE, 2, i+idxoff+1, 1, 1, &val, &status);
   }
 
   //Close up and go home
-  fits_close_file(fp,&status);
+  fits_close_file(fp, &status);
   if (status) {
-    fits_report_error(stderr,status);
+    fits_report_error(stderr, status);
     return status;
   }
   return status;

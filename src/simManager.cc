@@ -400,50 +400,50 @@ int simManager::writeToFits(const std::string& outputfile) const {
 
   //Sim params
   dtmp = fwhm;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("FWHM"), &dtmp, 
-		  const_cast<char*>("Beam fwhm [arcsec]"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &dtmp, 
+		 const_cast<char*>("Beam fwhm [arcsec]"), 
+		 &status);
   dtmp = simim.getBeamSum();
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("BMAREA"), &dtmp, 
-		  const_cast<char*>("Beam area [pixels]"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREA"), &dtmp, 
+		 const_cast<char*>("Beam area [pixels]"), 
+		 &status);
   dtmp = simim.getBeamSumSq();
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("BMAREASQ"), &dtmp, 
-		  const_cast<char*>("Beam squared area [pixels]"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREASQ"), &dtmp, 
+		 const_cast<char*>("Beam squared area [pixels]"), 
+		 &status);
 
 
   if (do_extra_smooth) {
     int tmpi = 1;
-    fits_write_key( fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
-		    const_cast<char*>("Additional smoothing applied"), 
-		    &status );
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+		   const_cast<char*>("Additional smoothing applied"), 
+		   &status);
     dtmp = esmooth;
-    fits_write_key( fp, TDOUBLE, const_cast<char*>("ESMOOTH"), &dtmp, 
-		    const_cast<char*>("Extra smoothing fwhm [arcsec]"), 
-		    &status );
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH"), &dtmp, 
+		   const_cast<char*>("Extra smoothing fwhm [arcsec]"), 
+		   &status);
   } else {
     int tmpi = 0;
-    fits_write_key( fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
-		    const_cast<char*>("Additional smoothing applied"), 
-		    &status );
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+		   const_cast<char*>("Additional smoothing applied"), 
+		   &status);
   }
   dtmp = sig_i;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("SIGI"), &dtmp, 
-		  const_cast<char*>("Instrument noise"), 
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI"), &dtmp, 
+		 const_cast<char*>("Instrument noise"), 
+		 &status);
   if (do_extra_smooth) {
     dtmp = sig_i_sm;
-    fits_write_key( fp, TDOUBLE, const_cast<char*>("SIGISM"), &dtmp, 
-		    const_cast<char*>("Smoothed instrument noise"), 
-		    &status );
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGISM"), &dtmp, 
+		   const_cast<char*>("Smoothed instrument noise"), 
+		   &status);
   }
 
   if (oversample > 1) {
     utmp = oversample;
-    fits_write_key( fp, TUINT, const_cast<char*>("OVERSMPL"), &utmp, 
-		    const_cast<char*>("Oversampling factor"), 
-		    &status );
+    fits_write_key(fp, TUINT, const_cast<char*>("OVERSMPL"), &utmp, 
+		   const_cast<char*>("Oversampling factor"), 
+		   &status);
   }
 
   if (use_binning) {
@@ -523,22 +523,37 @@ int simManager::writeToFits(const std::string& outputfile) const {
 		     &status);
   fits_write_date(fp, &status);
 
-  //Now write out the data
-  fits_insert_rows( fp, 0, nsims, &status );
-  for (unsigned int i = 0; i < nsims; ++i) {
-    double val;
-    val = bestn0[i];
-    fits_write_col(fp,TDOUBLE,1,i+1,1,1,&val,&status);
-    val = bestlike[i];
-    fits_write_col(fp,TDOUBLE,2,i+1,1,1,&val,&status);
-    if (do_map_like) {
+  //Now write out the data.  We write the actual array of likelihoods
+  // (if present) as the logLikes minus bestlike so that we can use
+  // floats rather than doubles
+  fits_insert_rows(fp, 0, nsims, &status);
+  if (do_map_like) {
+    float *like_row = new float[nlike];
+    double *rowptr;
+    double val, blike;
+    for (unsigned int i = 0; i < nsims; ++i) {
+      val = bestn0[i];
+      fits_write_col(fp, TDOUBLE, 1, i+1, 1, 1, &val, &status);
+      blike = bestlike[i];
+      fits_write_col(fp, TDOUBLE, 2, i+1, 1, 1, &blike, &status);
       val = min_n0[i];
-      fits_write_col(fp,TDOUBLE,3,i+1,1,1,&val,&status);
+      fits_write_col(fp, TDOUBLE, 3, i+1, 1, 1, &val, &status);
       val = delta_n0[i];
-      fits_write_col(fp,TDOUBLE,4,i+1,1,1,&val,&status);
-      fits_write_col(fp,TDOUBLE,5,i+1,1,nlike,likearr[i],&status);
+      fits_write_col(fp, TDOUBLE, 4, i+1, 1, 1, &val, &status);
+      rowptr = likearr[i];
+      for (unsigned int j = 0; j < nlike; ++j)
+	like_row[j] = static_cast<float>(rowptr[j] - blike); 
+      fits_write_col(fp, TFLOAT, 5, i+1, 1, nlike, like_row, &status);
     }
-  }
+    delete[] like_row;
+  } else     
+    for (unsigned int i = 0; i < nsims; ++i) {
+      double val;
+      val = bestn0[i];
+      fits_write_col(fp,TDOUBLE,1,i+1,1,1,&val,&status);
+      val = bestlike[i];
+      fits_write_col(fp,TDOUBLE,2,i+1,1,1,&val,&status);
+    }
 
   //Add the model information to another extension
   char* mttype[] = {"KNOTPOS","LOG10KNOTVAL"};

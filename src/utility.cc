@@ -3,8 +3,10 @@
 #include<limits>
 #include<cstdlib>
 #include<algorithm>
+#include<sstream>
 
 #include "../include/utility.h"
+#include "../include/pofdExcept.h"
 
 /*! 
   Breaks an input string up into a vector of string, which correspond
@@ -238,240 +240,16 @@ unsigned int utility::log2( unsigned int val ) {
   }
 }
 
-utility::base_interp::base_interp() : M(0) {
-  c = NULL;
-  d = NULL;
-}
-
-/*!
-  \param[in] m The order of the polynomial+1
-*/
-utility::base_interp::base_interp( unsigned int m ) {
-  c = NULL;
-  d = NULL;
-  resize(m);
-}
-
-utility::base_interp::~base_interp() {
-  if (c != NULL) delete[] c;
-  if (d != NULL) delete[] d;
-  c = NULL;
-  d = NULL;
-}
-
-void utility::base_interp::resize(unsigned int m) {
-  if (c != NULL) delete[] c;
-  if (d != NULL) delete[] d;
-  M = m;
-  if (m == 0) {
-    c = NULL;
-    d = NULL;
-  } else {
-    c = new double[m];
-    d = new double[m];
-  }
-}
-
-utility::poly_interp::poly_interp() : base_interp() {}
-utility::poly_interp::poly_interp( unsigned int m ) : base_interp(m) {}
-utility::poly_interp::~poly_interp() {}
-
-/*!
-  \param[in] idx Lower interpolation range
-  \param[in] x   Value to get interpolant at
-  \param[in] n   Size of input data arrays
-  \param[in] xarr X positions
-  \param[in] yarr Y positions
-  \param[out] dy  Estimated error
-  \param[out] success Did it succeed?
-  \returns Value of interpolant at x
-
-  The data range xarr[idx:idx+M-1] is used for the interpolation.
- */
-double utility::poly_interp::interpol( unsigned int idx, double x,
-				       unsigned int n, double* xarr,
-				       double *yarr, double& dy,
-				       bool& success) const {
-
-  unsigned int ntab; //ntab is the closest table entry
-  double y, den, dif, dift, ho, hp, w; //y is the return value
-  success = false;
-  ntab=0;
-
-  if ( idx >= n ) {
-    std::cerr << "Invalid idx arg to poly_interp::interpol" << std::endl;
-    std::cerr << "idx is too large: " << idx << " can't be more than "
-	      << n << std::endl;
-    return 0.0;
-  }
-  if ( idx+M-1 >= n ) {
-    std::cerr << "Invalid idx arg to poly_interp::interpol" << std::endl;
-    std::cerr << "Maximum value used would be " << idx+M-1 << " only have "
-	      << n << std::endl;
-    return 0.0;
-  }
-
-  const double *xa, *ya;
-  xa = xarr+idx; 
-  ya = yarr+idx;
-
-  dif = fabs( x - xa[0] );
-  //ntab is the closest table entry
-  for (unsigned int i = 0; i < M; ++i) {
-    dift = fabs(x-xa[i]);
-    if ( dift < dif ) {
-      ntab = i;
-      dif = dift;
-    }
-    c[i] = ya[i];
-    d[i] = ya[i];
-  }
-  y = ya[ntab];
-  --ntab;
-  //Update the c/d values
-  for (unsigned int m = 1; m < M; ++m) {
-    for (unsigned int i = 0; i < M - m; ++i) {
-      ho = xa[i] - x;
-      hp = xa[i+m] - x;
-      w = c[i+1]-d[i];
-      den = ho - hp;
-      if (den == 0.0) {
-	std::cerr << "Polynomial interpolation/extrapolation error" 
-		  << std::endl;
-	return 0.0;
-      }
-      den = w / den;
-      d[i] = hp*den;
-      c[i] = ho*den;
-    }
-  
-    //Update dy
-    dy = 2*(ntab+1) < (M-m) ? c[ntab+1] : d[ntab--];
-    y += dy;
-  }
-  success = true;
-  return y;
-}
-
-utility::rat_interp::rat_interp() : base_interp() {}
-utility::rat_interp::rat_interp( unsigned int m ) : base_interp(m) {}
-utility::rat_interp::~rat_interp() {}
-
-/*!
-  \param[in] idx Lower interpolation range
-  \param[in] x   Value to get interpolant at
-  \param[in] n   Size of input data arrays
-  \param[in] xarr X positions
-  \param[in] yarr Y positions
-  \param[out] dy  Estimated error
-  \returns Value of interpolant at x
-
-  The data range xarr[idx:idx+M-1] is used for the interpolation.
- */
-double utility::rat_interp::interpol( unsigned int idx, double x,
-				      unsigned int n, double* xarr,
-				      double *yarr, double& dy,
-				      bool& success) const {
-  success = false;
-  const double tinyval = 1.0e-99;
-  unsigned int ntab;
-
-  if ( idx >= n ) {
-    std::cerr << "Invalid idx arg to poly_interp::interpol" << std::endl;
-    std::cerr << "idx is too large: " << idx << " can't be more than "
-	      << n << std::endl;
-    return 0.0;
-  }
-  if ( idx+M-1 >= n ) {
-    std::cerr << "Invalid idx arg to poly_interp::interpol" << std::endl;
-    std::cerr << "Maximum value used would be " << idx+M-1 << " only have "
-	      << n << std::endl;
-    return 0.0;
-  }
-
-  double y, w, t, hh, h, dd;
-  const double *xa = &xarr[idx], *ya = &yarr[idx];
-  hh = fabs(x-xa[0]);
-
-  //Initialize ntab to point to closest entry, and c/d vecs
-  ntab = 0;
-  for (unsigned int i=0; i < M; ++i) {
-    h = fabs(x-xa[i]);
-    if ( h == 0.0 ) {
-      dy = 0.0;
-      return ya[i];
-    }
-    if ( h < hh ) {
-      ntab = i;
-      hh = h;
-    }
-    c[i] = ya[i];
-    d[i] = ya[i]+tinyval;
-  }
-
-  y = ya[ntab];
-  --ntab;
-  for (unsigned int m = 1; m < M; ++m) {
-    for (unsigned int i = 0; i < M-m; ++i) {
-      w = c[i+1]-d[i];
-      h = xa[i+m]-x;
-      t = (xa[i]-x)*d[i]/h;
-      dd = t - c[i+1];
-      if (dd == 0.0) {
-	//Encountered a pole
-	std::cerr << "Error in rational interpolation" << std::endl;
-	return 0.0;
-      }
-      dd = w / dd;
-      d[i] = c[i+1]*dd;
-      c[i] = t*dd;
-    }
-    dy = 2*(ntab+1) < (M-m) ? c[ntab+1] : d[ntab--];
-    y += dy;
-  }
-  success = true;
-  return y;
-}
-
-/*
-  \param[in] knots Locations of knots
-  \param[in] knotvals Knot values
-
-  Translates knots, knotvals into smin, sbreak, smax, n0, gamma1, gamma2
-  parameterization if knots and knotvals are both length 3
- */
-std::vector<double> utility::translateParams(const std::vector<double>& knots, 
-					     const std::vector<double>& knotvals) {
-  if (knots.size() != 3) {
-    std::cerr << "Knots not expected length in translateParams" << std::endl;
-    std::exit(1);
-  }
-  if (knotvals.size() != 3) {
-    std::cerr << "Knotvals not expected length in translateParams" << std::endl;
-    std::exit(1);
-  }
-
-  std::vector<double> retvals(6);
-  double gamma1 = - log( knotvals[2]/knotvals[1] ) / 
-    log( knots[2] / knots[1] );
-  retvals[0] = knots[0]; //Smin
-  retvals[1] = knots[1]; //Sbreak
-  retvals[2] = knots[2]; //Smax
-  retvals[3] = knotvals[2] * pow( knots[2], gamma1 ); //N0
-  retvals[4] = gamma1; //Gamma1
-  retvals[5] = - log( knotvals[1]/knotvals[0] ) / 
-    log( knots[1] * knots[0] ); //Gamma2
-  return retvals;
-}
-
 double utility::logfactorial(double value) {
   //Lanzcos (1964), SIAM Journal on Numerical Analysis, ser B, vol 1., p 86
   if (value < 0) return std::numeric_limits<double>::quiet_NaN();
   if (value == 0 || value == 1) return 0.0;
   const unsigned int nterms = 14;
   double vp1, temp, y, series;
-  const double coeffs[nterms] = {57.1562356658629235,-59.5979603554754915,
-				 14.1360979747417471,-0.491913816097620199,
+  const double coeffs[nterms] = {57.1562356658629235,
+				 -59.5979603554754915,
+				 14.1360979747417471,
+				 -0.491913816097620199,
 				 0.339946499848118887e-4,
 				 0.465236289270485756e-4,
 				 -0.983744753048795646e-4,

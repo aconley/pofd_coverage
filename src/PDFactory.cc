@@ -601,10 +601,8 @@ edgeTime += std::clock() - starttime;
     str << "At length: " << n << " with noise: " << sigma;
     throw pofdExcept("PDFactory","getPD",str.str(),8);
   }
-  if (verbose) {
-    std::cerr << " Expected mean: " << shift+mn 
-	      << " Realized mean: " << tmn << std::endl;
-  }
+  if (verbose) std::cout << " Expected mean: " << shift+mn 
+			 << " Realized mean: " << tmn << std::endl;
   pd.minflux = -tmn;
 #ifdef TIMING
   meanTime += std::clock() - starttime;

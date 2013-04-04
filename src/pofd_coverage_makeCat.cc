@@ -59,8 +59,8 @@ int makeCatSingle(int argc, char **argv) {
     }
 
   if (optind >= argc-2 ) {
-    std::cerr << "Some required arguments missing" << std::endl;
-    std::cerr << " Use --help for description of inputs and options"
+    std::cout << "Some required arguments missing" << std::endl;
+    std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
     return 1;
   }
@@ -69,7 +69,7 @@ int makeCatSingle(int argc, char **argv) {
   outputfile = std::string(argv[optind + 2]);
 
   if (n0 == 0) {
-    std::cerr << "Invalid (non-positive) n0: " << n0 << std::endl;
+    std::cout << "Invalid (non-positive) n0: " << n0 << std::endl;
     return 1;
   }
 
@@ -142,11 +142,11 @@ int makeCatSingle(int argc, char **argv) {
     delete[] flux;
 
   } catch ( const pofdExcept& ex ) {
-    std::cerr << "Error encountered" << std::endl;
-    std::cerr << ex << std::endl;
+    std::cout << "Error encountered" << std::endl;
+    std::cout << ex << std::endl;
     return 8;
   } catch (const std::bad_alloc& ba) {
-    std::cerr << "Bad allocation error: " << ba.what() << std::endl;
+    std::cout << "Bad allocation error: " << ba.what() << std::endl;
     return 16;
   } 
 
@@ -183,8 +183,8 @@ int makeCatDouble(int argc, char **argv) {
     }
 
   if (optind >= argc-2 ) {
-    std::cerr << "Some required arguments missing" << std::endl;
-    std::cerr << " Use --help for description of inputs and options"
+    std::cout << "Some required arguments missing" << std::endl;
+    std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
     return 1;
   }
@@ -193,7 +193,7 @@ int makeCatDouble(int argc, char **argv) {
   outputfile = std::string(argv[optind + 2]);
 
   if (n0 == 0) {
-    std::cerr << "Invalid (non-positive) n0: " << n0 << std::endl;
+    std::cout << "Invalid (non-positive) n0: " << n0 << std::endl;
     return 1;
   }
 
@@ -276,11 +276,11 @@ int makeCatDouble(int argc, char **argv) {
     delete[] flux2;
 
   } catch ( const pofdExcept& ex ) {
-    std::cerr << "Error encountered" << std::endl;
-    std::cerr << ex << std::endl;
+    std::cout << "Error encountered" << std::endl;
+    std::cout << ex << std::endl;
     return 8;
   } catch (const std::bad_alloc& ba) {
-    std::cerr << "Bad allocation error: " << ba.what() << std::endl;
+    std::cout << "Bad allocation error: " << ba.what() << std::endl;
     return 16;
   } 
 
@@ -302,83 +302,83 @@ int main( int argc, char** argv ) {
 			    &option_index ) ) != -1 ) 
     switch(c) {
     case 'h' :
-      std::cerr << "NAME" << std::endl;
-      std::cerr << "\tpofd_coverage_makeCat -- make simulated catalog for"
+      std::cout << "NAME" << std::endl;
+      std::cout << "\tpofd_coverage_makeCat -- make simulated catalog for"
 		<< " a broken" << std::endl;
-      std::cerr << "\t power law type model."
+      std::cout << "\t power law type model."
 		<< std::endl;
-      std::cerr << std::endl;
-      std::cerr << "SYNOPSIS" << std::endl;
-      std::cerr << "\t  pofd_coverage_makeCat [options] modelfile n0 "
+      std::cout << std::endl;
+      std::cout << "SYNOPSIS" << std::endl;
+      std::cout << "\t  pofd_coverage_makeCat [options] modelfile n0 "
 		<< "outputfile" << std::endl;
-      std::cerr << "DESCRIPTION" << std::endl;
-      std::cerr << "\tCreates a simulated catalog for a given model, and writes"
+      std::cout << "DESCRIPTION" << std::endl;
+      std::cout << "\tCreates a simulated catalog for a given model, and writes"
 		<< " them" << std::endl;
-      std::cerr << "\tto outfile.  The number counts model in 1D is a broken"
+      std::cout << "\tto outfile.  The number counts model in 1D is a broken"
 		<< " power" << std::endl;
-      std::cerr << "\ta law model specified by modelfile, and the number of"
+      std::cout << "\ta law model specified by modelfile, and the number of"
 		<< std::endl;
-      std::cerr << "\tsources to generate is n0." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tIn the 2D case the model is the 1D model in band 1 times"
+      std::cout << "\tsources to generate is n0." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tIn the 2D case the model is the 1D model in band 1 times"
 		<< " a" << std::endl;
-      std::cerr << "\tLog-Normal distribution in flux2/flux1.  The mu and sigma"
+      std::cout << "\tLog-Normal distribution in flux2/flux1.  The mu and sigma"
 		<< " Log-Normal" << std::endl;
-      std::cerr << "\tmodel parameters are stored as splines as a function of"
+      std::cout << "\tmodel parameters are stored as splines as a function of"
 		<< " the" << std::endl;
-      std::cerr << "\tflux in the first band." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tmodelfile should be a text file.  In the 1D case it"
+      std::cout << "\tflux in the first band." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tmodelfile should be a text file.  In the 1D case it"
 		<< " should" << std::endl;
-      std::cerr << "\tconsist of nknots lines of the form: " 
+      std::cout << "\tconsist of nknots lines of the form: " 
 		<< std::endl << std::endl;
-      std::cerr << "\t\tflux_density n" << std::endl << std::endl;
-      std::cerr << "\twhere flux_density gives the positions of the knots"
+      std::cout << "\t\tflux_density n" << std::endl << std::endl;
+      std::cout << "\twhere flux_density gives the positions of the knots"
 		<< " in Jy" << std::endl;
-      std::cerr << "\tand n is the log10 differential number counts in"
+      std::cout << "\tand n is the log10 differential number counts in"
 		<< " deg^-2 Jy^-1" << std::endl;
-      std::cerr << "\tat the corresponding flux density.  Additional entries" 
+      std::cout << "\tat the corresponding flux density.  Additional entries" 
 		<< " on each"<< std::endl;
-      std::cerr << "\tline are ignored, and # denotes a comment line."
+      std::cout << "\tline are ignored, and # denotes a comment line."
 		<< std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tIn the 2D case the file should start with a line giving"
+      std::cout << std::endl;
+      std::cout << "\tIn the 2D case the file should start with a line giving"
 		<< " the" << std::endl;
-      std::cerr << "\tnumber of knots in the band 1 model, the number of"
+      std::cout << "\tnumber of knots in the band 1 model, the number of"
 		<< " knots in" << std::endl;
-      std::cerr << "\tthe sigma spline, and then the number in the mu spline."
+      std::cout << "\tthe sigma spline, and then the number in the mu spline."
 		<< " This" << std::endl;
-      std::cerr << "\tshould be followed by nknots + nspline + nmu lines"
+      std::cout << "\tshould be followed by nknots + nspline + nmu lines"
 		<< std::endl;
-      std::cerr << "\tof the same form as the 1D model, with the first nknots"
+      std::cout << "\tof the same form as the 1D model, with the first nknots"
 		<< std::endl;
-      std::cerr << "\tspecifying the band 1 model as in the 1D case, and the"
+      std::cout << "\tspecifying the band 1 model as in the 1D case, and the"
 		<< std::endl;
-      std::cerr << "\tfollowing lines giving the knot positions and values"
+      std::cout << "\tfollowing lines giving the knot positions and values"
 		<< " for" << std::endl;
-      std::cerr << "\tof the sigma and mu splines." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "OPTIONS" << std::endl;
-      std::cerr << "\t-d, --double" << std::endl;
-      std::cerr << "\t\tUse the 2D model." << std::endl;
-      std::cerr << "\t-h --help" << std::endl;
-      std::cerr << "\t\tPrint this message and exit." << std::endl;
-      std::cerr << "\t--S, --seed SEED" << std::endl;
-      std::cerr << "\t\tUse this seed for the random number generator." 
+      std::cout << "\tof the sigma and mu splines." << std::endl;
+      std::cout << std::endl;
+      std::cout << "OPTIONS" << std::endl;
+      std::cout << "\t-d, --double" << std::endl;
+      std::cout << "\t\tUse the 2D model." << std::endl;
+      std::cout << "\t-h --help" << std::endl;
+      std::cout << "\t\tPrint this message and exit." << std::endl;
+      std::cout << "\t--S, --seed SEED" << std::endl;
+      std::cout << "\t\tUse this seed for the random number generator." 
 		<< std::endl;
-      std::cerr << "\t-v, --verbose" << std::endl;
-      std::cerr << "\t\tPrint informational messages while running"
+      std::cout << "\t-v, --verbose" << std::endl;
+      std::cout << "\t\tPrint informational messages while running"
 		<< std::endl;
-      std::cerr << "\t-V, --version" << std::endl;
-      std::cerr << "\t\tOutput version number and exit" << std::endl;
-      std::cerr << "ONE-DIMENSIONAL OPTIONS" << std::endl;
+      std::cout << "\t-V, --version" << std::endl;
+      std::cout << "\t\tOutput version number and exit" << std::endl;
+      std::cout << "ONE-DIMENSIONAL OPTIONS" << std::endl;
       return 0;
       break;
     case 'd' :
       twod = true;
       break;
     case 'V' :
-      std::cerr << "pofd_coverage version number: " << pofd_coverage::version 
+      std::cout << "pofd_coverage version number: " << pofd_coverage::version 
 		<< std::endl;
       return 0;
       break;

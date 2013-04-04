@@ -123,8 +123,8 @@ int runSimSingle(int argc, char **argv) {
     }
 
   if (optind >= argc-6 ) {
-    std::cerr << "Some required arguments missing" << std::endl;
-    std::cerr << " Use --help for description of inputs and options"
+    std::cout << "Some required arguments missing" << std::endl;
+    std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
     return 1;
   }
@@ -137,51 +137,51 @@ int runSimSingle(int argc, char **argv) {
   outputfile = std::string(argv[optind + 6]);
 
   if (sigma < 0.0) {
-    std::cerr << "Invalid instrument noise level: must be >= 0.0" << std::endl;
+    std::cout << "Invalid instrument noise level: must be >= 0.0" << std::endl;
     return 1;
   }
   if (n0initrange <= 0.0) {
-    std::cerr << "Invalid n0initrange: must be > 0" << std::endl;
+    std::cout << "Invalid n0initrange: must be > 0" << std::endl;
     return 1;
   }
   if (n0initrange >= 1.0) {
-    std::cerr << "Invalid n0initrange: must be < 1" << std::endl;
+    std::cout << "Invalid n0initrange: must be < 1" << std::endl;
     return 1;
   }
   if (fwhm <= 0.0) {
-    std::cerr << "Invalid (non-positive) FWHM" << std::endl;
+    std::cout << "Invalid (non-positive) FWHM" << std::endl;
     return 1;
   }
   if (esmooth < 0.0) {
-    std::cerr << "Invalid (negative) additional smoothing" << std::endl;
+    std::cout << "Invalid (negative) additional smoothing" << std::endl;
     return 1;
   }
   if (use_binning && nbins == 0) {
-    std::cerr << "Invalid (zero) number of bins" << std::endl;
+    std::cout << "Invalid (zero) number of bins" << std::endl;
     return 1;
   }
   if (oversample == 0) {
-    std::cerr << "Invalid (non-positive) oversampling" << std::endl;
+    std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
   if (n0 <= 0.0) {
-    std::cerr << "Invalid (non-positve) n0" << std::endl;
+    std::cout << "Invalid (non-positve) n0" << std::endl;
     return 1;
   }
   if (pixsize <= 0.0) {
-    std::cerr << "Invalid (non-positve) pixsize" << std::endl;
+    std::cout << "Invalid (non-positve) pixsize" << std::endl;
     return 1;
   }
   if (n1*n2 == 0) {
-    std::cerr << "Simulated image has zero size" << std::endl;
+    std::cout << "Simulated image has zero size" << std::endl;
     return 1;
   }
   if (map_like && n0rangefrac <= 0.0) {
-    std::cerr << "Invalid n0rangefrac: must be > 0" << std::endl;
+    std::cout << "Invalid n0rangefrac: must be > 0" << std::endl;
     return 1;
   }
   if (map_like && n0rangefrac >= 1.0) {
-    std::cerr << "Invalid n0rangefrac: must be < 1" << std::endl;
+    std::cout << "Invalid n0rangefrac: must be < 1" << std::endl;
     return 1;
   }
 
@@ -228,11 +228,11 @@ int runSimSingle(int argc, char **argv) {
     int status = sim.writeToFits(outputfile);
     if (status != 0) return status;
   } catch (const pofdExcept& ex) {
-    std::cerr << "Error encountered" << std::endl;
-    std::cerr << ex << std::endl;
+    std::cout << "Error encountered" << std::endl;
+    std::cout << ex << std::endl;
     return 8;
   } catch (const std::bad_alloc& ba) {
-    std::cerr << "Bad allocation error: " << ba.what() << std::endl;
+    std::cout << "Bad allocation error: " << ba.what() << std::endl;
     return 16;
   } 
 
@@ -333,8 +333,8 @@ int runSimDouble(int argc, char **argv) {
     }
 
   if (optind >= argc-7 ) {
-    std::cerr << "Some required arguments missing" << std::endl;
-    std::cerr << " Use --help for description of inputs and options"
+    std::cout << "Some required arguments missing" << std::endl;
+    std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
     return 1;
   }
@@ -348,67 +348,67 @@ int runSimDouble(int argc, char **argv) {
   outputfile = std::string(argv[optind + 7]);
 
   if (sigma1 < 0.0) {
-    std::cerr << "Invalid instrument noise level, band 1: must be >= 0.0 "
+    std::cout << "Invalid instrument noise level, band 1: must be >= 0.0 "
 	      << "but is: " << sigma1 << std::endl;
     return 1;
   }
   if (sigma1 < 0.0) {
-    std::cerr << "Invalid instrument noise level, band 2: must be >= 0.0 "
+    std::cout << "Invalid instrument noise level, band 2: must be >= 0.0 "
 	      << "but is: " << sigma2 << std::endl;
     return 1;
   }
   if (n0initrange <= 0.0) {
-    std::cerr << "Invalid n0initrange: must be > 0" << std::endl;
+    std::cout << "Invalid n0initrange: must be > 0" << std::endl;
     return 1;
   }
   if (n0initrange >= 1.0) {
-    std::cerr << "Invalid n0initrange: must be < 1" << std::endl;
+    std::cout << "Invalid n0initrange: must be < 1" << std::endl;
     return 1;
   }
   if (fwhm1 <= 0.0) {
-    std::cerr << "Invalid (non-positive) FWHM, band 1: " << fwhm1 << std::endl;
+    std::cout << "Invalid (non-positive) FWHM, band 1: " << fwhm1 << std::endl;
     return 1;
   }
   if (fwhm2 <= 0.0) {
-    std::cerr << "Invalid (non-positive) FWHM, band 2: " << fwhm2 << std::endl;
+    std::cout << "Invalid (non-positive) FWHM, band 2: " << fwhm2 << std::endl;
     return 1;
   }
   if (esmooth1 < 0.0) {
-    std::cerr << "Invalid (negative) additional smoothing, band 1:" 
+    std::cout << "Invalid (negative) additional smoothing, band 1:" 
 	      << esmooth1 << std::endl;
     return 1;
   }
   if (esmooth2 < 0.0) {
-    std::cerr << "Invalid (negative) additional smoothing, band 2:" 
+    std::cout << "Invalid (negative) additional smoothing, band 2:" 
 	      << esmooth2 << std::endl;
     return 1;
   }
   if (use_binning && nbins == 0) {
-    std::cerr << "Invalid (zero) number of bins" << std::endl;
+    std::cout << "Invalid (zero) number of bins" << std::endl;
     return 1;
   }
   if (oversample == 0) {
-    std::cerr << "Invalid (non-positive) oversampling" << std::endl;
+    std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
   if (n0 <= 0.0) {
-    std::cerr << "Invalid (non-positve) n0" << std::endl;
+    std::cout << "Invalid (non-positve) n0" << std::endl;
     return 1;
   }
   if (pixsize <= 0.0) {
-    std::cerr << "Invalid (non-positve) pixsize" << std::endl;
+    std::cout << "Invalid (non-positve) pixsize" << std::endl;
     return 1;
   }
   if (n1*n2 == 0) {
-    std::cerr << "Simulated image has zero size" << std::endl;
+    std::cout << "Simulated image has zero size" << std::endl;
     return 1;
   }
   if (map_like && n0rangefrac <= 0.0) {
-    std::cerr << "Invalid n0rangefrac: must be > 0" << std::endl;
+    std::cout << "Invalid n0rangefrac: must be > 0" << std::endl;
     return 1;
   }
   if (map_like && n0rangefrac >= 1.0) {
-    std::cerr << "Invalid n0rangefrac: must be < 1" << std::endl;
+    std::cout << "Invalid n0rangefrac: must be < 1" << std::endl;
     return 1;
   }
 
@@ -460,11 +460,11 @@ int runSimDouble(int argc, char **argv) {
     int status = sim.writeToFits(outputfile);
     if (status != 0) return status;
   } catch (const pofdExcept& ex) {
-    std::cerr << "Error encountered" << std::endl;
-    std::cerr << ex << std::endl;
+    std::cout << "Error encountered" << std::endl;
+    std::cout << ex << std::endl;
     return 8;
   } catch (const std::bad_alloc& ba) {
-    std::cerr << "Bad allocation error: " << ba.what() << std::endl;
+    std::cout << "Bad allocation error: " << ba.what() << std::endl;
     return 16;
   } 
 
@@ -489,172 +489,172 @@ int main(int argc, char **argv) {
 			    &option_index ) ) != -1 ) 
     switch(c) {
     case 'h' :
-      std::cerr << "NAME" << std::endl;
-      std::cerr << "\tpofd_coverage_runSim -- make a set of "
+      std::cout << "NAME" << std::endl;
+      std::cout << "\tpofd_coverage_runSim -- make a set of "
 		<< "simulated images for" << std::endl;
-      std::cerr << "\t a broken power law model with a"
+      std::cout << "\t a broken power law model with a"
 		<< " Gaussian beam (1D) and" << std::endl;
-      std::cerr << "\t measure the number of objects per sq deg from them."
+      std::cout << "\t measure the number of objects per sq deg from them."
 		<< std::endl;
-      std::cerr << "\t The 2D case uses the same 1D model paired with a"
+      std::cout << "\t The 2D case uses the same 1D model paired with a"
 		<< " log-normal" << std::endl;
-      std::cerr << "\t color model in flux_2/flux_1." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "SYNOPSIS" << std::endl;
-      std::cerr << "\t One-dimensional case:" << std::endl;
-      std::cerr << "\t  pofd_coverage_runSim [options] n0 modelfile "
+      std::cout << "\t color model in flux_2/flux_1." << std::endl;
+      std::cout << std::endl;
+      std::cout << "SYNOPSIS" << std::endl;
+      std::cout << "\t One-dimensional case:" << std::endl;
+      std::cout << "\t  pofd_coverage_runSim [options] n0 modelfile "
 		<< "fwhm pixsize n1 n2" << std::endl;
-      std::cerr << "\t    outputfile" << std::endl;      
-      std::cerr << std::endl;
-      std::cerr << "\t Two-dimensional case:" << std::endl;
-      std::cerr << "\t  pofd_coverage_runSim [options] -d n0 modelfile "
+      std::cout << "\t    outputfile" << std::endl;      
+      std::cout << std::endl;
+      std::cout << "\t Two-dimensional case:" << std::endl;
+      std::cout << "\t  pofd_coverage_runSim [options] -d n0 modelfile "
 		<< "fwhm1 fwhm2 pixsize" << std::endl;
-      std::cerr << "\t    n1 n2 outputfile" << std::endl;
-      std::cerr << "DESCRIPTION" << std::endl;
-      std::cerr << "\tCreates simulated images for a given model, computes the"
+      std::cout << "\t    n1 n2 outputfile" << std::endl;
+      std::cout << "DESCRIPTION" << std::endl;
+      std::cout << "\tCreates simulated images for a given model, computes the"
 		<< " P(D)" << std::endl;
-      std::cerr << "\tfor a range of input n0 values, and finds the best"
+      std::cout << "\tfor a range of input n0 values, and finds the best"
 		<< " fitting value" << std::endl;
-      std::cerr << "\tof n0 for each image.  Optionally, this is then followed"
+      std::cout << "\tof n0 for each image.  Optionally, this is then followed"
 		<< " by" << std::endl;
-      std::cerr << "\tmapping out a range of n0 values around the best fit and"
+      std::cout << "\tmapping out a range of n0 values around the best fit and"
 		<< " storing" << std::endl;
-      std::cerr << "\tthe resulting log likelihood.  The results are written to"
+      std::cout << "\tthe resulting log likelihood.  The results are written to"
 		<< " outputfile" << std::endl;
-      std::cerr << "\tas a FITS binary table." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tThe number counts model in 1D is a broken "
+      std::cout << "\tas a FITS binary table." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tThe number counts model in 1D is a broken "
 		<< "power law" << std::endl;
-      std::cerr << "\tmodel specified by modelfile, and by the number of"
+      std::cout << "\tmodel specified by modelfile, and by the number of"
 		<< std::endl;
-      std::cerr << "\tsources per unit area n0." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tIn the 2D case the model is the 1D model in band 1 times"
+      std::cout << "\tsources per unit area n0." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tIn the 2D case the model is the 1D model in band 1 times"
 		<< " a" << std::endl;
-      std::cerr << "\tLog-Normal distribution in flux2/flux1.  The mu and sigma"
+      std::cout << "\tLog-Normal distribution in flux2/flux1.  The mu and sigma"
 		<< " Log-Normal" << std::endl;
-      std::cerr << "\tmodel parameters are stored as splines as a function of"
+      std::cout << "\tmodel parameters are stored as splines as a function of"
 		<< " the" << std::endl;
-      std::cerr << "\tflux in the first band." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tmodelfile should be a text file.  For 1D it consists of"
+      std::cout << "\tflux in the first band." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tmodelfile should be a text file.  For 1D it consists of"
 		<< " nknots" << std::endl;
-      std::cerr << "\tlines of the form:" << std::endl << std::endl;
-      std::cerr << "\t\tflux_density n" << std::endl << std::endl;
-      std::cerr << "\twhere flux_density gives the positions of the knots"
+      std::cout << "\tlines of the form:" << std::endl << std::endl;
+      std::cout << "\t\tflux_density n" << std::endl << std::endl;
+      std::cout << "\twhere flux_density gives the positions of the knots"
 		<< " in Jy" << std::endl;
-      std::cerr << "\tand n is the log10 differential number counts in"
+      std::cout << "\tand n is the log10 differential number counts in"
 		<< " deg^-2 Jy^-1" << std::endl;
-      std::cerr << "\tat the corresponding flux density.  Additional entries" 
+      std::cout << "\tat the corresponding flux density.  Additional entries" 
 		<< " on each"<< std::endl;
-      std::cerr << "\tline are ignored, and # denotes a comment line."
+      std::cout << "\tline are ignored, and # denotes a comment line."
 		<< std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tIn the 2D case the file should start with a line giving"
+      std::cout << std::endl;
+      std::cout << "\tIn the 2D case the file should start with a line giving"
 		<< " the" << std::endl;
-      std::cerr << "\tnumber of knots in the band 1 model, the number of"
+      std::cout << "\tnumber of knots in the band 1 model, the number of"
 		<< " knots in" << std::endl;
-      std::cerr << "\tthe sigma spline, and then the number in the mu spline."
+      std::cout << "\tthe sigma spline, and then the number in the mu spline."
 		<< " This" << std::endl;
-      std::cerr << "\tshould be followed by nknots + nspline + nmu lines"
+      std::cout << "\tshould be followed by nknots + nspline + nmu lines"
 		<< std::endl;
-      std::cerr << "\tof the same form as the 1D model, with the first nknots"
+      std::cout << "\tof the same form as the 1D model, with the first nknots"
 		<< std::endl;
-      std::cerr << "\tspecifying the band 1 model as in the 1D case, and the"
+      std::cout << "\tspecifying the band 1 model as in the 1D case, and the"
 		<< std::endl;
-      std::cerr << "\tfollowing lines giving the knot positions and values"
+      std::cout << "\tfollowing lines giving the knot positions and values"
 		<< " for" << std::endl;
-      std::cerr << "\tof the sigma and mu splines." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tfwhm is the beam FWHM in arcsec , and the beam is "
+      std::cout << "\tof the sigma and mu splines." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tfwhm is the beam FWHM in arcsec , and the beam is "
 		<< "assumed" << std::endl;
-      std::cerr << "\tGaussian.  In 2D, fwhm1 and fwhm2 are the FWHM values for"
+      std::cout << "\tGaussian.  In 2D, fwhm1 and fwhm2 are the FWHM values for"
 		<< std::endl;
-      std::cerr << "\tband." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tPixsize gives the pixel size (in arcsec), n1 and n2 give"
+      std::cout << "\tband." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tPixsize gives the pixel size (in arcsec), n1 and n2 give"
 		<< " the" << std::endl;
-      std::cerr << "\tnumber of pixels along each dimension in the simulated "
+      std::cout << "\tnumber of pixels along each dimension in the simulated "
 		<< "data." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "OPTIONS" << std::endl;
-      std::cerr << "\t-h --help" << std::endl;
-      std::cerr << "\t\tPrint this message and exit." << std::endl;
-      std::cerr << "\t-b, --bin" << std::endl;
-      std::cerr << "\t\tBin the simulated image for the likelihood calculation."
+      std::cout << std::endl;
+      std::cout << "OPTIONS" << std::endl;
+      std::cout << "\t-h --help" << std::endl;
+      std::cout << "\t\tPrint this message and exit." << std::endl;
+      std::cout << "\t-b, --bin" << std::endl;
+      std::cout << "\t\tBin the simulated image for the likelihood calculation."
 		<< std::endl;
-      std::cerr << "\t-f, --fftsize FFTSIZE" << std::endl;
-      std::cerr << "\t\tSize of FFT to use when computing P(D) (def: 131072 in"
+      std::cout << "\t-f, --fftsize FFTSIZE" << std::endl;
+      std::cout << "\t\tSize of FFT to use when computing P(D) (def: 131072 in"
 		<< std::endl;
-      std::cerr << "\t\tone dimension and 4096 in two dimensions.)" 
+      std::cout << "\t\tone dimension and 4096 in two dimensions.)" 
 		<< std::endl;
-      std::cerr << "\t--nbins NBINS" << std::endl;
-      std::cerr << "\t\tNumber of bins to use if binning simulated image."
+      std::cout << "\t--nbins NBINS" << std::endl;
+      std::cout << "\t\tNumber of bins to use if binning simulated image."
 		<< std::endl;
-      std::cerr << "\t-n, --nsims NSIMS" << std::endl;
-      std::cerr << "\t\tThe number of simulations to do (def: 100)." 
+      std::cout << "\t-n, --nsims NSIMS" << std::endl;
+      std::cout << "\t\tThe number of simulations to do (def: 100)." 
 		<< std::endl;
-      std::cerr << "\t-N, --nolike" << std::endl;
-      std::cerr << "\t\tDo not map out the likelihood values." << std::endl;
-      std::cerr << "\t--nlike NLIKE" << std::endl;
-      std::cerr << "\t\tThe number of likelihoods to compute for each sim if" 
+      std::cout << "\t-N, --nolike" << std::endl;
+      std::cout << "\t\tDo not map out the likelihood values." << std::endl;
+      std::cout << "\t--nlike NLIKE" << std::endl;
+      std::cout << "\t\tThe number of likelihoods to compute for each sim if" 
 		<< std::endl;
-      std::cerr << "\t\t --nolike is not set (def: 500)." << std::endl;
-      std::cerr << "\t--n0initrange N0INITRANGE" << std::endl;
-      std::cerr << "\t\tFractional range used to bracket likelihood in "
+      std::cout << "\t\t --nolike is not set (def: 500)." << std::endl;
+      std::cout << "\t--n0initrange N0INITRANGE" << std::endl;
+      std::cout << "\t\tFractional range used to bracket likelihood in "
 		<< "initial" << std::endl;
-      std::cerr << "\t\tsearch for maximum likelihood (def: 0.15)."
+      std::cout << "\t\tsearch for maximum likelihood (def: 0.15)."
 		<< std::endl;
-      std::cerr << "\t--n0rangefrac N0RANGEFRAC" << std::endl;
-      std::cerr << "\t\tThe fractional range in n0 to explore in each "
+      std::cout << "\t--n0rangefrac N0RANGEFRAC" << std::endl;
+      std::cout << "\t\tThe fractional range in n0 to explore in each "
 		<< "direction" << std::endl;
-      std::cerr << "\t\tif doing likelihood map (def: 0.1)."
+      std::cout << "\t\tif doing likelihood map (def: 0.1)."
 		<< std::endl;
-      std::cerr << "\t-o, --oversample VALUE" << std::endl;
-      std::cerr << "\t\tAmount of oversampling to use (integral) when " 
+      std::cout << "\t-o, --oversample VALUE" << std::endl;
+      std::cout << "\t\tAmount of oversampling to use (integral) when " 
 		<< "generating" << std::endl;
-      std::cerr << "\t\timage.  The data is then down-binned to the specified"
+      std::cout << "\t\timage.  The data is then down-binned to the specified"
 		<< "size." << std::endl;
-      std::cerr << "\t\tThe default is to apply no oversampling." << std::endl;
-      std::cerr << "\t-S, --seed SEED" << std::endl;
-      std::cerr << "\t\tSet user specified seed, otherwise taken from time."
+      std::cout << "\t\tThe default is to apply no oversampling." << std::endl;
+      std::cout << "\t-S, --seed SEED" << std::endl;
+      std::cout << "\t\tSet user specified seed, otherwise taken from time."
 		<< std::endl;
-      std::cerr << "\t-v, --verbose" << std::endl;
-      std::cerr << "\t\tPrint informational messages while running"
+      std::cout << "\t-v, --verbose" << std::endl;
+      std::cout << "\t\tPrint informational messages while running"
 		<< std::endl;
-      std::cerr << "\t-V, --version" << std::endl;
-      std::cerr << "\t\tOutput version number and exit" << std::endl;
-      std::cerr << "\t-w, --wisdom wisdomfile" << std::endl;
-      std::cerr << "\t\tName of wisdom file (prepared with fftw-wisdom)." 
+      std::cout << "\t-V, --version" << std::endl;
+      std::cout << "\t\tOutput version number and exit" << std::endl;
+      std::cout << "\t-w, --wisdom wisdomfile" << std::endl;
+      std::cout << "\t\tName of wisdom file (prepared with fftw-wisdom)." 
 		<< std::endl;
-      std::cerr << "ONE-DIMENSIONAL OPTIONS" << std::endl;
-      std::cerr << "\t-e, --esmooth ESMOOTH" << std::endl;
-      std::cerr << "\t\tExtra smoothing FWHM (in arcsec)" << std::endl;
-      std::cerr << "\t-o, --oversample VALUE" << std::endl;
-      std::cerr << "\t\tAmount of oversampling to use (integral) when " 
+      std::cout << "ONE-DIMENSIONAL OPTIONS" << std::endl;
+      std::cout << "\t-e, --esmooth ESMOOTH" << std::endl;
+      std::cout << "\t\tExtra smoothing FWHM (in arcsec)" << std::endl;
+      std::cout << "\t-o, --oversample VALUE" << std::endl;
+      std::cout << "\t\tAmount of oversampling to use (integral) when " 
 		<< "generating" << std::endl;
-      std::cerr << "\t\timage.  The data is then down-binned to the specified"
+      std::cout << "\t\timage.  The data is then down-binned to the specified"
 		<< "size." << std::endl;
-      std::cerr << "\t\tThe default is to apply no oversampling." << std::endl;
-      std::cerr << "\t-s, --sigma noise" << std::endl;
-      std::cerr << "\t\tThe assumed per-pixel noise (assumed Gaussian).  This"
+      std::cout << "\t\tThe default is to apply no oversampling." << std::endl;
+      std::cout << "\t-s, --sigma noise" << std::endl;
+      std::cout << "\t\tThe assumed per-pixel noise (assumed Gaussian).  This"
 		<< " is" << std::endl;
-      std::cerr << "\t\tthe level before any extra smoothing (def: 0.002)."
+      std::cout << "\t\tthe level before any extra smoothing (def: 0.002)."
 		<< std::endl;
-      std::cerr << "TWO-DIMENSIONAL OPTIONS" << std::endl;
-      std::cerr << "\t---esmooth1 ESMOOTH" << std::endl;
-      std::cerr << "\t\tExtra smoothing FWHM (in arcsec), band 1" << std::endl;
-      std::cerr << "\t---esmooth2 ESMOOTH" << std::endl;
-      std::cerr << "\t\tExtra smoothing FWHM (in arcsec), band 2" << std::endl;
-      std::cerr << "\t--sigma1 noise" << std::endl;
-      std::cerr << "\t\tThe assumed per-pixel noise (assumed Gaussian), band1."
+      std::cout << "TWO-DIMENSIONAL OPTIONS" << std::endl;
+      std::cout << "\t---esmooth1 ESMOOTH" << std::endl;
+      std::cout << "\t\tExtra smoothing FWHM (in arcsec), band 1" << std::endl;
+      std::cout << "\t---esmooth2 ESMOOTH" << std::endl;
+      std::cout << "\t\tExtra smoothing FWHM (in arcsec), band 2" << std::endl;
+      std::cout << "\t--sigma1 noise" << std::endl;
+      std::cout << "\t\tThe assumed per-pixel noise (assumed Gaussian), band1."
 		<< " This" << std::endl;
-      std::cerr << "\t\tis the level before any extra smoothing (def: 0.002)."
+      std::cout << "\t\tis the level before any extra smoothing (def: 0.002)."
 		<< std::endl;
-      std::cerr << "\t--sigma2 noise" << std::endl;
-      std::cerr << "\t\tThe assumed per-pixel noise (assumed Gaussian), band2."
+      std::cout << "\t--sigma2 noise" << std::endl;
+      std::cout << "\t\tThe assumed per-pixel noise (assumed Gaussian), band2."
 		<< " This" << std::endl;
-      std::cerr << "\t\tis the level before any extra smoothing (def: 0.002)."
+      std::cout << "\t\tis the level before any extra smoothing (def: 0.002)."
 		<< std::endl;
       return 0;
       break;
@@ -662,7 +662,7 @@ int main(int argc, char **argv) {
       twod = true;
       break;
     case 'V' :
-      std::cerr << "pofd_coverage version number: " << pofd_coverage::version 
+      std::cout << "pofd_coverage version number: " << pofd_coverage::version 
 		<< std::endl;
       return 0;
       break;

@@ -107,8 +107,8 @@ int getPDSingle(int argc, char **argv) {
     }
 
   if (optind >= argc - 4) {
-    std::cerr << "Some required arguments missing" << std::endl;
-    std::cerr << " Use --help for description of inputs and options"
+    std::cout << "Some required arguments missing" << std::endl;
+    std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
     return 1;
   }
@@ -122,40 +122,40 @@ int getPDSingle(int argc, char **argv) {
 
   //Input tests
   if (nflux == 0) {
-    std::cerr << "Error -- number of fluxes requested is zero."
+    std::cout << "Error -- number of fluxes requested is zero."
 	      << std::endl;
     return 1;
   }
   if (nflux & (nflux-1)) {
-    std::cerr << "nflux must be power of 2" << std::endl;
-    std::cerr << " yours is: " << nflux << std::endl;
+    std::cout << "nflux must be power of 2" << std::endl;
+    std::cout << " yours is: " << nflux << std::endl;
     return 1;
   }
   if (sigma < 0.0) {
-    std::cerr << "Invalid noise level: must be >= 0.0" << std::endl;
+    std::cout << "Invalid noise level: must be >= 0.0" << std::endl;
     return 1;
   }
   if (n0 <= 0.0) {
-    std::cerr << "Invalid (non-positive) number of sources per area"
+    std::cout << "Invalid (non-positive) number of sources per area"
 	      << std::endl;
     return 1;
   }
   if (nbins == 0) {
-    std::cerr << "Invalid (non-positive) number of beam histogram bins"
+    std::cout << "Invalid (non-positive) number of beam histogram bins"
 	      << std::endl;
     return 1;
   }
   if (fwhm <= 0.0) {
-    std::cerr << "Invalid (non-positive) FWHM" << std::endl;
+    std::cout << "Invalid (non-positive) FWHM" << std::endl;
     return 1;
   }
   if (nfwhm <= 0) {
-    std::cerr << "Invalid (non-positive) number of beam FWHMs"
+    std::cout << "Invalid (non-positive) number of beam FWHMs"
 	      << std::endl;
     return 1;
   }
   if (pixsize >= fwhm/2.0) {
-    std::cerr << "Insufficient (FWHM/2) beam sampling based on pixel size"
+    std::cout << "Insufficient (FWHM/2) beam sampling based on pixel size"
 	      << std::endl;
     return 1;
   }
@@ -174,7 +174,7 @@ int getPDSingle(int argc, char **argv) {
 		<< std::endl;
       success = pfactory.addWisdom(wisdom_file);
       if (!success) {
-	std::cerr << "Error reading wisdom file: " << wisdom_file << std::endl;
+	std::cout << "Error reading wisdom file: " << wisdom_file << std::endl;
 	return 4;
       }
     }
@@ -215,7 +215,7 @@ int getPDSingle(int argc, char **argv) {
     } else {
       std::ofstream ofs(outputfile.c_str());
       if (!ofs) {
-	std::cerr << "Error opening output file: " << outputfile
+	std::cout << "Error opening output file: " << outputfile
 		  << std::endl;
 	return 64;
       }
@@ -223,11 +223,11 @@ int getPDSingle(int argc, char **argv) {
       ofs.close();
     }
   } catch ( const pofdExcept& ex ) {
-    std::cerr << "Error encountered" << std::endl;
-    std::cerr << ex << std::endl;
+    std::cout << "Error encountered" << std::endl;
+    std::cout << ex << std::endl;
     return 8;
   } catch (const std::bad_alloc& ba) {
-    std::cerr << "Bad allocation error: " << ba.what() << std::endl;
+    std::cout << "Bad allocation error: " << ba.what() << std::endl;
     return 16;
   } 
 
@@ -308,8 +308,8 @@ int getPDDouble(int argc, char **argv) {
     }
 
   if (optind >= argc - 6) {
-    std::cerr << "Some required arguments missing" << std::endl;
-    std::cerr << " Use --help for description of inputs and options"
+    std::cout << "Some required arguments missing" << std::endl;
+    std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
     return 1;
   }
@@ -326,48 +326,48 @@ int getPDDouble(int argc, char **argv) {
 
   //Input tests
   if (nflux == 0) {
-    std::cerr << "Error -- number of fluxes requested is zero."
+    std::cout << "Error -- number of fluxes requested is zero."
 	      << std::endl;
     return 1;
   }
   if (nflux & (nflux-1)) {
-    std::cerr << "nflux must be power of 2" << std::endl;
-    std::cerr << " yours is: " << nflux << std::endl;
+    std::cout << "nflux must be power of 2" << std::endl;
+    std::cout << " yours is: " << nflux << std::endl;
     return 1;
   }
   if (sigma1 < 0.0) {
-    std::cerr << "Invalid noise level (band1): must be >= 0.0" << std::endl;
+    std::cout << "Invalid noise level (band1): must be >= 0.0" << std::endl;
     return 1;
   }
   if (sigma2 < 0.0) {
-    std::cerr << "Invalid noise level (band2): must be >= 0.0" << std::endl;
+    std::cout << "Invalid noise level (band2): must be >= 0.0" << std::endl;
     return 1;
   }
   if (n0 <= 0.0) {
-    std::cerr << "Invalid (non-positive) number of sources per area"
+    std::cout << "Invalid (non-positive) number of sources per area"
 	      << std::endl;
     return 1;
   }
   if (nbins == 0) {
-    std::cerr << "Invalid (non-positive) number of beam histogram bins"
+    std::cout << "Invalid (non-positive) number of beam histogram bins"
 	      << std::endl;
     return 1;
   }
   if (fwhm1 <= 0.0) {
-    std::cerr << "Invalid (non-positive) FWHM (band 1)" << std::endl;
+    std::cout << "Invalid (non-positive) FWHM (band 1)" << std::endl;
     return 1;
   }
   if (fwhm2 <= 0.0) {
-    std::cerr << "Invalid (non-positive) FWHM (band 2)" << std::endl;
+    std::cout << "Invalid (non-positive) FWHM (band 2)" << std::endl;
     return 1;
   }
   if (nfwhm <= 0) {
-    std::cerr << "Invalid (non-positive) number of beam FWHMs"
+    std::cout << "Invalid (non-positive) number of beam FWHMs"
 	      << std::endl;
     return 1;
   }
   if (pixsize >= fwhm1 / 2.0 || pixsize >= fwhm2 / 2.0) {
-    std::cerr << "Insufficient (FWHM/2) beam sampling based on pixel size"
+    std::cout << "Insufficient (FWHM/2) beam sampling based on pixel size"
 	      << std::endl;
     return 1;
   }
@@ -386,7 +386,7 @@ int getPDDouble(int argc, char **argv) {
 		<< std::endl;
       success = pfactory.addWisdom(wisdom_file);
       if (!success) {
-	std::cerr << "Error reading wisdom file: " << wisdom_file << std::endl;
+	std::cout << "Error reading wisdom file: " << wisdom_file << std::endl;
 	return 4;
       }
     }
@@ -433,7 +433,7 @@ int getPDDouble(int argc, char **argv) {
     } else {
       std::ofstream ofs(outputfile.c_str());
       if (!ofs) {
-	std::cerr << "Error opening output file: " << outputfile
+	std::cout << "Error opening output file: " << outputfile
 		  << std::endl;
 	return 64;
       }
@@ -441,11 +441,11 @@ int getPDDouble(int argc, char **argv) {
       ofs.close();
     }
   } catch ( const pofdExcept& ex ) {
-    std::cerr << "Error encountered" << std::endl;
-    std::cerr << ex << std::endl;
+    std::cout << "Error encountered" << std::endl;
+    std::cout << ex << std::endl;
     return 8;
   } catch (const std::bad_alloc& ba) {
-    std::cerr << "Bad allocation error: " << ba.what() << std::endl;
+    std::cout << "Bad allocation error: " << ba.what() << std::endl;
     return 16;
   } 
 
@@ -467,128 +467,128 @@ int main( int argc, char** argv ) {
 			    &option_index ) ) != -1 ) 
     switch(c) {
     case 'h' :
-      std::cerr << "NAME" << std::endl;
-      std::cerr << "\tpofd_coverage_getPD -- get the P(D) for a broken power"
+      std::cout << "NAME" << std::endl;
+      std::cout << "\tpofd_coverage_getPD -- get the P(D) for a broken power"
 		<< " law" << std::endl;
-      std::cerr << "\t type model with a Gaussian beam (1D) or the same type"
+      std::cout << "\t type model with a Gaussian beam (1D) or the same type"
 		<< " of model" << std::endl;
-      std::cerr << "\t paired with a log-normal color model in flux_2/flux_1."
+      std::cout << "\t paired with a log-normal color model in flux_2/flux_1."
 		<< std::endl;
-      std::cerr << std::endl;
-      std::cerr << "SYNOPSIS" << std::endl;
-      std::cerr << "\t One-dimensional case:" << std::endl;
-      std::cerr << "\t  pofd_coverage_getPD [options] modelfile n0 fwhm maxflux"
+      std::cout << std::endl;
+      std::cout << "SYNOPSIS" << std::endl;
+      std::cout << "\t One-dimensional case:" << std::endl;
+      std::cout << "\t  pofd_coverage_getPD [options] modelfile n0 fwhm maxflux"
 		<< " outfile" << std::endl; 
-      std::cerr << std::endl;
-      std::cerr << "\t Two-dimensional case:" << std::endl;
-      std::cerr << "\t  pofd_coverage_getPD [options] -d modelfile n0 fwhm1 "
+      std::cout << std::endl;
+      std::cout << "\t Two-dimensional case:" << std::endl;
+      std::cout << "\t  pofd_coverage_getPD [options] -d modelfile n0 fwhm1 "
 		<< " fwhm2" << std::endl;
-      std::cerr << "\t    maxflux1 maxflux2 outfile" << std::endl; 
-      std::cerr << std::endl;
-      std::cerr << "DESCRIPTION" << std::endl;
-      std::cerr << "\tEvaluates P(D) for the specified model and writes it to" 
+      std::cout << "\t    maxflux1 maxflux2 outfile" << std::endl; 
+      std::cout << std::endl;
+      std::cout << "DESCRIPTION" << std::endl;
+      std::cout << "\tEvaluates P(D) for the specified model and writes it to" 
 		<< std::endl;
-      std::cerr << "\toutfile.  The number counts model in 1D is a broken "
+      std::cout << "\toutfile.  The number counts model in 1D is a broken "
 		<< "power" << std::endl;
-      std::cerr << "\tlaw model specified by modelfile, and by the number of"
+      std::cout << "\tlaw model specified by modelfile, and by the number of"
 		<< std::endl;
-      std::cerr << "\tsources per unit area n0." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tIn the 2D case the model is the 1D model in band 1 times"
+      std::cout << "\tsources per unit area n0." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tIn the 2D case the model is the 1D model in band 1 times"
 		<< " a" << std::endl;
-      std::cerr << "\tLog-Normal distribution in flux2/flux1.  The mu and sigma"
+      std::cout << "\tLog-Normal distribution in flux2/flux1.  The mu and sigma"
 		<< " Log-Normal" << std::endl;
-      std::cerr << "\tmodel parameters are stored as splines as a function of"
+      std::cout << "\tmodel parameters are stored as splines as a function of"
 		<< " the" << std::endl;
-      std::cerr << "\tflux in the first band." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tmodelfile should be a text file.  For 1D it consists of"
+      std::cout << "\tflux in the first band." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tmodelfile should be a text file.  For 1D it consists of"
 		<< " nknots" << std::endl;
-      std::cerr << "\tlines of the form:" << std::endl << std::endl;
-      std::cerr << "\t\tflux_density n" << std::endl << std::endl;
-      std::cerr << "\twhere flux_density gives the positions of the knots"
+      std::cout << "\tlines of the form:" << std::endl << std::endl;
+      std::cout << "\t\tflux_density n" << std::endl << std::endl;
+      std::cout << "\twhere flux_density gives the positions of the knots"
 		<< " in Jy" << std::endl;
-      std::cerr << "\tand n is the log10 differential number counts in"
+      std::cout << "\tand n is the log10 differential number counts in"
 		<< " deg^-2 Jy^-1" << std::endl;
-      std::cerr << "\tat the corresponding flux density.  Additional entries" 
+      std::cout << "\tat the corresponding flux density.  Additional entries" 
 		<< " on each"<< std::endl;
-      std::cerr << "\tline are ignored, and # denotes a comment line."
+      std::cout << "\tline are ignored, and # denotes a comment line."
 		<< std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tIn the 2D case the file should start with a line giving"
+      std::cout << std::endl;
+      std::cout << "\tIn the 2D case the file should start with a line giving"
 		<< " the" << std::endl;
-      std::cerr << "\tnumber of knots in the band 1 model, the number of"
+      std::cout << "\tnumber of knots in the band 1 model, the number of"
 		<< " knots in" << std::endl;
-      std::cerr << "\tthe sigma spline, and then the number in the mu spline."
+      std::cout << "\tthe sigma spline, and then the number in the mu spline."
 		<< " This" << std::endl;
-      std::cerr << "\tshould be followed by nknots + nspline + nmu lines"
+      std::cout << "\tshould be followed by nknots + nspline + nmu lines"
 		<< std::endl;
-      std::cerr << "\tof the same form as the 1D model, with the first nknots"
+      std::cout << "\tof the same form as the 1D model, with the first nknots"
 		<< std::endl;
-      std::cerr << "\tspecifying the band 1 model as in the 1D case, and the"
+      std::cout << "\tspecifying the band 1 model as in the 1D case, and the"
 		<< std::endl;
-      std::cerr << "\tfollowing lines giving the knot positions and values"
+      std::cout << "\tfollowing lines giving the knot positions and values"
 		<< " for" << std::endl;
-      std::cerr << "\tof the sigma and mu splines." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tfwhm is the beam FWHM in arcsec.  The beam is assumed "
+      std::cout << "\tof the sigma and mu splines." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tfwhm is the beam FWHM in arcsec.  The beam is assumed "
 		<< "Gaussian. " << std::endl;
-      std::cerr << "\tIn the 2D case, fwhm1 and fwhm2 are the values for each"
+      std::cout << "\tIn the 2D case, fwhm1 and fwhm2 are the values for each"
 		<< " band." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tmaxflux is the maximum flux density generated.  In"
+      std::cout << std::endl;
+      std::cout << "\tmaxflux is the maximum flux density generated.  In"
 		<< " general" << std::endl;
-      std::cerr << "\tthe maxflux values will not quite be realized.  Again,"
+      std::cout << "\tthe maxflux values will not quite be realized.  Again,"
 		<< std::endl;
-      std::cerr << "\tin the 2D case maxflux1 and maxflux2 are the values in"
+      std::cout << "\tin the 2D case maxflux1 and maxflux2 are the values in"
 		<< " each" << std::endl;
-      std::cerr << "\tband." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "OPTIONS" << std::endl;
-      std::cerr << "\t-d, --twod" << std::endl;
-      std::cerr << "\t\tIf set, the two-dimensional model is used."
+      std::cout << "\tband." << std::endl;
+      std::cout << std::endl;
+      std::cout << "OPTIONS" << std::endl;
+      std::cout << "\t-d, --twod" << std::endl;
+      std::cout << "\t\tIf set, the two-dimensional model is used."
 		<< std::endl;
-      std::cerr << "\t-h --help" << std::endl;
-      std::cerr << "\t\tPrint this message and exit." << std::endl;
-      std::cerr << "\t-f, --fits" << std::endl;
-      std::cerr << "\t\tWrite output as a fits file rather than text."
+      std::cout << "\t-h --help" << std::endl;
+      std::cout << "\t\tPrint this message and exit." << std::endl;
+      std::cout << "\t-f, --fits" << std::endl;
+      std::cout << "\t\tWrite output as a fits file rather than text."
 		<< std::endl;
-      std::cerr << "\t-l, --log" << std::endl;
-      std::cerr << "\t\tReturn the log P(D) rather than the P(D)."
+      std::cout << "\t-l, --log" << std::endl;
+      std::cout << "\t\tReturn the log P(D) rather than the P(D)."
 		<< std::endl;
-      std::cerr << "\t-n, --nflux value" << std::endl;
-      std::cerr << "\t\tThe number of requested fluxes along each dimension."
+      std::cout << "\t-n, --nflux value" << std::endl;
+      std::cout << "\t\tThe number of requested fluxes along each dimension."
 		<< std::endl;
-      std::cerr << "\t\tAlso sets the transform size used. (def: 131072 in 1D,)"
+      std::cout << "\t\tAlso sets the transform size used. (def: 131072 in 1D,)"
 		<< std::endl;
-      std::cerr << "\t\tand 2048 in 2D)." << std::endl;
-      std::cerr << "\t-N, --nfwhm value" << std::endl;
-      std::cerr << "\t\tNumber of beam FWHM out to go when computing beam."
+      std::cout << "\t\tand 2048 in 2D)." << std::endl;
+      std::cout << "\t-N, --nfwhm value" << std::endl;
+      std::cout << "\t\tNumber of beam FWHM out to go when computing beam."
 		<< "(def: 3.5)" << std::endl;
-      std::cerr << "\t--nbins value" << std::endl;
-      std::cerr << "\t\tNumber of bins to use in histogrammed beam. (def: 80)"
+      std::cout << "\t--nbins value" << std::endl;
+      std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 80)"
 		<< std::endl;
-      std::cerr << "\t-p, --pixsize value" << std::endl;
-      std::cerr << "\t\tPixel size in arcsec. (def: FWHM/3.0)" << std::endl;
-      std::cerr << "\t-r, --rfile FILENAME" << std::endl;
-      std::cerr << "\t\tWrite the R used to this file as text." << std::endl;
-      std::cerr << "\t-v, --verbose" << std::endl;
-      std::cerr << "\t\tPrint informational messages while running"
+      std::cout << "\t-p, --pixsize value" << std::endl;
+      std::cout << "\t\tPixel size in arcsec. (def: FWHM/3.0)" << std::endl;
+      std::cout << "\t-r, --rfile FILENAME" << std::endl;
+      std::cout << "\t\tWrite the R used to this file as text." << std::endl;
+      std::cout << "\t-v, --verbose" << std::endl;
+      std::cout << "\t\tPrint informational messages while running"
 		<< std::endl;
-      std::cerr << "\t-V, --version" << std::endl;
-      std::cerr << "\t\tOutput version number and exit" << std::endl;
-      std::cerr << "\t-w, --wisdom wisdomfile" << std::endl;
-      std::cerr << "\t\tName of wisdom file (prepared with fftw-wisdom)." 
+      std::cout << "\t-V, --version" << std::endl;
+      std::cout << "\t\tOutput version number and exit" << std::endl;
+      std::cout << "\t-w, --wisdom wisdomfile" << std::endl;
+      std::cout << "\t\tName of wisdom file (prepared with fftw-wisdom)." 
 		<< std::endl;
-      std::cerr << "\tONE-D MODEL OPTIONS" << std::endl;
-      std::cerr << "\t-s, --sigma VALUE" << std::endl;
-      std::cerr << "\t\tThe assumed per-pixel noise (def: 0.002)" << std::endl;
-      std::cerr << "\tTWO-D MODEL OPTIONS" << std::endl;
-      std::cerr << "\t--sigma1 NOISE" << std::endl;
-      std::cerr << "\t\tThe assumed per-pixel noise, band 1 (def: 0)." 
+      std::cout << "\tONE-D MODEL OPTIONS" << std::endl;
+      std::cout << "\t-s, --sigma VALUE" << std::endl;
+      std::cout << "\t\tThe assumed per-pixel noise (def: 0.002)" << std::endl;
+      std::cout << "\tTWO-D MODEL OPTIONS" << std::endl;
+      std::cout << "\t--sigma1 NOISE" << std::endl;
+      std::cout << "\t\tThe assumed per-pixel noise, band 1 (def: 0)." 
 		<< std::endl;
-      std::cerr << "\t--sigma2 NOISE" << std::endl;
-      std::cerr << "\t\tThe assumed per-pixel noise, band 2 (def: 0)." 
+      std::cout << "\t--sigma2 NOISE" << std::endl;
+      std::cout << "\t\tThe assumed per-pixel noise, band 2 (def: 0)." 
 		<< std::endl;
       return 0;
       break;
@@ -596,7 +596,7 @@ int main( int argc, char** argv ) {
       twod = true;
       break;
     case 'V' :
-      std::cerr << "pofd_coverage version number: " << pofd_coverage::version 
+      std::cout << "pofd_coverage version number: " << pofd_coverage::version 
 		<< std::endl;
       return 0;
       break;

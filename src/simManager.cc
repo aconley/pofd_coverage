@@ -274,15 +274,15 @@ void simManager::doSims(bool verbose=false) {
     //Now -- optional likelihood map
     if (do_map_like) {
       //Compute n0 array
-      double max_n0;
       if (nlike > 1) {
-	min_n0[i] = bestn0[i]*(1.0-n0rangefrac);
-	max_n0 = bestn0[i]*(1.0+n0rangefrac);
-	delta_n0[i] = (max_n0 - min_n0[i])/(static_cast<double>(nlike)-1.0);
+	double max_n0;
+	min_n0[i] = bestn0[i] * (1.0 - n0rangefrac);
+	max_n0 = bestn0[i] * (1.0 + n0rangefrac);
+	delta_n0[i] = (max_n0 - min_n0[i]) / 
+	  (static_cast<double>(nlike) - 1.0);
       } else {
 	min_n0[i] = n0;
 	delta_n0[i] = 0.0;
-	max_n0 = n0;
       }
     
       //Compute P(D) and like
@@ -356,13 +356,14 @@ int simManager::writeToFits(const std::string& outputfile) const {
   //A tricky/irritating bit is constructing the tform argument 
   // for the LOGLIKE column
   if (do_map_like) {
-    char* ttype[] = {"BEST_N0","BEST_LOGLIKE","MIN_N0","DELTA_N0","LOGLIKE"};
+    char* ttype[] = {"BEST_N0", "BEST_LOGLIKE", "MIN_N0", 
+		     "DELTA_N0", "LOGLIKE"};
     char* tform[5];
     char* tform0 = "1D";
     tform[0] = tform0; tform[1] = tform0; tform[2] = tform0; tform[3] = tform0;
-    int ndigits = static_cast<int>( log10( nlike ) + 1.99999999999 );
-    char* tform2 = new char[ndigits+5];
-    sprintf(tform2,"%uD",nlike);
+    int ndigits = static_cast<int>(log10(nlike) + 1.99999999999);
+    char* tform2 = new char[ndigits + 5];
+    sprintf(tform2, "%uE", nlike); //E is the format code for 32 bit float
     tform[4] = tform2;
     fits_create_tbl(fp, BINARY_TBL, 0, 5, ttype, tform, NULL, "RESULTS", 
 		    &status );

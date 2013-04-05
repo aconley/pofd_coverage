@@ -56,6 +56,7 @@ static double minfunc(double x, void* params) {
   \param[in] SIGI2 Instrument noise (without smoothing) in Jy, band 2
   \param[in] N0 Simulated number of sources per sq deg.
   \param[in] ESMOOTH Amount of extra smoothing to apply
+  \param[in] OVERSAMPLE Oversampling of simulated image
   \param[in] USEBIN Bin the data in the likelihood calculation
   \param[in] NBINS Number of bins in binned data
  */
@@ -75,7 +76,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   fwhm1(FWHM1), fwhm2(FWHM2), pixsize(PIXSIZE),
   simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, 
 	OVERSAMPLE, NBINS), 
-  oversample(OVERSAMPLE), use_binning(USEBIN), model(MODELFILE), 
+  use_binning(USEBIN), model(MODELFILE), 
   esmooth1(ESMOOTH1), esmooth2(ESMOOTH2) {
 
 #ifdef TIMING

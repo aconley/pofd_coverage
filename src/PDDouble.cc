@@ -17,7 +17,7 @@ PDDouble::PDDouble(unsigned int N1, double MINFLUX1, double DFLUX1,
 			       minflux1(MINFLUX1), dflux1(DFLUX1),
 			       minflux2(MINFLUX2), dflux2(DFLUX2) {
   if (capacity == 0) pd_ = NULL; else
-    pd_ = (double *) fftw_malloc( sizeof(double)*capacity );
+    pd_ = (double *) fftw_malloc(sizeof(double)*capacity);
 }
 
 PDDouble::~PDDouble() {
@@ -614,10 +614,18 @@ PDDouble& PDDouble::operator=(const PDDouble& other) {
   dflux1 = other.dflux1;
   minflux2 = other.minflux2;
   dflux2 = other.dflux2;
-  unsigned int sz = n1*n2;
-  if (sz > 0)
+  unsigned int sz = n1 * n2;
+  if (sz > 0) {
+    if (other.pd_ == NULL)
+      throw pofdExcept("PDDouble", "operator=", 
+			"Copying from uninitialized other", 1);
+    if (pd_ == NULL)
+      throw pofdExcept("PDDouble", "operator=", 
+			"initialization of this space failed", 2);
+      
     for (unsigned int i = 0; i < sz; ++i)
       pd_[i] = other.pd_[i];
+  }
   logflat = other.logflat;
   return *this;
 }
@@ -625,6 +633,7 @@ PDDouble& PDDouble::operator=(const PDDouble& other) {
 void PDDouble::fill(unsigned int N1, double MINFLUX1, double DFLUX1,
 		    unsigned int N2, double MINFLUX2, double DFLUX2,
 		    const double* const PD, bool LOG) {
+
   logflat = LOG;
   resize(N1,N2);
   minflux1 = MINFLUX1;
@@ -632,9 +641,17 @@ void PDDouble::fill(unsigned int N1, double MINFLUX1, double DFLUX1,
   minflux2 = MINFLUX2;
   dflux2 = DFLUX2;
   unsigned int sz = n1*n2;
-  if (sz > 0)
+  if (sz > 0) {
+    if (PD == NULL)
+      throw pofdExcept("PDDouble", "fill", 
+			"PD is not initialized", 1);
+    if (pd_ == NULL)
+      throw pofdExcept("PDDouble", "fill", 
+			"Initialization of this space failed", 2);
+
     for (unsigned int i = 0; i < sz; ++i)
       pd_[i] = PD[i];
+  }
 }
 
 /*!

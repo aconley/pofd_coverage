@@ -55,7 +55,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   //Set up array to hold 1D beams in each band (center normalized)
   //We have to decide how far out to go.  Note that the beams are set
   // up in oversampled space
-  const unsigned int nfwhm = 3.5;
+  const double nfwhm = 3.5;
   ngauss1 = static_cast<unsigned int>(nfwhm * fwhm1 / pixsize_gen + 0.99999999);
   ngauss1 = 2 * ngauss1 + 1;
   gauss1 = new double[ngauss1];

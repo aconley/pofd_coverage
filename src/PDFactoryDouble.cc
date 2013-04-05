@@ -193,9 +193,9 @@ void PDFactoryDouble::freeRvars() {
 void PDFactoryDouble::allocateEdgevars() {
   if (edgevars_allocated) return;
   if (nedge > 0) {
-    REdgeFlux1 = (double*) fftw_malloc(sizeof(double)*nedge);
-    REdgeFlux2 = (double*) fftw_malloc(sizeof(double)*nedge);
-    REdgeWork  = (double*) fftw_malloc(sizeof(double)*nedge*nedge);
+    REdgeFlux1 = (double*) fftw_malloc(sizeof(double) * nedge);
+    REdgeFlux2 = (double*) fftw_malloc(sizeof(double) * nedge);
+    REdgeWork  = (double*) fftw_malloc(sizeof(double) * nedge * nedge);
     edgevars_allocated = true;
   } else {
     REdgeWork = REdgeFlux1 = REdgeFlux2 = NULL;
@@ -299,39 +299,52 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
     // space
 
 
+    if (nedge == 0) 
+      throw pofdExcept("PDFactoryDouble", "initR",
+		       "Invalid (0) value of nedge with setEdge set", 1);
+
     //Edge bits
     //Minimum values in integral; maximum are dflux1, dflux2
     double minedge1 = dflux1 *  PDFactoryDouble::lowEdgeRMult;
     double minedge2 = dflux2 *  PDFactoryDouble::lowEdgeRMult;
-    double inedgem1 = 1.0/static_cast<double>(nedge-1);
+    double inedgem1 = 1.0 / static_cast<double>(nedge - 1);
     double dinterpfluxedge1, dinterpfluxedge2;
     double iRxnorm = 0.0, iRynorm = 0.0, iR00norm = 0.0;
     
-    if (setEdge) {
-      if (!edgevars_allocated) allocateEdgevars();
-      if (use_edge_log_x) {
-	dinterpfluxedge1 = -log(PDFactoryDouble::lowEdgeRMult)*inedgem1;
-	for (unsigned int i = 0; i < nedge; ++i)
-	  REdgeFlux1[i] = minedge1*exp(static_cast<double>(i)*dinterpfluxedge1);
-      } else {
-	dinterpfluxedge1 = (dflux1-minedge1)*inedgem1;
-	for (unsigned int i = 0; i < nedge; ++i)
-	  REdgeFlux1[i] = minedge1 + static_cast<double>(i)*dinterpfluxedge1;
-      }
-      if (use_edge_log_y) {
-	dinterpfluxedge2 = -log(PDFactoryDouble::lowEdgeRMult)*inedgem1;
-	for (unsigned int i = 0; i < nedge; ++i)
-	  REdgeFlux2[i] = minedge2*exp(static_cast<double>(i)*dinterpfluxedge2);
-      } else {
-	dinterpfluxedge2 = (dflux2-minedge2)*inedgem1;
-	for (unsigned int i = 0; i < nedge; ++i)
-	  REdgeFlux2[i] = minedge2 + static_cast<double>(i)*dinterpfluxedge2;
-      }
-      iRxnorm  = dinterpfluxedge1/(dflux1-minedge1);
-      iRynorm  = dinterpfluxedge2/(dflux2-minedge2);
-      iR00norm = dinterpfluxedge1*dinterpfluxedge2/
-	( (dflux1-minedge1) * (dflux2-minedge2) );
+    if (!edgevars_allocated) allocateEdgevars();
+    //Make sure edge variables successfully allocated
+    if (REdgeFlux1 == NULL)
+      throw pofdExcept("PDFactoryDouble", "initR",
+		       "R edge flux 1 was not allocated", 2);
+    if (REdgeFlux2 == NULL)
+      throw pofdExcept("PDFactoryDouble", "initR",
+		       "R edge flux 2 was not allocated", 3);
+    if (REdgeWork == NULL)
+      throw pofdExcept("PDFactoryDouble", "initR",
+		       "R edge work was not allocated", 4);
+
+    if (use_edge_log_x) {
+      dinterpfluxedge1 = -log(PDFactoryDouble::lowEdgeRMult)*inedgem1;
+      for (unsigned int i = 0; i < nedge; ++i)
+	REdgeFlux1[i] = minedge1*exp(static_cast<double>(i)*dinterpfluxedge1);
+    } else {
+      dinterpfluxedge1 = (dflux1-minedge1)*inedgem1;
+      for (unsigned int i = 0; i < nedge; ++i)
+	REdgeFlux1[i] = minedge1 + static_cast<double>(i)*dinterpfluxedge1;
     }
+    if (use_edge_log_y) {
+      dinterpfluxedge2 = -log(PDFactoryDouble::lowEdgeRMult)*inedgem1;
+      for (unsigned int i = 0; i < nedge; ++i)
+	REdgeFlux2[i] = minedge2*exp(static_cast<double>(i)*dinterpfluxedge2);
+    } else {
+      dinterpfluxedge2 = (dflux2-minedge2)*inedgem1;
+      for (unsigned int i = 0; i < nedge; ++i)
+	REdgeFlux2[i] = minedge2 + static_cast<double>(i)*dinterpfluxedge2;
+    }
+    iRxnorm  = dinterpfluxedge1 / (dflux1 - minedge1);
+    iRynorm  = dinterpfluxedge2 / (dflux2 - minedge2);
+    iR00norm = dinterpfluxedge1 * dinterpfluxedge2/
+      ((dflux1 - minedge1) * (dflux2 - minedge2));
 
     //First, do r[0,0]
     double scriptr;

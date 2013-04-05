@@ -44,7 +44,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   
   // Set up array to hold 1D beams (center normalized)
   // Note that the beam is set up in oversampled space
-  const unsigned int nfwhm = 3.5;
+  const double nfwhm = 3.5;
   ngauss = static_cast<unsigned int>(nfwhm * fwhm / pixsize_gen + 0.99999999);
   ngauss = 2 * ngauss + 1;
   gauss = new double[ngauss];

@@ -31,7 +31,9 @@ AC_ARG_ENABLE(profile,
 AC_ARG_ENABLE(timing,
 	      [  --enable-timing         Output timing information],
 	      [ AC_DEFINE( TIMING, 1 ) ],)
-
+AC_ARG_ENABLE(analyze,
+              [  --enable-analyze        Run static checker (if using clang)],
+              [ CXXFLAGS="$CXXFLAGS --analyze" ],)
 
 dnl FFTW
 AC_LANG_C
@@ -160,7 +162,7 @@ dnl Tests
 AC_LANG_CPLUSPLUS
 AM_CONDITIONAL(DOTEST, false)
 AC_ARG_ENABLE(test,
-        [  --enable-test=DIR         Enable testing],
+        [  --enable-test=DIR       Enable testing],
         usetest=$enableval, usetest="")
 if test $usetest; then
    AC_MSG_RESULT(Enabling testing, unit and other)
@@ -173,10 +175,14 @@ if test $usetest; then
    if test $gtestlib; then
       AC_MSG_RESULT( Checking User Specified gtest )
       LDFLAGS="$LDFLAGS -L$gtestlib"
-      AC_CHECK_LIB( gtest, main, ,
+      AC_CHECK_LIB( gtest_main, testing::InitGoogleTest, ,
                     AC_MSG_ERROR("libgtest not in location specified by --with-gtestlib: $gtestlib"),
-                    [ -lgtest -lgtest_main -L$gtestlib ] )
+                    [ -lgtest -lgtest_main ] )
    else
+      AC_MSG_RESULT( Checking gtest_main )
+      AC_CHECK_LIB( gtest_main, main, ,
+      AC_MSG_ERROR("libgtest_main not found -- use --with-gtestlib"),
+                   [ -lgtest -lgtest_main ] )
       AC_MSG_RESULT( Checking gtest )
       AC_CHECK_LIB( gtest, main, ,
       AC_MSG_ERROR("libgtest not found -- use --with-gtestlib"),

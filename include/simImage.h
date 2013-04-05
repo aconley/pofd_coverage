@@ -24,7 +24,6 @@ class simImage {
   double pixsize_gen; //!< Size of pixels in internal mode
 
   double fwhm; //!< Beam FWHM in arcsec
-  double bm_pixarea; //!< Beam area in pixels
   double sigi; //!< Instrumental noise
   double esmooth; //!< Additional Gaussian smoothing FWHM in arcsec
 

@@ -187,7 +187,7 @@ int getPDSingle(int argc, char **argv) {
 	     model.getBaseFluxPerArea());
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
       printf("   N0:                 %0.4e\n", n0);
-      printf("sigma:                 %0.4f\n", sigma);
+      printf("   sigma:              %0.4f\n", sigma);
       if (return_log) 
 	printf("  Returning log( P(D) ) rather than P(D)\n");
     }
@@ -403,8 +403,8 @@ int getPDDouble(int argc, char **argv) {
 	     model.getBaseFluxPerArea2());
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
       printf("   N0:                 %0.4e\n", n0);
-      printf("sigma1:                %0.4f\n", sigma1);
-      printf("sigma2:                %0.4f\n", sigma2);
+      printf("   sigma1:             %0.4f\n", sigma1);
+      printf("   sigma2:             %0.4f\n", sigma2);
       if (return_log) 
 	printf("  Returning log( P(D) ) rather than P(D)\n");
     }
@@ -586,10 +586,10 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tThe assumed per-pixel noise (def: 0.002)" << std::endl;
       std::cout << "\tTWO-D MODEL OPTIONS" << std::endl;
       std::cout << "\t--sigma1 NOISE" << std::endl;
-      std::cout << "\t\tThe assumed per-pixel noise, band 1 (def: 0)." 
+      std::cout << "\t\tThe assumed per-pixel noise, band 1 (def: 0.002)." 
 		<< std::endl;
       std::cout << "\t--sigma2 NOISE" << std::endl;
-      std::cout << "\t\tThe assumed per-pixel noise, band 2 (def: 0)." 
+      std::cout << "\t\tThe assumed per-pixel noise, band 2 (def: 0.002)." 
 		<< std::endl;
       return 0;
       break;

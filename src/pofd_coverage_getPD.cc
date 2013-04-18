@@ -92,6 +92,7 @@ int getPDSingle(int argc, char **argv) {
     case 'r':
       write_r = true;
       r_file = std::string(optarg);
+      break;
     case 's' :
       sigma = atof(optarg);
       break;

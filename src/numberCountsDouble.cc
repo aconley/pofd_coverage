@@ -681,31 +681,37 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
   // by tabulating and saving information.  However, for this code,
   // where this will likely be a very sub-dominant cost, we go
   // for brute simplicity
-  double ieta1, ieta2, cx1, cx2, Rsum;
-  double *rowptr;
+
   double prefac = pixsize / 3600.0;
   prefac = prefac * prefac;
-  for (unsigned int j = 0; j < n1; ++j) {
-    cx1 = x1[j];
-    rowptr = R + j * n2;
-    if (cx1 <= 0 || cx1 >= s1_max)
-      for (unsigned int k = 0; k < n2; ++k)
-	rowptr[k] = 0.0;
-    else 
-      for (unsigned int k = 0; k < n2; ++k) {
-	cx2 = x2[k];
-	if (cx2 <= 0.0) rowptr[k] = 0.0; else {
-	  //x1, x2 are in bounds, must do full sum over beams
-	  Rsum = 0.0;
-	  for (unsigned int i = 0; i < nnonzero; ++i) {
-	    ieta1 = inv_bm1[i];
-	    ieta2 = inv_bm2[i];
-	    Rsum += bm_wts[i] * ieta1 * ieta2 * 
-	      getNumberCountsInner(cx1 * ieta1, cx2 * ieta2);
+
+#pragma omp parallel
+  {
+    double ieta1, ieta2, cx1, cx2, Rsum;
+    double *rowptr;
+    #pragma omp for
+    for (unsigned int j = 0; j < n1; ++j) {
+      cx1 = x1[j];
+      rowptr = R + j * n2;
+      if (cx1 <= 0 || cx1 >= s1_max)
+	for (unsigned int k = 0; k < n2; ++k)
+	  rowptr[k] = 0.0;
+      else 
+	for (unsigned int k = 0; k < n2; ++k) {
+	  cx2 = x2[k];
+	  if (cx2 <= 0.0) rowptr[k] = 0.0; else {
+	    //x1, x2 are in bounds, must do full sum over beams
+	    Rsum = 0.0;
+	    for (unsigned int i = 0; i < nnonzero; ++i) {
+	      ieta1 = inv_bm1[i];
+	      ieta2 = inv_bm2[i];
+	      Rsum += bm_wts[i] * ieta1 * ieta2 * 
+		getNumberCountsInner(cx1 * ieta1, cx2 * ieta2);
+	    }
+	    rowptr[k] = prefac * Rsum;
 	  }
-	  rowptr[k] = prefac * Rsum;
 	}
-      }
+    }
   }
 }
 

@@ -512,24 +512,33 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
     //This should be the most common case,
     // and corresponds to having some noise
     double sigfac = 0.5*sigma*sigma;
-    double w;
-    for (unsigned int idx = 1; idx < ncplx; ++idx) {
-      w    = iflux * static_cast<double>(idx);
-      rval = n0ratio * rtrans[idx][0] - r0 - sigfac*w*w;
-      ival = n0ratio * rtrans[idx][1] - shift*w;
-      expfac = exp(rval);
-      pval[idx][0] = expfac * cos(ival);
-      pval[idx][1] = expfac * sin(ival);
-    } 
+#pragma omp parallel
+    {
+      double w;
+#pragma omp for
+      for (unsigned int idx = 1; idx < ncplx; ++idx) {
+	w    = iflux * static_cast<double>(idx);
+	rval = n0ratio * rtrans[idx][0] - r0 - sigfac*w*w;
+	ival = n0ratio * rtrans[idx][1] - shift*w;
+	expfac = exp(rval);
+	pval[idx][0] = expfac * cos(ival);
+	pval[idx][1] = expfac * sin(ival);
+      } 
+    }
   } else {
     //No shift, sigma must be zero
-    for (unsigned int idx = 1; idx < ncplx; ++idx) {
-      expfac = exp(n0ratio * rtrans[idx][0] - r0);
-      ival = n0ratio * rtrans[idx][1];
-      pval[idx][0] = expfac*cos(ival);
-      pval[idx][1] = expfac*sin(ival);
+#pragma omp parallel
+    {
+#pragma omp for
+      for (unsigned int idx = 1; idx < ncplx; ++idx) {
+	expfac = exp(n0ratio * rtrans[idx][0] - r0);
+	ival = n0ratio * rtrans[idx][1];
+	pval[idx][0] = expfac*cos(ival);
+	pval[idx][1] = expfac*sin(ival);
+      }
     }
   }
+
   //p(0) is special
   pval[0][0] = 1.0;
   pval[0][1] = 0.0;

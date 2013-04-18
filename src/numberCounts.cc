@@ -4,6 +4,7 @@
 #include<fstream>
 #include<string>
 #include<sstream>
+#include<omp.h>
 
 #include "../include/pofdExcept.h"
 #include "../include/numberCounts.h"
@@ -337,26 +338,31 @@ void numberCounts::getR(unsigned int n, double minflux,
   prefac = prefac * prefac;
 
   //And now the actual computation.  We loop over each flux
-  double cflux, cval, cR, ibm, workR;
-  unsigned int loc;
-  for (unsigned int i = 0; i < n; ++i) {
-    cflux = minflux + static_cast<double>(i) * dflux;
-    if (cflux <= 0.0 || cflux >= s_max) {
-      //R is zero for this x
-      R[i] = 0.0;
-      continue;
+#pragma omp parallel 
+  {
+    double cflux, cval, cR, ibm, workR;
+    unsigned int loc;
+
+    #pragma omp for
+    for (unsigned int i = 0; i < n; ++i) {
+      cflux = minflux + static_cast<double>(i) * dflux;
+      if (cflux <= 0.0 || cflux >= s_max) {
+	//R is zero for this x
+	R[i] = 0.0;
+	continue;
+      }
+      workR = 0.0;
+      for (unsigned int j = 0; j < nnonzero; ++j) {
+	ibm = inv_bm[j]; //1 / eta
+	cval = cflux * ibm;
+	if (cval < s_min) continue;
+	if (cval >= s_max) continue;
+	loc = utility::binary_search_lte(cval, knotpos, nknots);
+	cR = a[loc] * pow(cval, -gamma[loc]);
+	workR += bm_wts[j] * cR * ibm;
+      }
+      R[i] = prefac * workR;
     }
-    workR = 0.0;
-    for (unsigned int j = 0; j < nnonzero; ++j) {
-      ibm = inv_bm[j]; //1 / eta
-      cval = cflux * ibm;
-      if (cval < s_min) continue;
-      if (cval >= s_max) continue;
-      loc = utility::binary_search_lte(cval, knotpos, nknots);
-      cR = a[loc] * pow(cval, -gamma[loc]);
-      workR += bm_wts[j] * cR * ibm;
-    }
-    R[i] = prefac * workR;
   }
 }
 

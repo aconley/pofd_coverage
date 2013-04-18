@@ -889,11 +889,7 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
   //  exp( r(omega1,omega2) - r(0,0) - i*shift1*omega1 - i*shift2*omega2
   //       - 1/2 sigma1^2 omega1^2 - 1/2 sigma2^2 * omega2^2)
   
-  double r0, expfac, rval, ival;
-  fftw_complex *row_current_out; //Output out variable
-  fftw_complex *r_input_rowptr; //Row pointer into out_part (i.e., input)
-  r0 = n0ratio * rtrans[0][0]; //r[0,0] is pure real
-  
+  double r0 = n0ratio * rtrans[0][0]; //r[0,0] is pure real
   double iflux1 = pofd_coverage::two_pi / (n * dflux1);
   double iflux2 = pofd_coverage::two_pi / (n * dflux2);
   
@@ -909,119 +905,146 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
     double sigfac1 = 0.5*sigma1*sigma1;
     double sigfac2 = 0.5*sigma2*sigma2;
     
-    double sigprod1, meanprod1, didx2, w1, w2;
-    
     //First, Pos freq
-    for (unsigned int idx1 = 0; idx1 < ncplx; ++idx1) {
-      r_input_rowptr = rtrans + idx1*ncplx; //Input
-      row_current_out = pval + idx1*ncplx; //Output
-      w1 = iflux1 * static_cast<double>(idx1);
-      meanprod1 = shift1*w1;
-      sigprod1  = sigfac1*w1*w1;
-      for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
-	didx2 = static_cast<double>(idx2);
-	w2 = iflux2 * didx2;
-	rval = n0ratio * r_input_rowptr[idx2][0] - r0 
-	  - sigprod1 - sigfac2*w2*w2;
-	ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1 - shift2*w2;
-	expfac = exp(rval);
-	row_current_out[idx2][0] = expfac*cos(ival);
-	row_current_out[idx2][1] = expfac*sin(ival);
+#pragma omp parallel
+    {
+      double expfac, rval, ival;
+      fftw_complex *row_current_out; //Output out variable
+      fftw_complex *r_input_rowptr; //Row pointer into out_part (i.e., input)
+      double sigprod1, meanprod1, didx2, w1, w2;
+#pragma omp for
+      for (unsigned int idx1 = 0; idx1 < ncplx; ++idx1) {
+	r_input_rowptr = rtrans + idx1*ncplx; //Input
+	row_current_out = pval + idx1*ncplx; //Output
+	w1 = iflux1 * static_cast<double>(idx1);
+	meanprod1 = shift1*w1;
+	sigprod1  = sigfac1*w1*w1;
+	for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
+	  didx2 = static_cast<double>(idx2);
+	  w2 = iflux2 * didx2;
+	  rval = n0ratio * r_input_rowptr[idx2][0] - r0 
+	    - sigprod1 - sigfac2*w2*w2;
+	  ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1 - shift2*w2;
+	  expfac = exp(rval);
+	  row_current_out[idx2][0] = expfac*cos(ival);
+	  row_current_out[idx2][1] = expfac*sin(ival);
+	}
+      }
+      //Now, Neg freq
+#pragma omp for
+      for (unsigned int idx1 = ncplx; idx1 < n; ++idx1) {
+	r_input_rowptr = rtrans + idx1*ncplx; //Input
+	row_current_out = pval + idx1*ncplx; //Output
+	w1 = - iflux1 * static_cast<double>(n - idx1);
+	meanprod1 = shift1*w1;
+	sigprod1  = sigfac1*w1*w1;
+	for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
+	  didx2 = static_cast<double>(idx2);
+	  w2 = iflux2 * didx2;
+	  rval = n0ratio * r_input_rowptr[idx2][0] - 
+	    r0 - sigprod1 - sigfac2*w2*w2;
+	  ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1 - shift2*w2;
+	  expfac = exp( rval );
+	  row_current_out[idx2][0] = expfac*cos(ival);
+	  row_current_out[idx2][1] = expfac*sin(ival);
+	}
       }
     }
-    //Now, Neg freq
-    for (unsigned int idx1 = ncplx; idx1 < n; ++idx1) {
-      r_input_rowptr = rtrans + idx1*ncplx; //Input
-      row_current_out = pval + idx1*ncplx; //Output
-      w1 = - iflux1 * static_cast<double>(n - idx1);
-      meanprod1 = shift1*w1;
-      sigprod1  = sigfac1*w1*w1;
-      for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
-	didx2 = static_cast<double>(idx2);
-	w2 = iflux2 * didx2;
-	rval = n0ratio * r_input_rowptr[idx2][0] - 
-	  r0 - sigprod1 - sigfac2*w2*w2;
-	ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1 - shift2*w2;
-	expfac = exp( rval );
-	row_current_out[idx2][0] = expfac*cos(ival);
-	row_current_out[idx2][1] = expfac*sin(ival);
-      }
-    }
-    //p(0,0) is special
-    pval[0][0] = 1.0;
-    pval[0][1] = 0.0;
   } else if (doshift1) {
     //Only shift in band 1
     double sigfac1 = 0.5*sigma1*sigma1;
-    double sigprod1, meanprod1, w1;
-    for (unsigned int idx1 = 0; idx1 < ncplx; ++idx1) {
-      r_input_rowptr = rtrans + idx1*ncplx; //Input
-      row_current_out = pval + idx1*ncplx; //Output
-      w1 = iflux1 * static_cast<double>(idx1);
-      meanprod1 = shift1*w1;
-      sigprod1  = sigfac1*w1*w1;
-      for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
-	rval = n0ratio * r_input_rowptr[idx2][0] - r0 - sigprod1;
-	ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1;
-	expfac = exp(rval);
-	row_current_out[idx2][0] = expfac*cos(ival);
-	row_current_out[idx2][1] = expfac*sin(ival);
+#pragma omp parallel
+    {
+      double expfac, rval, ival;
+      fftw_complex *row_current_out; 
+      fftw_complex *r_input_rowptr; 
+      double sigprod1, meanprod1, w1;
+#pragma omp for
+      for (unsigned int idx1 = 0; idx1 < ncplx; ++idx1) {
+	r_input_rowptr = rtrans + idx1*ncplx; //Input
+	row_current_out = pval + idx1*ncplx; //Output
+	w1 = iflux1 * static_cast<double>(idx1);
+	meanprod1 = shift1*w1;
+	sigprod1  = sigfac1*w1*w1;
+	for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
+	  rval = n0ratio * r_input_rowptr[idx2][0] - r0 - sigprod1;
+	  ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1;
+	  expfac = exp(rval);
+	  row_current_out[idx2][0] = expfac*cos(ival);
+	  row_current_out[idx2][1] = expfac*sin(ival);
+	}
+      }
+#pragma omp for
+      for (unsigned int idx1 = ncplx; idx1 < n; ++idx1) {
+	r_input_rowptr = rtrans + idx1*ncplx; //Input
+	row_current_out = pval + idx1*ncplx; //Output
+	w1 = - iflux1 * static_cast<double>(n - idx1);
+	meanprod1 = shift1*w1;
+	sigprod1  = sigfac1*w1*w1;
+	for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
+	  rval = n0ratio * r_input_rowptr[idx2][0] - r0 - sigprod1;
+	  ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1;
+	  expfac = exp(rval);
+	  row_current_out[idx2][0] = expfac*cos(ival);
+	  row_current_out[idx2][1] = expfac*sin(ival);
+	}
       }
     }
-    for (unsigned int idx1 = ncplx; idx1 < n; ++idx1) {
-      r_input_rowptr = rtrans + idx1*ncplx; //Input
-      row_current_out = pval + idx1*ncplx; //Output
-      w1 = - iflux1 * static_cast<double>(n - idx1);
-      meanprod1 = shift1*w1;
-      sigprod1  = sigfac1*w1*w1;
-      for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
-	rval = n0ratio * r_input_rowptr[idx2][0] - r0 - sigprod1;
-	ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1;
-	expfac = exp(rval);
-	row_current_out[idx2][0] = expfac*cos(ival);
-	row_current_out[idx2][1] = expfac*sin(ival);
-      }
-    }
-    pval[0][0] = 1.0;
-    pval[0][1] = 0.0;
+
   } else if (doshift2) {
     //And only shift band 2
     //Only flux 2 shifted, has sigma
     //Can do all of band 1 in one loop, since we ignore
     // freq1
     double sigfac2 = 0.5*sigma2*sigma2;
-    double didx2, w2;
-    for (unsigned int idx1 = 0; idx1 < n; ++idx1) {
-      r_input_rowptr = rtrans + idx1*ncplx; //Input
-      row_current_out = pval + idx1*ncplx; //Output
-      for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
-	didx2 = static_cast<double>(idx2);
-	w2 = iflux2 * didx2;
-	rval = n0ratio * r_input_rowptr[idx2][0] - r0 - sigfac2*w2*w2;
-	ival = n0ratio * r_input_rowptr[idx2][1] - shift2*w2;
-	expfac = exp(rval);
-	row_current_out[idx2][0] = expfac*cos(ival);
-	row_current_out[idx2][1] = expfac*sin(ival);
+    
+#pragma omp parallel
+    {    
+      double expfac, rval, ival;
+      fftw_complex *row_current_out; 
+      fftw_complex *r_input_rowptr; 
+      double didx2, w2;
+#pragma omp for
+      for (unsigned int idx1 = 0; idx1 < n; ++idx1) {
+	r_input_rowptr = rtrans + idx1*ncplx; //Input
+	row_current_out = pval + idx1*ncplx; //Output
+	for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
+	  didx2 = static_cast<double>(idx2);
+	  w2 = iflux2 * didx2;
+	  rval = n0ratio * r_input_rowptr[idx2][0] - r0 - sigfac2*w2*w2;
+	  ival = n0ratio * r_input_rowptr[idx2][1] - shift2*w2;
+	  expfac = exp(rval);
+	  row_current_out[idx2][0] = expfac*cos(ival);
+	  row_current_out[idx2][1] = expfac*sin(ival);
+	}
       }
     }
-    pval[0][0] = 1.0;
-    pval[0][1] = 0.0;
   } else {
-    //No shifts, sigmas
-    for (unsigned int idx1 = 0; idx1 < n; ++idx1) {
-      r_input_rowptr = rtrans + idx1*ncplx;
-      row_current_out = pval + idx1*ncplx;
-      for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
-	rval = n0ratio * r_input_rowptr[idx2][0] - r0;
-	ival = n0ratio * r_input_rowptr[idx2][1];
-	expfac = exp(rval);
-	row_current_out[idx2][0] = expfac*cos(ival);
-	row_current_out[idx2][1] = expfac*sin(ival);
+#pragma omp parallel
+    { 
+      //No shifts, sigmas
+      double expfac, rval, ival;
+      fftw_complex *row_current_out; 
+      fftw_complex *r_input_rowptr; 
+#pragma omp for
+      for (unsigned int idx1 = 0; idx1 < n; ++idx1) {
+	r_input_rowptr = rtrans + idx1*ncplx;
+	row_current_out = pval + idx1*ncplx;
+	for (unsigned int idx2 = 0; idx2 < ncplx; ++idx2) {
+	  rval = n0ratio * r_input_rowptr[idx2][0] - r0;
+	  ival = n0ratio * r_input_rowptr[idx2][1];
+	  expfac = exp(rval);
+	  row_current_out[idx2][0] = expfac*cos(ival);
+	  row_current_out[idx2][1] = expfac*sin(ival);
+	}
       }
     }
-    pval[0][0] = 1.0;
-    pval[0][1] = 0.0;
   }
+
+  //p(0,0) is special
+  pval[0][0] = 1.0;
+  pval[0][1] = 0.0;
+
 #ifdef TIMING
   p0Time += std::clock() - starttime;
 #endif

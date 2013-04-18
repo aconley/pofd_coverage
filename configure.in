@@ -62,11 +62,7 @@ AC_CHECK_HEADERS([fftw3.h],,
 dnl FFTW lib
 if test $fftwlib; then
   AC_MSG_RESULT( Checking User specified FFTW3 )
-  if test $rpathset; then
-     LDFLAGS="$LDFLAGS -L$fftwlib -Wl,--rpath -Wl,$fftwlib"
-  else
-     LDFLAGS="$LDFLAGS -L$fftwlib"
-  fi
+  LDFLAGS="$LDFLAGS -L$fftwlib"
   LIBS="$LIBS -lfftw3"
   AC_TRY_LINK( [#include<fftw3.h>],
   	       [fftw_plan plan;],
@@ -88,11 +84,7 @@ AC_ARG_WITH(gsllib,
             gsllib="$withval/",gsllib= )
 if test $gsllib; then
   AC_MSG_RESULT( Checking User specified GSL )
-  if test $rpathset; then
-     LDFLAGS="$LDFLAGS -L$gsllib -Wl,-rpath -Wl,$gsllib"
-  else
-     LDFLAGS="$LDFLAGS -L$gsllib"
-  fi
+  LDFLAGS="$LDFLAGS -L$gsllib"
   AC_CHECK_LIB( gsl, main, ,
       AC_MSG_ERROR("libgsl not in location specified by --with-gsllib: $gsllib"),
       [ -lm -lgslcblas -L$gsllib ] )
@@ -133,11 +125,8 @@ AC_ARG_WITH( cfitsiolib,
         [  --with-cfitsiolib=DIR   DIR=-LDIR, has libcfitsio.a],
         cfitsiolib="$withval/" , cfitsiolib= )
 if test $cfitsiolib; then
-  if test $rpathset; then
-   	  LDFLAGS="$LDFLAGS -L$cfitsiolib -Wl,--rpath -Wl,$cfitsiolib"
-  else
-       LDFLAGS="$LDFLAGS -L$cfitsiolib"
-  fi
+   LDFLAGS="$LDFLAGS -L$cfitsiolib"
+
 fi
 AC_CHECK_LIB(cfitsio,main,,
          [AC_MSG_ERROR("Can't find libcfitsio; use --with-cfitsiolib")], 

@@ -404,6 +404,12 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		 const_cast<char*>("Number of sources per sq deg"), 
 		 &status);
 
+  //Base model parameters
+  dtmp = model.getBaseN0();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BASEN0"), &dtmp, 
+		 const_cast<char*>("Base number of sources per sq deg"), 
+		 &status);
+
   //Sim params
   dtmp = bm.getFWHM1();
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp, 

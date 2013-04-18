@@ -504,8 +504,7 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
   std::clock_t starttime = std::clock();
 #endif
 
-  double r0, expfac, rval, ival;
-  r0 = n0ratio * rtrans[0][0]; //r[0] is pure real
+  double r0 = n0ratio * rtrans[0][0]; //r[0] is pure real
   double iflux = pofd_coverage::two_pi / (n * dflux);
 
   if (doshift) {
@@ -514,10 +513,10 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
     double sigfac = 0.5*sigma*sigma;
 #pragma omp parallel
     {
-      double w;
+      double w, expfac, rval, ival;
 #pragma omp for
       for (unsigned int idx = 1; idx < ncplx; ++idx) {
-	w    = iflux * static_cast<double>(idx);
+	w = iflux * static_cast<double>(idx);
 	rval = n0ratio * rtrans[idx][0] - r0 - sigfac*w*w;
 	ival = n0ratio * rtrans[idx][1] - shift*w;
 	expfac = exp(rval);
@@ -529,6 +528,7 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
     //No shift, sigma must be zero
 #pragma omp parallel
     {
+      double expfac, ival;
 #pragma omp for
       for (unsigned int idx = 1; idx < ncplx; ++idx) {
 	expfac = exp(n0ratio * rtrans[idx][0] - r0);

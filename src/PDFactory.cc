@@ -52,7 +52,7 @@ void PDFactory::init() {
 
   verbose = false;
   has_wisdom = false;
-  fftw_plan_style = FFTW_ESTIMATE;
+  fftw_plan_style = FFTW_MEASURE;
 
   sigma = 0.0;
   max_n0 = 0.0;
@@ -317,6 +317,42 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
     isRTransAllocated = true;
   }
   
+  //Make the plans, or keep the old ones if possible
+  //Do this before initializing rvals, rtrans, pofd, etc., 
+  // since this will mess with those values.
+  //Note that the forward transform dumps into rtrans
+  // but the backwards one comes from pval.  The idea
+  // is that we can re-use the forward transform, updating
+  // pval as we change n0, and including instrument noise and
+  // the shift.  That is, rtrans doesn't change after we call
+  // initPD, but pvals will change each time we call getPD
+  //If we resized, we must make the new plans because the
+  // addresses changed
+  int intn = static_cast<int>(n);
+  if ( (!plans_valid) || (plan_size != n) ) {
+    if (plan != NULL) fftw_destroy_plan(plan);
+    plan = fftw_plan_dft_r2c_1d(intn, rvals, rtrans,
+				fftw_plan_style);
+    if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+    plan_inv = fftw_plan_dft_c2r_1d(intn, pval, pofd,
+				    fftw_plan_style);
+    if (plan == NULL) {
+      std::stringstream str;
+      str << "Plan creation failed for forward transform of size: " << n;
+      if (has_wisdom) str << std::endl << "Your wisdom file may not have"
+			  << " that size";
+      throw pofdExcept("PDFactory","initPD",str.str(),4);
+    }
+    if (plan_inv == NULL) {
+      std::stringstream str;
+      str << "Plan creation failed for inverse transform of size: " << n;
+      if (has_wisdom) str << std::endl << "Your wisdom file may not have"
+			  << " that size";
+      throw pofdExcept("PDFactory","initPD",str.str(),5);
+    }
+    plans_valid = true;
+  }
+
   base_n0 = model.getBaseN0();
   double n0ratio = maxn0 / base_n0;
 
@@ -352,40 +388,6 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   // though we computed the maximum R value based on the maximum n0 value
   // The returned value is R * dflux, and dflux is set
   initR(n, maxflux_R, model, bm, pixsize, nfwhm, nbins);
-
-  //Make the plans, or keep the old ones if possible
-  //Note that the forward transform dumps into rtrans
-  // but the backwards one comes from pval.  The idea
-  // is that we can re-use the forward transform, updating
-  // pval as we change n0, and including instrument noise and
-  // the shift.  That is, rtrans doesn't change after we call
-  // initPD, but pvals will change each time we call getPD
-  //If we resized, we must make the new plans because the
-  // addresses changed
-  int intn = static_cast<int>(n);
-  if ( (!plans_valid) || (plan_size != n) ) {
-    if (plan != NULL) fftw_destroy_plan(plan);
-    plan = fftw_plan_dft_r2c_1d(intn, rvals, rtrans,
-				fftw_plan_style);
-    if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
-    plan_inv = fftw_plan_dft_c2r_1d(intn, pval, pofd,
-				    fftw_plan_style);
-    if (plan == NULL) {
-      std::stringstream str;
-      str << "Plan creation failed for forward transform of size: " << n;
-      if (has_wisdom) str << std::endl << "Your wisdom file may not have"
-			  << " that size";
-      throw pofdExcept("PDFactory","initPD",str.str(),4);
-    }
-    if (plan_inv == NULL) {
-      std::stringstream str;
-      str << "Plan creation failed for inverse transform of size: " << n;
-      if (has_wisdom) str << std::endl << "Your wisdom file may not have"
-			  << " that size";
-      throw pofdExcept("PDFactory","initPD",str.str(),5);
-    }
-    plans_valid = true;
-  }
 
   //Decide if we will shift and pad, and if so by how much
   //Only do shift if the noise is larger than one actual step size

@@ -80,7 +80,7 @@ void PDFactoryDouble::init(unsigned int NEDGE) {
 
   verbose = false;
   has_wisdom = false;
-  fftw_plan_style = FFTW_ESTIMATE;
+  fftw_plan_style = FFTW_MEASURE;
 
   sigma1 = sigma2 = std::numeric_limits<double>::quiet_NaN();
   mn1 = mn2 = var_noi1 = var_noi2 = sg1 = sg2 = 
@@ -611,6 +611,49 @@ void PDFactoryDouble::initPD(unsigned int n,
     throw pofdExcept("PDFactoryDouble", "initPD", 
 		     "Invalid (non-positive) n0", 7);
 
+  resize(n); //Must allocate space before we plan
+  
+  //Make the plans, or keep the old ones if possible
+  // Do this before doing R fill, as plan construction can
+  // mess with the input/output variables
+  //Note that the forward transform dumps into out_part,
+  // but the backwards one comes from pval.  The idea
+  // is that out_part holds the working bit.  These are
+  // convolved together into pval.  This is inefficient
+  // if there is only one sign present, but the special
+  // case doesn't seem worth the effort
+  //If we resized, we must make the new plans because the
+  // addresses changed
+  //We will have to use the advanced interfact to point
+  // specifically at the rvals subindex we are using on the
+  // forward plan, but the backwards plan is fine
+  int intn = static_cast<int>(n);
+  if ((plan_size != n) || (plan == NULL)) {
+    if (plan != NULL) fftw_destroy_plan(plan);
+    plan = fftw_plan_dft_r2c_2d(intn, intn, rvals, rtrans,
+				fftw_plan_style);
+  }
+  if ((plan_size != n) || (plan_inv == NULL)) {
+    if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+    plan_inv = fftw_plan_dft_c2r_2d(intn, intn, pval, pofd,
+				    fftw_plan_style);
+  }
+  if (plan == NULL) {
+    std::stringstream str;
+    str << "Plan creation failed for forward transform of size: " << n;
+    if (has_wisdom) str << std::endl << "Your wisdom file may not have"
+			<< " that size";
+    throw pofdExcept("PDFactoryDouble","initPD",str.str(),14);
+  }
+  if (plan_inv == NULL) {
+    std::stringstream str;
+    str << "Plan creation failed for inverse transform of size: " << n;
+    if (has_wisdom) str << std::endl << "Your wisdom file may not have"
+			<< " that size";
+    throw pofdExcept("PDFactoryDouble","initPD",str.str(),15);
+  }
+  plan_size = n;
+
   //This will cause R wrapping problems, so check maxn0 relative to
   // the model base n0 value
   base_n0 = model.getBaseN0();
@@ -647,9 +690,8 @@ void PDFactoryDouble::initPD(unsigned int n,
   maxflux_R2 = maxflux2 + est_shift;
 
   //Now, compute R out to those values for the base model
-  bool did_resize;
-  did_resize = initR(n, maxflux_R1, maxflux_R2, model, bm, pixsize,
-		     nfwhm, nbins, setEdge);
+  initR(n, maxflux_R1, maxflux_R2, model, bm, pixsize,
+	nfwhm, nbins, setEdge);
 
   //Now estimate the mean and standard deviation from that
   std::vector<double> mom(5);
@@ -776,45 +818,6 @@ void PDFactoryDouble::initPD(unsigned int n,
     throw pofdExcept("PDFactoryDouble","initPD",
 		     "maxidx2 is 0, which is a problem",13);
   
-  //Make the plans, or keep the old ones if possible
-  //Note that the forward transform dumps into out_part,
-  // but the backwards one comes from pval.  The idea
-  // is that out_part holds the working bit.  These are
-  // convolved together into pval.  This is inefficient
-  // if there is only one sign present, but the special
-  // case doesn't seem worth the effort
-  //If we resized, we must make the new plans because the
-  // addresses changed
-  //We will have to use the advanced interfact to point
-  // specifically at the rvals subindex we are using on the
-  // forward plan, but the backwards plan is fine
-  int intn = static_cast<int>(n);
-  if (did_resize || (plan_size != n) || (plan == NULL)) {
-    if (plan != NULL) fftw_destroy_plan(plan);
-    plan = fftw_plan_dft_r2c_2d(intn, intn, rvals, rtrans,
-				fftw_plan_style);
-  }
-  if (did_resize || (plan_size != n) || (plan_inv == NULL)) {
-    if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
-    plan_inv = fftw_plan_dft_c2r_2d(intn, intn, pval, pofd,
-				    fftw_plan_style);
-  }
-  if (plan == NULL) {
-    std::stringstream str;
-    str << "Plan creation failed for forward transform of size: " << n;
-    if (has_wisdom) str << std::endl << "Your wisdom file may not have"
-			<< " that size";
-    throw pofdExcept("PDFactoryDouble","initPD",str.str(),14);
-  }
-  if (plan_inv == NULL) {
-    std::stringstream str;
-    str << "Plan creation failed for inverse transform of size: " << n;
-    if (has_wisdom) str << std::endl << "Your wisdom file may not have"
-			<< " that size";
-    throw pofdExcept("PDFactoryDouble","initPD",str.str(),15);
-  }
-  plan_size = n;
-
   //Compute forward transform of this r value, store in rtrans
 #ifdef TIMING
   starttime = std::clock();

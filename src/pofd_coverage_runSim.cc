@@ -164,8 +164,8 @@ int runSimSingle(int argc, char **argv) {
     std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
-  if (n0 <= 0.0) {
-    std::cout << "Invalid (non-positve) n0" << std::endl;
+  if (n0 < 0.0) {
+    std::cout << "Invalid (negative) n0" << std::endl;
     return 1;
   }
   if (pixsize <= 0.0) {
@@ -186,13 +186,19 @@ int runSimSingle(int argc, char **argv) {
   }
 
   try {
-    if (verbose) {
-      //Use model to get base n0
+    double base_n0;
+    if (n0 == 0 || verbose) {
+      // Use base model for n0
       numberCounts model(modelfile);
+      base_n0 = model.getBaseN0();
+      if (n0 == 0)
+	n0 = base_n0;
+    }
 
+    if (verbose) {
       double area = n1*n2*std::pow(pixsize/3600.0,2);
       printf("   base model file:    %s\n", modelfile.c_str());
-      printf("   base n0:            %0.3e\n", model.getBaseN0());
+      printf("   base n0:            %0.3e\n", base_n0);
       printf("   nsims:              %u\n",nsims);
       printf("   n0initrange         %0.3f\n",n0initrange);
       printf("   Beam fwhm:          %0.2f\n",fwhm);
@@ -391,8 +397,8 @@ int runSimDouble(int argc, char **argv) {
     std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
-  if (n0 <= 0.0) {
-    std::cout << "Invalid (non-positve) n0" << std::endl;
+  if (n0 < 0.0) {
+    std::cout << "Invalid (negative) n0" << std::endl;
     return 1;
   }
   if (pixsize <= 0.0) {
@@ -413,13 +419,19 @@ int runSimDouble(int argc, char **argv) {
   }
 
   try {
-    if (verbose) {
-      //Use model to get base n0
+    double base_n0;
+    if (n0 == 0 || verbose) {
+      // Use base model for n0
       numberCountsDouble model(modelfile);
+      base_n0 = model.getBaseN0();
+      if (n0 == 0)
+	n0 = base_n0;
+    }
 
+    if (verbose) {
       double area = n1*n2*std::pow(pixsize/3600.0,2);
       printf("   base model file:    %s\n", modelfile.c_str());
-      printf("   base n0:            %0.3e\n", model.getBaseN0());
+      printf("   base n0:            %0.3e\n", base_n0);
       printf("   nsims:              %u\n",nsims);
       printf("   n0initrange         %0.3f\n",n0initrange);
       printf("   Beam fwhm1:         %0.2f\n",fwhm1);
@@ -521,7 +533,9 @@ int main(int argc, char **argv) {
 		<< " storing" << std::endl;
       std::cout << "\tthe resulting log likelihood.  The results are written to"
 		<< " outputfile" << std::endl;
-      std::cout << "\tas a FITS binary table." << std::endl;
+      std::cout << "\tas a FITS binary table.  If n0 is zero, then the value" 
+		<< std::endl;
+      std::cout << "\tfrom the raw model file is adopted." << std::endl;
       std::cout << std::endl;
       std::cout << "\tThe number counts model in 1D is a broken "
 		<< "power law" << std::endl;

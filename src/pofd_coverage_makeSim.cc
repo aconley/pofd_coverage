@@ -89,8 +89,8 @@ int makeSimSingle(int argc, char **argv) {
   n2         = atoi(argv[optind + 5]);
   outputfile = std::string(argv[optind + 6]);
 
-  if (n0 <= 0.0) {
-    std::cout << "Invalid (non-positive) n0: " << n0 << std::endl;
+  if (n0 < 0.0) {
+    std::cout << "Invalid (negative) n0: " << n0 << std::endl;
     return 1;
   }
   if (std::isnan(n0) || std::isinf(n0)) {
@@ -117,7 +117,11 @@ int makeSimSingle(int argc, char **argv) {
 
   try {
     numberCounts model(modelfile);
-    if (verbose)
+    if (n0 == 0) {
+      n0 = model.getBaseN0();
+      if (verbose)
+	std::cout << "Using model n0: " << n0 << std::endl;
+    } else if (verbose)
       std::cout << "Base model n0: " << model.getBaseN0()
 		<< " Your value: " << n0 << std::endl;
 
@@ -213,8 +217,8 @@ int makeSimDouble(int argc, char **argv) {
   n2         = atoi(argv[optind + 6]);
   outputfile = std::string(argv[optind + 7]);
 
-  if (n0 <= 0.0) {
-    std::cout << "Invalid (non-positive) n0: " << n0 << std::endl;
+  if (n0 < 0.0) {
+    std::cout << "Invalid (negative) n0: " << n0 << std::endl;
     return 1;
   }
   if (std::isnan(n0) || std::isinf(n0)) {
@@ -255,7 +259,11 @@ int makeSimDouble(int argc, char **argv) {
 
   try {
     numberCountsDouble model(modelfile);
-    if (verbose)
+    if (n0 == 0) {
+      n0 = model.getBaseN0();
+      if (verbose)
+	std::cout << "Using model n0: " << n0 << std::endl;
+    } else if (verbose)
       std::cout << "Base model n0: " << model.getBaseN0()
 		<< " Your value: " << n0 << std::endl;
 
@@ -323,7 +331,10 @@ int main( int argc, char** argv ) {
 		<< "power" << std::endl;
       std::cout << "\ta law model specified by modelfile, and by the number of"
 		<< std::endl;
-      std::cout << "\tsources per unit area n0." << std::endl;
+      std::cout << "\tsources per unit area n0.  If you set n0 to zero, then" 
+		<< std::endl;
+      std::cout << "\tthe raw model from modelfile is used without adjustment."
+		<< std::endl;
       std::cout << std::endl;
       std::cout << "\tIn the 2D case the model is the 1D model in band 1 times"
 		<< " a" << std::endl;

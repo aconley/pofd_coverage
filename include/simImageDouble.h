@@ -6,8 +6,8 @@
 #include<string>
 #include<utility>
 
-#include "../include/numberCountsDouble.h"
-#include "../include/ran.h"
+#include "numberCountsDouble.h"
+#include "ran.h"
 
 /*!
   \brief Data class for creating and holding double (two-band) simulated

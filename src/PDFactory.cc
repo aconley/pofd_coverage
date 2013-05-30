@@ -21,13 +21,13 @@ PDFactory::PDFactory(const std::string& wisfile) {
 }
 
 PDFactory::~PDFactory() {
-  if (RFlux != NULL) fftw_free(RFlux);
-  if (rvals != NULL) fftw_free(rvals);
-  if (rtrans != NULL) fftw_free(rtrans);
-  if (pofd != NULL) fftw_free(pofd);
-  if (pval != NULL) fftw_free(pval);
-  if (plan != NULL) fftw_destroy_plan(plan); 
-  if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+  if (RFlux != NULL) FFTWFREE(RFlux);
+  if (rvals != NULL) FFTWFREE(rvals);
+  if (rtrans != NULL) FFTWFREE(rtrans);
+  if (pofd != NULL) FFTWFREE(pofd);
+  if (pval != NULL) FFTWFREE(pval);
+  if (plan != NULL) FFTWDESTROYPLAN(plan); 
+  if (plan_inv != NULL) FFTWDESTROYPLAN(plan_inv);
 }
 
 void PDFactory::init() {
@@ -116,19 +116,19 @@ bool PDFactory::resize(unsigned int NSIZE) {
 void PDFactory::strict_resize(unsigned int NSIZE) {
   if (NSIZE == currsize) return;
 
-  if (RFlux != NULL) fftw_free(RFlux);
-  if (rvals != NULL) fftw_free(rvals);
-  if (rtrans != NULL) fftw_free(rtrans);
+  if (RFlux != NULL) FFTWFREE(RFlux);
+  if (rvals != NULL) FFTWFREE(rvals);
+  if (rtrans != NULL) FFTWFREE(rtrans);
   rtrans = NULL;
   isRTransAllocated = false;
-  if (pval != NULL) fftw_free(pval);
-  if (pofd != NULL) fftw_free(pofd);
+  if (pval != NULL) FFTWFREE(pval);
+  if (pofd != NULL) FFTWFREE(pofd);
 
-  RFlux = (double*) fftw_malloc(sizeof(double)*NSIZE);
-  rvals = (double*) fftw_malloc(sizeof(double)*NSIZE);
-  pofd = (double*) fftw_malloc(sizeof(double)*NSIZE);
+  RFlux = (double*) FFTWMALLOC(sizeof(double) * NSIZE);
+  rvals = (FFTFLOAT*) FFTWMALLOC(sizeof(FFTFLOAT) * NSIZE);
+  pofd = (FFTFLOAT*) FFTWMALLOC(sizeof(FFTFLOAT)*NSIZE);
   unsigned int fsize = NSIZE/2+1;
-  pval = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);
+  pval = (FFTWCOMPLEX*) FFTWMALLOC(sizeof(FFTWCOMPLEX)*fsize);
   plans_valid = false;
 
   currsize = NSIZE;
@@ -140,13 +140,13 @@ void PDFactory::strict_resize(unsigned int NSIZE) {
 */
 bool PDFactory::addWisdom(const std::string& filename) {
   FILE *fp = NULL;
-  fp = fopen( filename.c_str(), "r" );
+  fp = fopen(filename.c_str(), "r");
   if (!fp) {
     std::stringstream str;
     str << "Error opening wisdom file: " << filename;
     throw pofdExcept("PDFactory","addWisdom",str.str(),1);
   }
-  if (fftw_import_wisdom_from_file(fp) == 0) {
+  if (FFTWIMPORTWIS(fp) == 0) {
     std::stringstream str;
     str << "Error reading wisdom file: " << wisdom_file;
     throw pofdExcept("PDFactory","addWisdom",str.str(),1);
@@ -156,11 +156,11 @@ bool PDFactory::addWisdom(const std::string& filename) {
   has_wisdom = true;
   wisdom_file = filename;
   if (plan != NULL) {
-    fftw_destroy_plan(plan); 
+    FFTWDESTROYPLAN(plan); 
     plan = NULL;
   }
   if (plan_inv != NULL) {
-    fftw_destroy_plan(plan_inv);
+    FFTWDESTROYPLAN(plan_inv);
     plan_inv = NULL;
   }
   plans_valid = false;
@@ -184,10 +184,10 @@ bool PDFactory::addWisdom(const std::string& filename) {
                       so if you want the 2nd moment, nmom must be at least 3.
 
 */
-void PDFactory::getRIntegrals(unsigned int n, double maxflux,
+void PDFactory::getRIntegrals(unsigned int n, FFTFLOAT maxflux,
 			      const numberCounts& model, const beam& bm, 
 			      double pixsize, double nfwhm, unsigned int nbins,
-			      std::vector<double>& vec, unsigned int nmom) {
+			      std::vector<FFTFLOAT>& vec, unsigned int nmom) {
   //We are totally going to screw things up, so mark as unclean
   initialized = false;  
   if (n == 0)
@@ -206,7 +206,7 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
   mom = 0.5 * rvals[0];
   for (unsigned int i = 1; i < n-1; ++i) mom += rvals[i];
   mom += 0.5 * rvals[n-1];
-  vec[0] = mom;
+  vec[0] = static_cast<FFTFLOAT>(mom);
 
   //Need a working array for the flux product.  The idea is to steadily
   // accumulate Rflux^n * R in wrkarr.
@@ -220,7 +220,7 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
     mom = 0.5 * wrkarr[0];
     for (unsigned int j = 1; j < n-1; ++j) mom += wrkarr[j];
     mom += 0.5 * wrkarr[n-1];
-    vec[i] = mom;
+    vec[i] = static_cast<FFTFLOAT>(mom);
   }
 }
 
@@ -242,7 +242,7 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
   be smaller because of padding.  Furthermore, because of mean shifting,
   the maximum flux will often end up a bit off from the desired value.
 */
-void PDFactory::initR(unsigned int n, double maxflux, 
+void PDFactory::initR(unsigned int n, FFTFLOAT maxflux, 
 		      const numberCounts& model, const beam& bm,
 		      double pixsize, double nfwhm, 
 		      unsigned int nbins) {
@@ -289,8 +289,9 @@ void PDFactory::initR(unsigned int n, double maxflux,
   the maximum flux will end up being -less- than maxflux in practice
   by about the mean flux + 10 sigma.
  */
-void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux, 
-		       double maxn0, const numberCounts& model,
+void PDFactory::initPD(unsigned int n, FFTFLOAT inst_sigma, 
+		       FFTFLOAT maxflux, FFTFLOAT maxn0, 
+		       const numberCounts& model,
 		       const beam& bm, double pixsize, double nfwhm,
 		       unsigned int nbins) {
 
@@ -311,9 +312,9 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   //Allocate/resize internal arrays
   resize(n);
   if (! isRTransAllocated ) {
-    if (rtrans != NULL) fftw_free(rtrans);
+    if (rtrans != NULL) FFTWFREE(rtrans);
     unsigned int fsize = n / 2 + 1;
-    rtrans = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);
+    rtrans = (FFTWCOMPLEX*) FFTWMALLOC(sizeof(FFTWCOMPLEX)*fsize);
     isRTransAllocated = true;
   }
   
@@ -330,12 +331,10 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   // addresses changed
   int intn = static_cast<int>(n);
   if ( (!plans_valid) || (plan_size != n) ) {
-    if (plan != NULL) fftw_destroy_plan(plan);
-    plan = fftw_plan_dft_r2c_1d(intn, rvals, rtrans,
-				fftw_plan_style);
-    if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
-    plan_inv = fftw_plan_dft_c2r_1d(intn, pval, pofd,
-				    fftw_plan_style);
+    if (plan != NULL) FFTWDESTROYPLAN(plan);
+    plan = FFTWDFTR2C1D(intn, rvals, rtrans, fftw_plan_style);
+    if (plan_inv != NULL) FFTWDESTROYPLAN(plan_inv);
+    plan_inv = FFTWDFTC2R1D(intn, pval, pofd, fftw_plan_style);
     if (plan == NULL) {
       std::stringstream str;
       str << "Plan creation failed for forward transform of size: " << n;
@@ -354,7 +353,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   }
 
   base_n0 = model.getBaseN0();
-  double n0ratio = maxn0 / base_n0;
+  FFTFLOAT n0ratio = maxn0 / base_n0;
 
   //We will iterate to try to get the maximum right.  Given R,
   // we can compute the mean and standard deviation of the resulting P(D).
@@ -375,7 +374,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   maxflux_R = maxflux + est_shift;
 
   //Compute R integrals to update estimates for shift
-  std::vector<double> mom(3); //0th, 1st, 2nd moment
+  std::vector<FFTFLOAT> mom(3); //0th, 1st, 2nd moment
   getRIntegrals(n, maxflux_R, model, bm, pixsize, nfwhm, nbins, mom, 3);
 
   mn = n0ratio * mom[1];
@@ -439,7 +438,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
 #ifdef TIMING
   starttime = std::clock();
 #endif
-  fftw_execute(plan); 
+  FFTWEXECUTE(plan); 
 #ifdef TIMING
   fftTime += std::clock() - starttime;
 #endif
@@ -522,8 +521,8 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
 	rval = n0ratio * rtrans[idx][0] - r0 - sigfac*w*w;
 	ival = n0ratio * rtrans[idx][1] - shift*w;
 	expfac = exp(rval);
-	pval[idx][0] = expfac * cos(ival);
-	pval[idx][1] = expfac * sin(ival);
+	pval[idx][0] = static_cast<FFTFLOAT>(expfac * cos(ival));
+	pval[idx][1] = static_cast<FFTFLOAT>(expfac * sin(ival));
       } 
     }
   } else {
@@ -535,8 +534,8 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
       for (unsigned int idx = 1; idx < ncplx; ++idx) {
 	expfac = exp(n0ratio * rtrans[idx][0] - r0);
 	ival = n0ratio * rtrans[idx][1];
-	pval[idx][0] = expfac*cos(ival);
-	pval[idx][1] = expfac*sin(ival);
+	pval[idx][0] = static_cast<FFTFLOAT>(expfac*cos(ival));
+	pval[idx][1] = static_cast<FFTFLOAT>(expfac*sin(ival));
       }
     }
   }
@@ -554,7 +553,7 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
 #ifdef TIMING
   starttime = std::clock();
 #endif
-  fftw_execute(plan_inv); //overwrites pofd with reverse transform of pval
+  FFTWEXECUTE(plan_inv); //overwrites pofd with reverse transform of pval
 #ifdef TIMING
   fftTime += std::clock() - starttime;
 #endif

@@ -559,9 +559,9 @@ double numberCountsDouble::powerInt(double alpha, double beta) const {
 
   \returns R(x1, x2) computed for the base input model.
 */
-double numberCountsDouble::getR(double x1,double x2, const doublebeam& bm,
-				double pixsize, double nfwhm,
-				unsigned int nbins) const {
+FFTFLOAT numberCountsDouble::getR(double x1,double x2, const doublebeam& bm,
+				  double pixsize, double nfwhm,
+				  unsigned int nbins) const {
 
   if (pixsize <= 0.0)
     throw pofdExcept("numberCountsDouble", 
@@ -616,7 +616,7 @@ double numberCountsDouble::getR(double x1,double x2, const doublebeam& bm,
     } 
 
   double prefac = pixsize / 3600.0;
-  return prefac * prefac * retval;
+  return static_cast<FFTFLOAT>(prefac * prefac * retval);
 }
 
 /*!
@@ -634,7 +634,7 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
 			      unsigned int n2, const double* const x2,
 			      const doublebeam& bm, double pixsize,
 			      double nfwhm, unsigned int nbins,
-			      double* R) const {
+			      FFTFLOAT* R) const {
   
   if (pixsize <= 0.0)
     throw pofdExcept("numberCountsDouble", 
@@ -688,7 +688,7 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
 #pragma omp parallel
   {
     double ieta1, ieta2, cx1, cx2, Rsum;
-    double *rowptr;
+    FFTFLOAT *rowptr;
     #pragma omp for
     for (unsigned int j = 0; j < n1; ++j) {
       cx1 = x1[j];
@@ -708,7 +708,7 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
 	      Rsum += bm_wts[i] * ieta1 * ieta2 * 
 		getNumberCountsInner(cx1 * ieta1, cx2 * ieta2);
 	    }
-	    rowptr[k] = prefac * Rsum;
+	    rowptr[k] = static_cast<FFTFLOAT>(prefac * Rsum);
 	  }
 	}
     }

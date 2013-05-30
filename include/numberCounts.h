@@ -6,8 +6,8 @@
 #include<string>
 #include<ostream>
 
-#include "../include/global_settings.h"
-#include "../include/beam.h"
+#include "global_settings.h"
+#include "beam.h"
 
 /*!
   \brief Broken power law number counts
@@ -62,12 +62,12 @@ class numberCounts {
   double getdNdS(double) const;
 
   /*!\brief Get number of source responses for base model */
-  double getR(double, const beam&, double, double,
-	      unsigned int) const;
+  FFTFLOAT getR(double, const beam&, double, double,
+		unsigned int) const;
 
   /*!\brief Get number of source responses for base model, general case, array*/
   void getR(unsigned int, double, double, const beam&, 
-	    double, double, unsigned int, double*) const;
+	    double, double, unsigned int, FFTFLOAT*) const;
   
   /*! \brief Generate a source flux from model */
   double genSource(double val) const;

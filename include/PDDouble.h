@@ -6,7 +6,8 @@
 #include<string>
 #include<ostream>
 
-#include "../include/simImageDouble.h"
+#include "simImageDouble.h"
+#include "global_settings.h"
 
 /*!
   \brief Class to hold P(D) in 2 dimensions.  Supports interpolation.
@@ -33,18 +34,18 @@ class PDDouble {
   double getLogLikeUnbinned(const simImageDouble&) const;
 
  public:
-  PDDouble(unsigned int N1=0, double MINFLUX1=0.0, double DFLUX1=0.0,
-	   unsigned int N2=0, double MINFLUX2=0.0, double DFLUX2=0.0,
+  PDDouble(unsigned int N1=0, FFTFLOAT MINFLUX1=0.0, FFTFLOAT DFLUX1=0.0,
+	   unsigned int N2=0, FFTFLOAT MINFLUX2=0.0, FFTFLOAT DFLUX2=0.0,
 	   bool LOG=true); //!< Constructor
   ~PDDouble(); //!< Destructor
 
   //Public for efficient filling -- bad form, but speed matters here
   bool logflat; //!< True if log( P(D1,D2) ) is stored instead of P(D1,D2)
-  double minflux1; //!< Minimum flux along axis1
-  double dflux1; //!< Flux step along axis1
-  double minflux2; //!< Minimum flux along axis2
-  double dflux2; //!< Flux step along axis2
-  double* pd_; //!< Actual P(D), stored as row-major array
+  FFTFLOAT minflux1; //!< Minimum flux along axis1
+  FFTFLOAT dflux1; //!< Flux step along axis1
+  FFTFLOAT minflux2; //!< Minimum flux along axis2
+  FFTFLOAT dflux2; //!< Flux step along axis2
+  FFTFLOAT* pd_; //!< Actual P(D), stored as row-major array
 
   void shrink(); //!< Shrink memory requirements to user size
   void strict_resize(unsigned int,unsigned int); //!< Resize data arrays, forcing actual resizing in all cases
@@ -68,22 +69,22 @@ class PDDouble {
   PDDouble& operator=(const PDDouble&); //!< Copy
 
   /*! \brief Fill contents from row major array */
-  void fill(unsigned int, double, double,
-	    unsigned int, double, double,
-	    const double* const, bool LOG=true); 
+  void fill(unsigned int, FFTFLOAT, FFTFLOAT,
+	    unsigned int, FFTFLOAT, FFTFLOAT,
+	    const FFTFLOAT* const, bool LOG=true); 
 
   /*! \brief Get flux value (band 1) corresponding to index */
-  double getFluxVal1(unsigned int i) const { return minflux1+static_cast<double>(i)*dflux1; }
+  FFTFLOAT getFluxVal1(unsigned int i) const { return minflux1+static_cast<FFTFLOAT>(i)*dflux1; }
   /*! \brief Get flux value (band 2) corresponding to index */
-  double getFluxVal2(unsigned int i) const { return minflux2+static_cast<double>(i)*dflux2; }
+  FFTFLOAT getFluxVal2(unsigned int i) const { return minflux2+static_cast<FFTFLOAT>(i)*dflux2; }
   /*! \brief Get PD value corresponding to indices */
-  double getPDVal(unsigned int i, 
+  FFTFLOAT getPDVal(unsigned int i, 
 		  unsigned int j) const { return pd_[n2*i+j]; }
   /*! \brief Get PD value corresponding to flux values (using interpolation) */
-  double getPDVal(double,double,bool=false) const; //!< Interpolation
+  FFTFLOAT getPDVal(double,double,bool=false) const; //!< Interpolation
 
   /*! \brief PD element access */
-  const double* operator[](unsigned int i) const { return pd_+n2*i; }
+  const FFTFLOAT* operator[](unsigned int i) const { return pd_+n2*i; }
   /*! \brief Number of elements in PD, band 1 */
   unsigned int getDim1() const { return n1; }
   /*! \brief Number of elements in PD, band 2 */

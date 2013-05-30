@@ -1,7 +1,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(pofd_coverage,0.2.2, alexander.conley@colorado.edu)
+AC_INIT(pofd_coverage,0.2.3, alexander.conley@colorado.edu)
 AC_LANG_CPLUSPLUS
 AC_CONFIG_SRCDIR([src])
 AM_INIT_AUTOMAKE
@@ -48,6 +48,9 @@ AC_ARG_WITH(fftwinc,
 AC_ARG_WITH(fftwlib, 
             [  --with-fftwlib=DIR      DIR=-LDIR, has libfftw3 ],
             fftwlib="$withval/",fftwlib= )
+AC_ARG_ENABLE(fftfloat,    
+        AC_HELP_STRING([--enable-fftfloat], [Use 32 bit FFTs]),
+	usefftfloat=$enableval, usefftfloat="")
 
 dnl FFTW Header
 AC_MSG_RESULT( Checking FFTW3 Headers )
@@ -62,22 +65,40 @@ AC_CHECK_HEADERS([fftw3.h],,
       AC_MSG_ERROR("Can't find fftw3 includes; use --with-fftwinc")
    fi ] )
 
-dnl FFTW lib
-if test $fftwlib; then
-  AC_MSG_RESULT( Checking User specified FFTW3 )
-  LDFLAGS="$LDFLAGS -L$fftwlib"
-  LIBS="$LIBS -lfftw3"
-  AC_TRY_LINK( [#include<fftw3.h>],
-  	       [fftw_plan plan;],
-	       [echo "Found libFFTW3"],
-	       [AC_MSG_ERROR("FFTW3 library not found in user specified location")])
-dnl  AC_CHECK_LIB( fftw3, main, ,
-dnl      AC_MSG_ERROR("libfftw3 not in location specified by --with-fftwlib: $fftwlib"),
-dnl      [ -lfftw3 -L$fftwlib ] )
+dnl library test -- depends on precision
+if test $enableval; then
+   AC_MSG_RESULT(Using 32 bit FFTs)
+   AC_DEFINE(USEFFT32BIT, 1)
+   if test $fftwlib; then
+      AC_MSG_RESULT(Checking User specified 32 bit FFTW3)
+      LDFLAGS="$LDFLAGS -L$fftwlib"
+      LIBS="$LIBS -lfftw3f"
+      AC_TRY_LINK( [#include<fftw3.h>],
+  	       [fftwf_plan plan;],
+	       [echo "Found 32 bit libFFTW3"],
+	       [AC_MSG_ERROR("32 bit FFTW3 library not found in user specified location")])
+   else
+      AC_MSG_RESULT( Checking 32 bit FFTW3 )
+      AC_CHECK_LIB( fftw3f, main, ,
+        AC_MSG_ERROR("libfftw3f not found; use --with-fftwlib"), 
+	             [-lm -lfftw3f] )
+   fi
 else
-  AC_MSG_RESULT( Checking FFTW3 )
-  AC_CHECK_LIB( fftw3, main, ,
-      AC_MSG_ERROR("libfftw3 not found; use --with-fftwlib"), [-lm -lfftw3] )
+   AC_MSG_RESULT(Using 64 bit FFTs)
+   if test $fftwlib; then
+      AC_MSG_RESULT(Checking User specified 32 bit FFTW3)
+      LDFLAGS="$LDFLAGS -L$fftwlib"
+      LIBS="$LIBS -lfftw3"
+      AC_TRY_LINK( [#include<fftw3.h>],
+  	       [fftw_plan plan;],
+	       [echo "Found 64 bit libFFTW3"],
+	       [AC_MSG_ERROR("64 bit FFTW3 library not found in user specified location")])
+   else
+      AC_MSG_RESULT( Checking 64 bit FFTW3 )
+      AC_CHECK_LIB( fftw3, main, ,
+        AC_MSG_ERROR("libfftw3 not found; use --with-fftwlib"), 
+	             [-lm -lfftw3] )
+   fi
 fi
 
 dnl GSL

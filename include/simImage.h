@@ -5,8 +5,8 @@
 
 #include<string>
 
-#include "../include/ran.h"
-#include "../include/numberCounts.h"
+#include "ran.h"
+#include "numberCounts.h"
 
 /*!
   \brief Data class for creating and holding simulated

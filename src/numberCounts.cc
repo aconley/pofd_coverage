@@ -215,9 +215,9 @@ double numberCounts::getdNdS(double flux) const {
 
   \returns R(x) computed for the base input model.
 */
-double numberCounts::getR(double x, const beam& bm,
-			  double pixsize, double nfwhm,
-			  unsigned int nbins) const {
+FFTFLOAT numberCounts::getR(double x, const beam& bm,
+			    double pixsize, double nfwhm,
+			    unsigned int nbins) const {
 
   //This could be done much more efficiently (see the old pofd_mcmc
   // code), but the idea here is to only really compute R once
@@ -275,7 +275,7 @@ double numberCounts::getR(double x, const beam& bm,
   }
 
   double prefac = pixsize / 3600.0;
-  return prefac * prefac * R;
+  return static_cast<FFTFLOAT>(prefac * prefac * R);
 }
 
 /*!\brief Get number of source responses, vector version 
@@ -296,7 +296,7 @@ double numberCounts::getR(double x, const beam& bm,
 void numberCounts::getR(unsigned int n, double minflux,
 			double maxflux, const beam& bm, 
 			double pixsize, double nfwhm,
-			unsigned int nbins, double* R) const {
+			unsigned int nbins, FFTFLOAT* R) const {
 
   //As for the scalar version of getR above, this could be done much more
   // efficiently but we aim for simplicity rather than efficiency
@@ -361,7 +361,7 @@ void numberCounts::getR(unsigned int n, double minflux,
 	cR = a[loc] * pow(cval, -gamma[loc]);
 	workR += bm_wts[j] * cR * ibm;
       }
-      R[i] = prefac * workR;
+      R[i] = static_cast<FFTFLOAT>(prefac * workR);
     }
   }
 }

@@ -12,8 +12,8 @@
 #include<gsl/gsl_interp.h>
 #include<gsl/gsl_integration.h>
 
-#include "../include/doublebeam.h"
-#include "../include/global_settings.h"
+#include "doublebeam.h"
+#include "global_settings.h"
 
 /*!
   \brief Broken power law times log normal number counts
@@ -171,13 +171,13 @@ class numberCountsDouble {
   double getOffsetKnotValue(unsigned int idx) const { return offsetvals[idx]; }
 
   /*! \brief Get number of source responses, single value version */
-  double getR(double, double, const doublebeam&, double, double,
-	      unsigned int) const;
+  FFTFLOAT getR(double, double, const doublebeam&, double, double,
+		unsigned int) const;
   
   /*! \brief Get number of source responses, array version*/
   void getR(unsigned int, const double*, unsigned int, const double*, 
 	    const doublebeam&, double, double, unsigned int,
-	    double*) const;
+	    FFTFLOAT*) const;
 
   /*! \brief Generate a source flux from model */
   std::pair<double, double> genSource(double udev, double gdev) const;

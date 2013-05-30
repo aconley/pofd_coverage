@@ -8,10 +8,10 @@
 #endif
 
 #include<gsl/gsl_errno.h>
-#include<fftw3.h>
 
-#include "../include/numberCountsDouble.h"
-#include "../include/PDDouble.h"
+#include "global_settings.h"
+#include "numberCountsDouble.h"
+#include "PDDouble.h"
 
 /*!
   \brief Class for computing P(D) values from a set of parameters,
@@ -35,29 +35,29 @@ class PDFactoryDouble {
   bool initialized; //!< forward transformed R is filled
 
   unsigned int currsize; //!< Current memory allocation
-  double sigma1; //!< Current supported instrumental \f$\sigma\f$, band 1
-  double sigma2; //!< Current supported instrumental \f$\sigma\f$, band 2
-  double max_n0; //!< Current maximum supported model \f$N_0\f$
-  double base_n0; //!< Model base \f$N_0\f$
-  double mn1; //!< Expected mean, band 1
-  double mn2; //!< Expected mean, band 2
-  double var_noi1; //!< Expected variance without instrumental noise, band 1
-  double var_noi2; //!< Expected variance without instrumental noise, band 2
-  double sg1; //!< Expected sigma (inc instrument noise), band 1
-  double sg2; //!< Expected sigma (inc instrument noise), band 2
+  FFTFLOAT sigma1; //!< Current supported instrumental \f$\sigma\f$, band 1
+  FFTFLOAT sigma2; //!< Current supported instrumental \f$\sigma\f$, band 2
+  FFTFLOAT max_n0; //!< Current maximum supported model \f$N_0\f$
+  FFTFLOAT base_n0; //!< Model base \f$N_0\f$
+  FFTFLOAT mn1; //!< Expected mean, band 1
+  FFTFLOAT mn2; //!< Expected mean, band 2
+  FFTFLOAT var_noi1; //!< Expected variance without instrumental noise, band 1
+  FFTFLOAT var_noi2; //!< Expected variance without instrumental noise, band 2
+  FFTFLOAT sg1; //!< Expected sigma (inc instrument noise), band 1
+  FFTFLOAT sg2; //!< Expected sigma (inc instrument noise), band 2
 
   unsigned int plan_size; //!< Size of currently computed plans
-  fftw_plan plan;     //!< Holds forward transformation plan
-  fftw_plan plan_inv; //!< Holds inverse transformation plan
+  FFTWPLAN plan;     //!< Holds forward transformation plan
+  FFTWPLAN plan_inv; //!< Holds inverse transformation plan
 
   //Working variables for transformation
   bool rvars_allocated; //!< Are R variables (rest of this block) allocated
   bool is_r_set; //!< Has R been set to something?
   unsigned int rsize; //!< Size of R fill along each dimension
-  double* rvals; //!< Working space for R computation, row major order
-  fftw_complex *rtrans; //!< Holds FFTed rvals 
-  fftw_complex* pval; //!< Working variable holding p = exp( stuff )
-  double* pofd; //!< Internal P(D) variable.  
+  FFTFLOAT* rvals; //!< Working space for R computation, row major order
+  FFTWCOMPLEX *rtrans; //!< Holds FFTed rvals 
+  FFTWCOMPLEX* pval; //!< Working variable holding p = exp( stuff )
+  FFTFLOAT* pofd; //!< Internal P(D) variable.  
   double *RFlux1; //!< Holds R flux values for fill
   double *RFlux2; //!< Holds R flux values for fill
 
@@ -69,19 +69,19 @@ class PDFactoryDouble {
   unsigned int nedge; //!< Number of edge integral steps
   double* REdgeFlux1; //!< Holds flux for R edge integration
   double* REdgeFlux2; //!< Holds flux for R edge integration
-  double* REdgeWork; //!< Holds R in edge integration
+  FFTFLOAT* REdgeWork; //!< Holds R in edge integration
     
   void allocateEdgevars(); //!< Allocate Edge variables
   void freeEdgevars(); //!< Free edge variables
 
-  double dflux1; //!< Flux size step of last computation, band 1
-  double dflux2; //!< Flux size step of last computation, band 2
+  FFTFLOAT dflux1; //!< Flux size step of last computation, band 1
+  FFTFLOAT dflux2; //!< Flux size step of last computation, band 2
   unsigned int maxidx1; //!< Max non-zero index in R, band 2
   unsigned int maxidx2; //!< Max non-zero index in R, band 2
   bool doshift1; //!< Apply shifting, band 2
   bool doshift2; //!< Apply shifting, band 2
-  double shift1; //!< Shift amount, band 2
-  double shift2; //!< Shift amount, band 2
+  FFTFLOAT shift1; //!< Shift amount, band 2
+  FFTFLOAT shift2; //!< Shift amount, band 2
   
   unsigned int fftw_plan_style; //!< FFTW plan flags
   bool has_wisdom; //!< Has FFTW wisdom 
@@ -95,12 +95,12 @@ class PDFactoryDouble {
   void free(); //!< Frees memory
 
   //*! \brief Initializes R*/
-  bool initR(unsigned int, double, double, const numberCountsDouble&,
+  bool initR(unsigned int, FFTFLOAT, FFTFLOAT, const numberCountsDouble&,
 	     const doublebeam&, double, double, unsigned int,
 	     bool=true);
 
   //*! \brief Compute integrals of R */
-  void getRIntegralsInternal(unsigned int, std::vector<double>&) const;
+  void getRIntegralsInternal(unsigned int, std::vector<FFTFLOAT>&) const;
 
 #ifdef TIMING
   std::clock_t RTime, p0Time, fftTime, posTime, copyTime;
@@ -116,7 +116,7 @@ class PDFactoryDouble {
   void setVerbose() { verbose = true; } //!< Sets verbose mode
   void unsetVerbose() { verbose = false; } //!< Unset verbose mode
 
-  double getMaxN0() const { return max_n0; }
+  FFTFLOAT getMaxN0() const { return max_n0; }
 
   /*! \brief Get size of last FFT */
   unsigned int getPlanSize() const { return plan_size; }
@@ -129,8 +129,8 @@ class PDFactoryDouble {
   bool addWisdom(const std::string& filename);
 
   /*! \brief Initializes P(D) by computing R and forward transforming it*/
-  void initPD(unsigned int, double, double, double, double, double,
-	      const numberCountsDouble&, const doublebeam&,
+  void initPD(unsigned int, FFTFLOAT, FFTFLOAT, FFTFLOAT, FFTFLOAT,
+	      FFTFLOAT, const numberCountsDouble&, const doublebeam&,
 	      double, double, unsigned int, bool setEdge=true);
 
   /*! \brief Gets P(D) with specified noise levels */

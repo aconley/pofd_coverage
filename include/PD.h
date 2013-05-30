@@ -6,7 +6,8 @@
 #include<string>
 #include<ostream>
 
-#include "../include/simImage.h"
+#include "simImage.h"
+#include "global_settings.h"
 
 /*!
   \brief Class to hold P(D).  Supports interpolation.
@@ -31,15 +32,15 @@ class PD {
   double getLogLikeUnbinned(const simImage&) const;
 
  public:
-  PD(unsigned int N=0, double MINFLUX=0.0, double DFLUX=0.0,
+  PD(unsigned int N=0, FFTFLOAT MINFLUX=0.0, FFTFLOAT DFLUX=0.0,
      bool LOG=true); //!< Constructor
   ~PD(); //!< Destructor
 
   //Public for efficient filling -- bad form, but speed matters here
   bool logflat; //!< True if log( P(D1,D2) ) is stored instead of P(D1,D2)
-  double minflux; //!< Minimum flux
-  double dflux; //!< Flux step along axis
-  double* pd_; //!< Actual P(D)
+  FFTFLOAT minflux; //!< Minimum flux
+  FFTFLOAT dflux; //!< Flux step along axis
+  FFTFLOAT* pd_; //!< Actual P(D)
 
   void shrink(); //!< Shrink memory requirements to user size
   void strict_resize(unsigned int); //!< Resize data arrays, forcing actual resizing in all cases
@@ -63,12 +64,13 @@ class PD {
   PD& operator=(const PD&); //!< Copy
 
   /*! \brief Fill contents from array*/
-  void fill(unsigned int, double, double,
-	    const double* const, bool LOG=true); 
+  void fill(unsigned int, FFTFLOAT, FFTFLOAT,
+	    const FFTFLOAT* const, bool LOG=true); 
 
-  double getFluxVal(unsigned int i) const { return minflux+static_cast<double>(i)*dflux; }
-  double getPDVal(unsigned int i) const { return pd_[i]; }
-  double getPDVal(double) const; //!< Interpolation
+  FFTFLOAT getFluxVal(unsigned int i) const { 
+    return minflux+static_cast<FFTFLOAT>(i)*dflux; }
+  FFTFLOAT getPDVal(unsigned int i) const { return pd_[i]; }
+  FFTFLOAT getPDVal(double) const; //!< Interpolation
 
   const double operator[](unsigned int i) const { return pd_[i]; }
   unsigned int getDim() const { return n; }

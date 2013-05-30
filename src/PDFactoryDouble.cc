@@ -31,20 +31,20 @@ PDFactoryDouble::PDFactoryDouble(const std::string& wisfile,
 }
 
 PDFactoryDouble::~PDFactoryDouble() {
-  if (RFlux1 != NULL) fftw_free(RFlux1);
-  if (RFlux2 != NULL) fftw_free(RFlux2);
+  if (RFlux1 != NULL) FFTWFREE(RFlux1);
+  if (RFlux2 != NULL) FFTWFREE(RFlux2);
 
-  if (rvals != NULL)  fftw_free(rvals);
-  if (rtrans != NULL) fftw_free(rtrans);
-  if (pofd != NULL)   fftw_free(pofd);
-  if (pval != NULL)   fftw_free(pval);
+  if (rvals != NULL)  FFTWFREE(rvals);
+  if (rtrans != NULL) FFTWFREE(rtrans);
+  if (pofd != NULL)   FFTWFREE(pofd);
+  if (pval != NULL)   FFTWFREE(pval);
 
-  if (REdgeFlux1 != NULL) fftw_free(REdgeFlux1);
-  if (REdgeFlux2 != NULL) fftw_free(REdgeFlux2);
-  if (REdgeWork != NULL)  fftw_free(REdgeWork);
+  if (REdgeFlux1 != NULL) FFTWFREE(REdgeFlux1);
+  if (REdgeFlux2 != NULL) FFTWFREE(REdgeFlux2);
+  if (REdgeWork != NULL)  FFTWFREE(REdgeWork);
 
-  if (plan != NULL) fftw_destroy_plan(plan); 
-  if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+  if (plan != NULL) FFTWDESTROYPLAN(plan); 
+  if (plan_inv != NULL) FFTWDESTROYPLAN(plan_inv);
 }
 
 /*!
@@ -166,26 +166,26 @@ void PDFactoryDouble::allocateRvars() {
   if (currsize == 0)
     throw pofdExcept("PDFactoryDouble","allocate_rvars",
 		     "Invalid (0) currsize",1);
-  RFlux1 = (double*) fftw_malloc(sizeof(double)*currsize);
-  RFlux2 = (double*) fftw_malloc(sizeof(double)*currsize);
+  RFlux1 = (double*) FFTWMALLOC(sizeof(double)*currsize);
+  RFlux2 = (double*) FFTWMALLOC(sizeof(double)*currsize);
   unsigned int fsize = currsize * currsize;
-  rvals = (double*) fftw_malloc(sizeof(double)*fsize);
-  pofd  = (double*) fftw_malloc(sizeof(double)*fsize);
+  rvals = (FFTFLOAT*) FFTWMALLOC(sizeof(FFTFLOAT)*fsize);
+  pofd  = (FFTFLOAT*) FFTWMALLOC(sizeof(FFTFLOAT)*fsize);
   fsize = currsize * (currsize / 2 + 1);
-  rtrans = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);
-  pval = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);
+  rtrans = (FFTWCOMPLEX*) FFTWMALLOC(sizeof(FFTWCOMPLEX)*fsize);
+  pval = (FFTWCOMPLEX*) FFTWMALLOC(sizeof(FFTWCOMPLEX)*fsize);
 
   rvars_allocated = true;
   initialized = false;
 }
 
 void PDFactoryDouble::freeRvars() {
-  if (RFlux1 != NULL) { fftw_free(RFlux1); RFlux1=NULL; }
-  if (RFlux2 != NULL) { fftw_free(RFlux2); RFlux2=NULL; }
-  if (rvals != NULL) { fftw_free(rvals); rvals=NULL; }
-  if (rtrans != NULL) { fftw_free(rtrans); rtrans=NULL; }
-  if (pval != NULL) { fftw_free(pval); pval = NULL; }
-  if (pofd != NULL) { fftw_free(pofd); pofd = NULL; }
+  if (RFlux1 != NULL) { FFTWFREE(RFlux1); RFlux1=NULL; }
+  if (RFlux2 != NULL) { FFTWFREE(RFlux2); RFlux2=NULL; }
+  if (rvals != NULL) { FFTWFREE(rvals); rvals=NULL; }
+  if (rtrans != NULL) { FFTWFREE(rtrans); rtrans=NULL; }
+  if (pval != NULL) { FFTWFREE(pval); pval = NULL; }
+  if (pofd != NULL) { FFTWFREE(pofd); pofd = NULL; }
   rvars_allocated = false;
   initialized = false;
 }
@@ -193,21 +193,22 @@ void PDFactoryDouble::freeRvars() {
 void PDFactoryDouble::allocateEdgevars() {
   if (edgevars_allocated) return;
   if (nedge > 0) {
-    REdgeFlux1 = (double*) fftw_malloc(sizeof(double) * nedge);
-    REdgeFlux2 = (double*) fftw_malloc(sizeof(double) * nedge);
-    REdgeWork  = (double*) fftw_malloc(sizeof(double) * nedge * nedge);
+    REdgeFlux1 = (double*) FFTWMALLOC(sizeof(double) * nedge);
+    REdgeFlux2 = (double*) FFTWMALLOC(sizeof(double) * nedge);
+    REdgeWork  = (FFTFLOAT*) FFTWMALLOC(sizeof(FFTFLOAT) * nedge * nedge);
     edgevars_allocated = true;
   } else {
-    REdgeWork = REdgeFlux1 = REdgeFlux2 = NULL;
+    REdgeWork = NULL;
+    REdgeFlux1 = REdgeFlux2 = NULL;
     edgevars_allocated = false;
   }
   initialized = false;
 }
 
 void PDFactoryDouble::freeEdgevars() {
-  if (REdgeFlux1 != NULL) { fftw_free(REdgeFlux1); REdgeFlux1 = NULL; }
-  if (REdgeFlux2 != NULL) { fftw_free(REdgeFlux2); REdgeFlux2 = NULL; }
-  if (REdgeWork != NULL) { fftw_free(REdgeWork); REdgeWork = NULL; }
+  if (REdgeFlux1 != NULL) { FFTWFREE(REdgeFlux1); REdgeFlux1 = NULL; }
+  if (REdgeFlux2 != NULL) { FFTWFREE(REdgeFlux2); REdgeFlux2 = NULL; }
+  if (REdgeWork != NULL) { FFTWFREE(REdgeWork); REdgeWork = NULL; }
   edgevars_allocated = false;
   initialized = false;
 }
@@ -225,13 +226,13 @@ void PDFactoryDouble::free() {
 */
 bool PDFactoryDouble::addWisdom(const std::string& filename) {
   FILE *fp = NULL;
-  fp = fopen( filename.c_str(), "r" );
+  fp = fopen(filename.c_str(), "r");
   if (!fp) {
     std::stringstream str;
     str << "Error opening wisdom file: " << filename;
     throw pofdExcept("PDFactoryDouble","addWisdom",str.str(),1);
   }
-  if (fftw_import_wisdom_from_file(fp) == 0) {
+  if (FFTWIMPORTWIS(fp) == 0) {
     std::stringstream str;
     str << "Error reading wisdom file: " << wisdom_file;
     throw pofdExcept("PDFactoryDouble","addWisdom",str.str(),2);
@@ -241,11 +242,11 @@ bool PDFactoryDouble::addWisdom(const std::string& filename) {
   has_wisdom = true;
   wisdom_file = filename;
   if (plan != NULL) {
-    fftw_destroy_plan(plan); 
+    FFTWDESTROYPLAN(plan); 
     plan = NULL;
   }
   if (plan_inv != NULL) {
-    fftw_destroy_plan(plan_inv);
+    FFTWDESTROYPLAN(plan_inv);
     plan_inv = NULL;
   }
   plan_size = 0;
@@ -256,8 +257,8 @@ bool PDFactoryDouble::addWisdom(const std::string& filename) {
 }
 
 //Returns true if internal memory resizing required
-bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2, 
-			    const numberCountsDouble& model,
+bool PDFactoryDouble::initR(unsigned int n, FFTFLOAT maxflux1, 
+			    FFTFLOAT maxflux2, const numberCountsDouble& model,
 			    const doublebeam& bm, double pixsize, 
 			    double nfwhm, unsigned int nbins,
 			    bool setEdge) {
@@ -282,7 +283,7 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
   //Now fill in R.  The edges require special care.  This
   // first call will fill nonsense values into the lower edges, which
   // we will later overwrite
-  double *rptr;  
+  FFTFLOAT *rptr;  
 
 #ifdef TIMING
   std::clock_t starttime = std::clock();
@@ -414,7 +415,7 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
 	for (unsigned int i = 1; i < nedge-1; ++i)
 	  scriptr += REdgeWork[i];
       }
-      rvals[j] = scriptr*iRxnorm;
+      rvals[j] = static_cast<FFTFLOAT>(scriptr * iRxnorm);
     }
     
     //And Ry = R[x,0]
@@ -439,7 +440,7 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
 	for (unsigned int j = 1; j < nedge-1; ++j)
 	  scriptr += REdgeWork[j];
       }
-      rvals[i*n] = scriptr*iRynorm;
+      rvals[i*n] = static_cast<FFTFLOAT>(scriptr * iRynorm);
     }
   } else {
     //Just set edges to zero
@@ -450,7 +451,7 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
   }
 
   //Multiply R by dflux1 * dflux2
-  double fluxfac = dflux1 * dflux2;
+  FFTFLOAT fluxfac = dflux1 * dflux2;
   for (unsigned int i = 0; i < n; ++i) {
     rptr = rvals + i * n;
     for (unsigned int j = 0; j < n; ++j)
@@ -475,7 +476,7 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
   \int dx dy [x, y, x^2, xy, y^2] R.
 */
 void PDFactoryDouble::getRIntegralsInternal(unsigned int n, 
-					    std::vector<double>& mom) const {
+					    std::vector<FFTFLOAT>& mom) const {
 
   if (!is_r_set)
     throw pofdExcept("PDFactoryDouble", "getRIntegralsInternal",
@@ -494,8 +495,8 @@ void PDFactoryDouble::getRIntegralsInternal(unsigned int n,
   //This is a simple calculation, somewhat tedious to write out.
   //Note that R is already multiplied by dflux1 * dflux2 by the
   // time we get to this
-  double xp, val, val2;
-  double *rowptr, *ypowvals;
+  double xp, val, val2, *ypowvals;
+  FFTFLOAT *rowptr;
   ypowvals = new double[rsize]; //Temporary storage for y^ypower
   
   //Loop over moments
@@ -553,7 +554,7 @@ void PDFactoryDouble::getRIntegralsInternal(unsigned int n,
 	val += 0.5 * xp * val2;
       }
 
-      mom[idx] = val;
+      mom[idx] = static_cast<FFTFLOAT>(val);
       idx += 1;
     }
   }
@@ -582,9 +583,9 @@ void PDFactoryDouble::getRIntegralsInternal(unsigned int n,
   the maximum flux often won't quite match the target values.
  */
 void PDFactoryDouble::initPD(unsigned int n, 
-			     double inst_sigma1, double inst_sigma2, 
-			     double maxflux1, double maxflux2, 
-			     double maxn0, const numberCountsDouble& model,
+			     FFTFLOAT inst_sigma1, FFTFLOAT inst_sigma2, 
+			     FFTFLOAT maxflux1, FFTFLOAT maxflux2, 
+			     FFTFLOAT maxn0, const numberCountsDouble& model,
 			     const doublebeam& bm, double pixsize,
 			     double nfwhm, unsigned int nbins,
 			     bool setEdge) {
@@ -629,28 +630,26 @@ void PDFactoryDouble::initPD(unsigned int n,
   // forward plan, but the backwards plan is fine
   int intn = static_cast<int>(n);
   if ((plan_size != n) || (plan == NULL)) {
-    if (plan != NULL) fftw_destroy_plan(plan);
-    plan = fftw_plan_dft_r2c_2d(intn, intn, rvals, rtrans,
-				fftw_plan_style);
+    if (plan != NULL) FFTWDESTROYPLAN(plan);
+    plan = FFTWDFTR2C2D(intn, intn, rvals, rtrans, fftw_plan_style);
   }
   if ((plan_size != n) || (plan_inv == NULL)) {
-    if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
-    plan_inv = fftw_plan_dft_c2r_2d(intn, intn, pval, pofd,
-				    fftw_plan_style);
+    if (plan_inv != NULL) FFTWDESTROYPLAN(plan_inv);
+    plan_inv = FFTWDFTC2R2D(intn, intn, pval, pofd, fftw_plan_style);
   }
   if (plan == NULL) {
     std::stringstream str;
     str << "Plan creation failed for forward transform of size: " << n;
     if (has_wisdom) str << std::endl << "Your wisdom file may not have"
 			<< " that size";
-    throw pofdExcept("PDFactoryDouble","initPD",str.str(),14);
+    throw pofdExcept("PDFactoryDouble", "initPD", str.str(), 14);
   }
   if (plan_inv == NULL) {
     std::stringstream str;
     str << "Plan creation failed for inverse transform of size: " << n;
     if (has_wisdom) str << std::endl << "Your wisdom file may not have"
 			<< " that size";
-    throw pofdExcept("PDFactoryDouble","initPD",str.str(),15);
+    throw pofdExcept("PDFactoryDouble", "initPD", str.str(), 15);
   }
   plan_size = n;
 
@@ -664,7 +663,7 @@ void PDFactoryDouble::initPD(unsigned int n,
     throw pofdExcept("PDFactoryDouble", "initPD", errstr.str(), 8);
   }
 
-  double n0ratio = maxn0 / base_n0;
+  FFTFLOAT n0ratio = maxn0 / base_n0;
 
   //Now, we have to figure out what maximum flux values to ask for.
   //maxflux1 and maxflux2 are the target values, but we will be applying
@@ -694,7 +693,7 @@ void PDFactoryDouble::initPD(unsigned int n,
 	nfwhm, nbins, setEdge);
 
   //Now estimate the mean and standard deviation from that
-  std::vector<double> mom(5);
+  std::vector<FFTFLOAT> mom(5);
   getRIntegralsInternal(2, mom);
   mn1 = mom[0] * n0ratio;
   mn2 = mom[1] * n0ratio;
@@ -767,7 +766,7 @@ void PDFactoryDouble::initPD(unsigned int n,
   // to contaminate the top by an amount n_sigma_pad2d*sg - (mn+shift).
   // We therefore zero pad and discard anything above
   // maxflux - (n_sigma_pad2d*sg - (mn+shift))
-  double* rptr;
+  FFTFLOAT* rptr;
   if (dopad1) {
     double contam = pofd_coverage::n_sigma_pad2d*sg1 - (mn1+shift1);
     if (contam <= 0) maxidx1 = n; else {
@@ -822,7 +821,7 @@ void PDFactoryDouble::initPD(unsigned int n,
 #ifdef TIMING
   starttime = std::clock();
 #endif
-  fftw_execute_dft_r2c(plan,rvals,rtrans);
+  FFTWEXECUTEDFTR2C(plan, rvals, rtrans);
 #ifdef TIMING
   fftTime += std::clock() - starttime;
 #endif
@@ -856,7 +855,7 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
   // R values, adding in noise and all that fun stuff, filling pd
   // for output
 
-  if (! initialized )
+  if (!initialized)
     throw pofdExcept("PDFactoryDouble","getPD",
 		     "Must call initPD first",1);
   if (n0 > max_n0) {
@@ -912,8 +911,8 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 #pragma omp parallel
     {
       double expfac, rval, ival;
-      fftw_complex *row_current_out; //Output out variable
-      fftw_complex *r_input_rowptr; //Row pointer into out_part (i.e., input)
+      FFTWCOMPLEX *row_current_out; //Output out variable
+      FFTWCOMPLEX *r_input_rowptr; //Row pointer into out_part (i.e., input)
       double sigprod1, meanprod1, didx2, w1, w2;
 #pragma omp for
       for (unsigned int idx1 = 0; idx1 < ncplx; ++idx1) {
@@ -929,8 +928,8 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 	    - sigprod1 - sigfac2*w2*w2;
 	  ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1 - shift2*w2;
 	  expfac = exp(rval);
-	  row_current_out[idx2][0] = expfac*cos(ival);
-	  row_current_out[idx2][1] = expfac*sin(ival);
+	  row_current_out[idx2][0] = static_cast<FFTFLOAT>(expfac*cos(ival));
+	  row_current_out[idx2][1] = static_cast<FFTFLOAT>(expfac*sin(ival));
 	}
       }
       //Now, Neg freq
@@ -948,8 +947,8 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 	    r0 - sigprod1 - sigfac2*w2*w2;
 	  ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1 - shift2*w2;
 	  expfac = exp( rval );
-	  row_current_out[idx2][0] = expfac*cos(ival);
-	  row_current_out[idx2][1] = expfac*sin(ival);
+	  row_current_out[idx2][0] = static_cast<FFTFLOAT>(expfac*cos(ival));
+	  row_current_out[idx2][1] = static_cast<FFTFLOAT>(expfac*sin(ival));
 	}
       }
     }
@@ -959,8 +958,8 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 #pragma omp parallel
     {
       double expfac, rval, ival;
-      fftw_complex *row_current_out; 
-      fftw_complex *r_input_rowptr; 
+      FFTWCOMPLEX *row_current_out; 
+      FFTWCOMPLEX *r_input_rowptr; 
       double sigprod1, meanprod1, w1;
 #pragma omp for
       for (unsigned int idx1 = 0; idx1 < ncplx; ++idx1) {
@@ -973,8 +972,8 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 	  rval = n0ratio * r_input_rowptr[idx2][0] - r0 - sigprod1;
 	  ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1;
 	  expfac = exp(rval);
-	  row_current_out[idx2][0] = expfac*cos(ival);
-	  row_current_out[idx2][1] = expfac*sin(ival);
+	  row_current_out[idx2][0] = static_cast<FFTFLOAT>(expfac*cos(ival));
+	  row_current_out[idx2][1] = static_cast<FFTFLOAT>(expfac*sin(ival));
 	}
       }
 #pragma omp for
@@ -988,8 +987,8 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 	  rval = n0ratio * r_input_rowptr[idx2][0] - r0 - sigprod1;
 	  ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1;
 	  expfac = exp(rval);
-	  row_current_out[idx2][0] = expfac*cos(ival);
-	  row_current_out[idx2][1] = expfac*sin(ival);
+	  row_current_out[idx2][0] = static_cast<FFTFLOAT>(expfac*cos(ival));
+	  row_current_out[idx2][1] = static_cast<FFTFLOAT>(expfac*sin(ival));
 	}
       }
     }
@@ -1004,8 +1003,8 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 #pragma omp parallel
     {    
       double expfac, rval, ival;
-      fftw_complex *row_current_out; 
-      fftw_complex *r_input_rowptr; 
+      FFTWCOMPLEX *row_current_out; 
+      FFTWCOMPLEX *r_input_rowptr; 
       double didx2, w2;
 #pragma omp for
       for (unsigned int idx1 = 0; idx1 < n; ++idx1) {
@@ -1017,8 +1016,8 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 	  rval = n0ratio * r_input_rowptr[idx2][0] - r0 - sigfac2*w2*w2;
 	  ival = n0ratio * r_input_rowptr[idx2][1] - shift2*w2;
 	  expfac = exp(rval);
-	  row_current_out[idx2][0] = expfac*cos(ival);
-	  row_current_out[idx2][1] = expfac*sin(ival);
+	  row_current_out[idx2][0] = static_cast<FFTFLOAT>(expfac*cos(ival));
+	  row_current_out[idx2][1] = static_cast<FFTFLOAT>(expfac*sin(ival));
 	}
       }
     }
@@ -1027,8 +1026,8 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
     { 
       //No shifts, sigmas
       double expfac, rval, ival;
-      fftw_complex *row_current_out; 
-      fftw_complex *r_input_rowptr; 
+      FFTWCOMPLEX *row_current_out; 
+      FFTWCOMPLEX *r_input_rowptr; 
 #pragma omp for
       for (unsigned int idx1 = 0; idx1 < n; ++idx1) {
 	r_input_rowptr = rtrans + idx1*ncplx;
@@ -1037,8 +1036,8 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 	  rval = n0ratio * r_input_rowptr[idx2][0] - r0;
 	  ival = n0ratio * r_input_rowptr[idx2][1];
 	  expfac = exp(rval);
-	  row_current_out[idx2][0] = expfac*cos(ival);
-	  row_current_out[idx2][1] = expfac*sin(ival);
+	  row_current_out[idx2][0] = static_cast<FFTFLOAT>(expfac*cos(ival));
+	  row_current_out[idx2][1] = static_cast<FFTFLOAT>(expfac*sin(ival));
 	}
       }
     }
@@ -1058,7 +1057,7 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 #ifdef TIMING
   starttime = std::clock();
 #endif
-  fftw_execute(plan_inv); //overwrites pofd with reverse transform of pval
+  FFTWEXECUTE(plan_inv); //overwrites pofd with reverse transform of pval
 #ifdef TIMING
   fftTime += std::clock() - starttime;
 #endif
@@ -1075,7 +1074,7 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
 
   //Copy into output variable
   pd.resize(maxidx1,maxidx2);
-  double *pdptr, *pofdptr;
+  FFTFLOAT *pdptr, *pofdptr;
 #ifdef TIMING
   starttime = std::clock();
 #endif

@@ -10,6 +10,7 @@
 #include<gsl/gsl_errno.h>
 
 #include "global_settings.h"
+#include "fftstuff.h"
 #include "numberCounts.h"
 #include "PD.h"
 

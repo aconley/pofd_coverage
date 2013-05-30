@@ -8,6 +8,7 @@
 
 #include "simImage.h"
 #include "global_settings.h"
+#include "fftstuff.h"
 
 /*!
   \brief Class to hold P(D).  Supports interpolation.

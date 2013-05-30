@@ -67,6 +67,7 @@ AC_CHECK_HEADERS([fftw3.h],,
 
 dnl library test -- depends on precision
 if test $enableval; then
+   dnl 32 bit
    AC_MSG_RESULT(Using 32 bit FFTs)
    AC_DEFINE(USEFFT32BIT, 1)
    if test $fftwlib; then
@@ -84,9 +85,10 @@ if test $enableval; then
 	             [-lm -lfftw3f] )
    fi
 else
+   dnl 64 bit
    AC_MSG_RESULT(Using 64 bit FFTs)
    if test $fftwlib; then
-      AC_MSG_RESULT(Checking User specified 32 bit FFTW3)
+      AC_MSG_RESULT(Checking User specified 64 bit FFTW3)
       LDFLAGS="$LDFLAGS -L$fftwlib"
       LIBS="$LIBS -lfftw3"
       AC_TRY_LINK( [#include<fftw3.h>],

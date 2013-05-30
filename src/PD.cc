@@ -173,23 +173,24 @@ void PD::edgeFix(bool donorm) {
   double istdev = 1.0 / sqrt(var);
 
   //Figure out what indexes these represent in x and y
-  double maxfluxfix;
+  double maxfluxfix, ddflux, dminflux;
   int maxidx;
+  ddflux = static_cast<double>(dflux);
+  dminflux = static_cast<double>(minflux);
   maxfluxfix = mn - PD::lowsigval * sqrt(var);
-  maxidx = static_cast<int>((maxfluxfix - minflux) / dflux);
-  maxfluxfix = minflux + maxidx*dflux;
+  maxidx = static_cast<int>((maxfluxfix - dminflux) / ddflux);
+  maxfluxfix = dminflux + maxidx * ddflux;
   
-  FFTFLOAT pdval, preconst;
-  double tval, stepfac, subfac;
+  double tval, stepfac, subfac, pdval, preconst;
   if (maxidx > 1) {
-    pdval = pd_[maxidx];
-    tval = (maxfluxfix-mn)*istdev;
-    preconst = pdval * static_cast<FFTFLOAT>(exp(0.5 * tval * tval));
-    subfac = (minflux - mn) * istdev;
-    stepfac = dflux*istdev;
+    pdval = static_cast<double>(pd_[maxidx]);
+    tval = (maxfluxfix - mn) * istdev;
+    preconst = pdval * exp(0.5 * tval * tval);
+    subfac = (dminflux - mn) * istdev;
+    stepfac = ddflux * istdev;
     for (int i = 0; i < maxidx; ++i) {
-      tval = subfac + i*stepfac;
-      pd_[i] = preconst * static_cast<FFTFLOAT>(exp(-0.5 * tval * tval));
+      tval = subfac + i * stepfac;
+      pd_[i] = static_cast<FFTFLOAT>(preconst * exp(-0.5 * tval * tval));
     }
   }
 }

@@ -136,8 +136,8 @@ int getPDSingle(int argc, char **argv) {
     std::cout << "Invalid noise level: must be >= 0.0" << std::endl;
     return 1;
   }
-  if (n0 <= 0.0) {
-    std::cout << "Invalid (non-positive) number of sources per area"
+  if (n0 < 0.0) {
+    std::cout << "Invalid (negative) number of sources per area"
 	      << std::endl;
     return 1;
   }
@@ -169,6 +169,9 @@ int getPDSingle(int argc, char **argv) {
 
     if (verbose) pfactory.setVerbose();
 
+    if (n0 == 0)
+      n0 = model.getBaseN0();
+
     bool success;
     if (has_wisdom) {
       std::cout << "Reading in wisdom file: " << wisdom_file 
@@ -189,7 +192,7 @@ int getPDSingle(int argc, char **argv) {
       printf("   N0:                 %0.4e\n", n0);
       printf("   sigma:              %0.4f\n", sigma);
       if (return_log) 
-	printf("  Returning log( P(D) ) rather than P(D)\n");
+	printf("  Returning log(P(D)) rather than P(D)\n");
     }
 
     //Get P(D)
@@ -197,7 +200,8 @@ int getPDSingle(int argc, char **argv) {
 			   << nflux << " and max flux: " 
 			   << maxflux << std::endl;
     double base_n0 = model.getBaseN0();
-    pfactory.initPD(nflux, sigma, maxflux, base_n0 > n0 ? base_n0 : n0, 
+    double max_n0 = base_n0 > n0 ? 1.01 * base_n0 : 1.01 * n0;
+    pfactory.initPD(nflux, sigma, maxflux, max_n0,
 		    model, bm, pixsize, nfwhm, nbins);
     pfactory.getPD(n0, pd, return_log, true);
     
@@ -344,8 +348,8 @@ int getPDDouble(int argc, char **argv) {
     std::cout << "Invalid noise level (band2): must be >= 0.0" << std::endl;
     return 1;
   }
-  if (n0 <= 0.0) {
-    std::cout << "Invalid (non-positive) number of sources per area"
+  if (n0 < 0.0) {
+    std::cout << "Invalid (negative) number of sources per area"
 	      << std::endl;
     return 1;
   }
@@ -380,6 +384,8 @@ int getPDDouble(int argc, char **argv) {
     PDDouble pd;
 
     if (verbose) pfactory.setVerbose();
+    if (n0 == 0)
+      n0 = model.getBaseN0();
 
     bool success;
     if (has_wisdom) {
@@ -406,7 +412,7 @@ int getPDDouble(int argc, char **argv) {
       printf("   sigma1:             %0.4f\n", sigma1);
       printf("   sigma2:             %0.4f\n", sigma2);
       if (return_log) 
-	printf("  Returning log( P(D) ) rather than P(D)\n");
+	printf("  Returning log(P(D)) rather than P(D)\n");
     }
 
     //Get P(D)
@@ -414,8 +420,9 @@ int getPDDouble(int argc, char **argv) {
 			   << nflux << " and max fluxes: " 
 			   << maxflux1 << " " << maxflux2 << std::endl;
     double base_n0 = model.getBaseN0();
+    double max_n0 = base_n0 > n0 ? 1.01 * base_n0 : 1.01 * n0;
     pfactory.initPD(nflux, sigma1, sigma2, maxflux1, maxflux2, 
-		    base_n0 > n0 ? base_n0 : n0, model, bm, pixsize, 
+		    max_n0, model, bm, pixsize, 
 		    nfwhm, nbins);
     pfactory.getPD(n0, pd, return_log, true);
 
@@ -493,7 +500,9 @@ int main( int argc, char** argv ) {
 		<< "power" << std::endl;
       std::cout << "\tlaw model specified by modelfile, and by the number of"
 		<< std::endl;
-      std::cout << "\tsources per unit area n0." << std::endl;
+      std::cout << "\tsources per unit area n0.  If n0 is zero, the base value"
+		<< " from" << std::endl;
+      std::cout << "\tthe input model file is used." << std::endl;
       std::cout << std::endl;
       std::cout << "\tIn the 2D case the model is the 1D model in band 1 times"
 		<< " a" << std::endl;
@@ -560,7 +569,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t-n, --nflux value" << std::endl;
       std::cout << "\t\tThe number of requested fluxes along each dimension."
 		<< std::endl;
-      std::cout << "\t\tAlso sets the transform size used. (def: 131072 in 1D,)"
+      std::cout << "\t\tAlso sets the transform size used. (def: 131072 in 1D"
 		<< std::endl;
       std::cout << "\t\tand 2048 in 2D)." << std::endl;
       std::cout << "\t-N, --nfwhm value" << std::endl;

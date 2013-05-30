@@ -289,8 +289,8 @@ void PDFactory::initR(unsigned int n, FFTFLOAT maxflux,
   the maximum flux will end up being -less- than maxflux in practice
   by about the mean flux + 10 sigma.
  */
-void PDFactory::initPD(unsigned int n, FFTFLOAT inst_sigma, 
-		       FFTFLOAT maxflux, FFTFLOAT maxn0, 
+void PDFactory::initPD(unsigned int n, double inst_sigma, 
+		       double maxflux, double maxn0, 
 		       const numberCounts& model,
 		       const beam& bm, double pixsize, double nfwhm,
 		       unsigned int nbins) {
@@ -302,7 +302,8 @@ void PDFactory::initPD(unsigned int n, FFTFLOAT inst_sigma,
 
   //This will cause R wrapping problems, so check maxn0 relative to
   // the model base n0 value
-  if (maxn0 < model.getBaseN0()) {
+  base_n0 = model.getBaseN0();
+  if (maxn0 < base_n0) {
     std::stringstream errstr;
     errstr << "maxn0 (" << maxn0 << ") must be greater than model base N0 ("
 	   << base_n0 << ")";
@@ -352,8 +353,7 @@ void PDFactory::initPD(unsigned int n, FFTFLOAT inst_sigma,
     plans_valid = true;
   }
 
-  base_n0 = model.getBaseN0();
-  FFTFLOAT n0ratio = maxn0 / base_n0;
+  double n0ratio = maxn0 / base_n0;
 
   //We will iterate to try to get the maximum right.  Given R,
   // we can compute the mean and standard deviation of the resulting P(D).
@@ -476,9 +476,9 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
 		     "Must call initPD first",1);
   if (n0 > max_n0) {
     std::stringstream errstr("");
-    errstr << "N_0 " << n0
-	   << " larger than maximum prepared value " << max_n0
-	   << std::endl;
+    errstr << "N_0 (" << n0
+	   << ") larger than maximum prepared value (" << max_n0
+	   << ")" << std::endl;
     errstr << "initPD should have been called with at least " << n0;
     throw pofdExcept("PDFactory","getPD",errstr.str(),2);
   }

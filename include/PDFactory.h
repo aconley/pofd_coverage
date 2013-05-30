@@ -23,11 +23,11 @@ class PDFactory {
   bool initialized; //!< forward transformed R is filled
 
   unsigned int currsize; //!< Current memory allocation
-  FFTFLOAT sigma; //!< Current supported instrumental \f$\sigma\f$
-  FFTFLOAT max_n0; //!< Current maximum supported model \f$N_0\f$
-  FFTFLOAT base_n0; //!< Model base \f$N_0\f$
-  FFTFLOAT mn; //!< Expected mean, base model
-  FFTFLOAT sg; //!< Expected sigma, inc instrument noise, base model
+  double sigma; //!< Current supported instrumental \f$\sigma\f$
+  double max_n0; //!< Current maximum supported model \f$N_0\f$
+  double base_n0; //!< Model base \f$N_0\f$
+  double mn; //!< Expected mean, base model
+  double sg; //!< Expected sigma, inc instrument noise, base model
 
   //Working variables for transformation
   unsigned int plan_size; //!< Size of plans
@@ -75,13 +75,13 @@ class PDFactory {
   void unsetVerbose() { verbose = false; } //!< Unset verbose mode
 
   unsigned int getPlanSize() const { return plan_size; }
-  FFTFLOAT getMaxN0() const { return max_n0; }
+  double getMaxN0() const { return max_n0; }
 
   /*! \brief Adds wisdom file*/
   bool addWisdom(const std::string& filename);
 
   /*! \brief Initializes P(D) by computing R */
-  void initPD(unsigned int, FFTFLOAT, FFTFLOAT, FFTFLOAT,
+  void initPD(unsigned int, double, double, double,
 	      const numberCounts&, const beam&, 
 	      double, double, unsigned int);
 

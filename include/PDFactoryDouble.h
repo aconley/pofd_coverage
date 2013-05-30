@@ -36,16 +36,16 @@ class PDFactoryDouble {
   bool initialized; //!< forward transformed R is filled
 
   unsigned int currsize; //!< Current memory allocation
-  FFTFLOAT sigma1; //!< Current supported instrumental \f$\sigma\f$, band 1
-  FFTFLOAT sigma2; //!< Current supported instrumental \f$\sigma\f$, band 2
-  FFTFLOAT max_n0; //!< Current maximum supported model \f$N_0\f$
-  FFTFLOAT base_n0; //!< Model base \f$N_0\f$
-  FFTFLOAT mn1; //!< Expected mean, band 1
-  FFTFLOAT mn2; //!< Expected mean, band 2
-  FFTFLOAT var_noi1; //!< Expected variance without instrumental noise, band 1
-  FFTFLOAT var_noi2; //!< Expected variance without instrumental noise, band 2
-  FFTFLOAT sg1; //!< Expected sigma (inc instrument noise), band 1
-  FFTFLOAT sg2; //!< Expected sigma (inc instrument noise), band 2
+  double sigma1; //!< Current supported instrumental \f$\sigma\f$, band 1
+  double sigma2; //!< Current supported instrumental \f$\sigma\f$, band 2
+  double max_n0; //!< Current maximum supported model \f$N_0\f$
+  double base_n0; //!< Model base \f$N_0\f$
+  double mn1; //!< Expected mean, band 1
+  double mn2; //!< Expected mean, band 2
+  double var_noi1; //!< Expected variance without instrumental noise, band 1
+  double var_noi2; //!< Expected variance without instrumental noise, band 2
+  double sg1; //!< Expected sigma (inc instrument noise), band 1
+  double sg2; //!< Expected sigma (inc instrument noise), band 2
 
   unsigned int plan_size; //!< Size of currently computed plans
   FFTWPLAN plan;     //!< Holds forward transformation plan
@@ -130,8 +130,8 @@ class PDFactoryDouble {
   bool addWisdom(const std::string& filename);
 
   /*! \brief Initializes P(D) by computing R and forward transforming it*/
-  void initPD(unsigned int, FFTFLOAT, FFTFLOAT, FFTFLOAT, FFTFLOAT,
-	      FFTFLOAT, const numberCountsDouble&, const doublebeam&,
+  void initPD(unsigned int, double, double, double, double, double,
+	      const numberCountsDouble&, const doublebeam&,
 	      double, double, unsigned int, bool setEdge=true);
 
   /*! \brief Gets P(D) with specified noise levels */

@@ -583,9 +583,9 @@ void PDFactoryDouble::getRIntegralsInternal(unsigned int n,
   the maximum flux often won't quite match the target values.
  */
 void PDFactoryDouble::initPD(unsigned int n, 
-			     FFTFLOAT inst_sigma1, FFTFLOAT inst_sigma2, 
-			     FFTFLOAT maxflux1, FFTFLOAT maxflux2, 
-			     FFTFLOAT maxn0, const numberCountsDouble& model,
+			     double inst_sigma1, double inst_sigma2, 
+			     double maxflux1, double maxflux2, 
+			     double maxn0, const numberCountsDouble& model,
 			     const doublebeam& bm, double pixsize,
 			     double nfwhm, unsigned int nbins,
 			     bool setEdge) {
@@ -663,7 +663,7 @@ void PDFactoryDouble::initPD(unsigned int n,
     throw pofdExcept("PDFactoryDouble", "initPD", errstr.str(), 8);
   }
 
-  FFTFLOAT n0ratio = maxn0 / base_n0;
+  double n0ratio = maxn0 / base_n0;
 
   //Now, we have to figure out what maximum flux values to ask for.
   //maxflux1 and maxflux2 are the target values, but we will be applying

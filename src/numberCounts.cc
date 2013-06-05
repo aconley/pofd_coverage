@@ -4,7 +4,6 @@
 #include<fstream>
 #include<string>
 #include<sstream>
-#include<omp.h>
 
 #include "../include/pofdExcept.h"
 #include "../include/numberCounts.h"
@@ -12,10 +11,14 @@
 
 const double numberCounts::ftol = 1e-4;
 
+//Function to pass to GSL integrator
+static double evalPowfNKnotsSpline(double, void*); //!< Evaluates f^pow dN/dS
+
 /*!
   \param[in] modelfile Name of file to read base model from
  */
-numberCounts::numberCounts(const std::string& modelfile) {
+numberCounts::numberCounts(const std::string& modelfile,
+			   unsigned int NINTERP) : gen_ninterp(NINTERP) {
 
   //We have to read in the input file
   std::ifstream ifs(modelfile.c_str());
@@ -52,6 +55,9 @@ numberCounts::numberCounts(const std::string& modelfile) {
   knotpos = new double[nknots];
   for (unsigned int i = 0; i < nknots; ++i)
     knotpos[i] = kp[i];
+  logknotpos = new double[nknots];
+  for (unsigned int i = 0; i < nknots; ++i)
+    logknotpos[i] = log2(knotpos[i]);
   
   //These are read in as log_10, so we must convert to log_e
   logknotvals = new double[nknots];
@@ -61,103 +67,85 @@ numberCounts::numberCounts(const std::string& modelfile) {
   knotvals = new double[nknots];
   for (unsigned int i = 0; i < nknots; ++i) knotvals[i] = exp(logknotvals[i]);
 
-  a = gamma = omg = iomg = fk = powarr = NULL;
-  gamone = NULL;
-  initMParams();
+  acc = gsl_interp_accel_alloc();
+  splinelog = gsl_spline_alloc(gsl_interp_cspline,
+			       static_cast<size_t>(nknots));
+  gsl_spline_init(splinelog, logknotpos, logknotvals, 
+		  static_cast<size_t>(nknots));
 
-  //Don't set histogrammed beam currently
+  // Don't set histogrammed beam currently
   nbm = 0;
   bm_wts = NULL;
   inv_bm = NULL;
+
+  // Need to set base_n0, base_flux, etc.
+  gsl_work = gsl_integration_workspace_alloc(1000);
+  varr = new void*[5];
+  base_n0 = 1.0; //Fake value to allow isValid to pass
+  base_n0 = splineInt(0.0);
+  base_flux = splineInt(1.0);
+  base_fluxsq = splineInt(2.0);
+
+  // Set up variables for generating sources
+  // Note we integrate -down- in flux because the number counts
+  // are expected to drop rapidly to lower values
+  if (gen_ninterp < 2)
+    throw pofdExcept("numberCounts","numberCounts",
+		     "Number of interpolation generation points must be >2", 3);
+  // Two ingredients -- the cumulative normalized probablity (gen_interp_cumsum)
+  // and the corresponding flux densities.
+  // First, set up the flux densities
+  gen_interp_flux = new double[gen_ninterp];
+  double maxf = knotpos[nknots-1];
+  double df = (maxf - knotpos[0]) / static_cast<double>(gen_ninterp-1);
+  for (unsigned int i = 0; i < gen_ninterp; ++i)
+    gen_interp_flux[i] = maxf - static_cast<double>(i) * df;
+
+  // Now integrate down the number counts
+  // Get cumulative distribution function using trapezoidal rule, at first
+  // un-normalized
+  gen_interp_cumsum = new double[gen_ninterp];
+  double cumsum, cnts;
+  cumsum = gen_interp_cumsum[0] = 0.0; //First bit has 0 counts
+  for (unsigned int i = 1; i < gen_ninterp-1; ++i) {
+    cnts = exp2(gsl_spline_eval(splinelog, log2(gen_interp_flux[i]), acc));
+    cumsum += df * cnts;
+    gen_interp_cumsum[i] = cumsum;
+  }
+  // Last step, 0.5 because of trap rule
+  cnts = exp2(gsl_spline_eval(splinelog, 
+			      log2(gen_interp_flux[gen_ninterp-1]), acc));
+  cumsum += 0.5 * df * cnts;
+  gen_interp_cumsum[gen_ninterp-1] = cumsum;
+  //Normalize to the range 0 to 1; can skip the first entry (which is 0)
+  double norm = 1.0 / cumsum;
+  for (unsigned int i = 1; i < gen_ninterp-1; ++i) gen_interp_cumsum[i] *= norm;
+  gen_interp_cumsum[gen_ninterp-1] = 1.0;
+
+  // Now stick in the interpolation object.  Use linear interpolation
+  // to avoid the probability oscillating negative or something
+  gen_interp = gsl_interp_alloc(gsl_interp_linear,
+				static_cast<size_t>(gen_ninterp));
+  gen_interp_acc = gsl_interp_accel_alloc();
+  gsl_interp_init(gen_interp, gen_interp_cumsum, gen_interp_flux,
+		  static_cast<size_t>(gen_ninterp));
 }
 
 numberCounts::~numberCounts() {
   delete[] knotpos;
+  delete[] logknotpos;
   delete[] knotvals;
   delete[] logknotvals;
-  delete[] gamma;
-  delete[] a;
-  delete[] omg;
-  delete[] iomg;
-  delete[] gamone;
-  delete[] fk;
-  delete[] powarr;
+  gsl_interp_accel_free(acc);
+  gsl_spline_free(splinelog);
+  gsl_interp_accel_free(gen_interp_acc);
+  gsl_interp_free(gen_interp);
+  gsl_integration_workspace_free(gsl_work);
+  delete[] gen_interp_cumsum;
+  delete[] gen_interp_flux;
+  delete[] varr;
   if (bm_wts != NULL) delete[] bm_wts;
   if (inv_bm != NULL) delete[] inv_bm;
-}
-
-void numberCounts::initMParams() {
-  
-  //Set up gamma and a
-  if (gamma != NULL) delete[] gamma;
-  gamma = new double[nknots-1];
-  for (unsigned int i = 0; i < nknots-1; ++i)
-    gamma[i] = - (logknotvals[i+1] - logknotvals[i]) / 
-      log(knotpos[i+1]/knotpos[i]);
-
-  if (a != NULL) delete[] a;
-  a = new double[nknots-1];
-  for (unsigned int i = 0; i < nknots-1; ++i)
-    a[i] = knotvals[i] * pow(knotpos[i], gamma[i]);
-
-  if (gamone != NULL) delete[] gamone;
-  gamone = new bool[nknots-1];
-  if (omg != NULL) delete[] omg;
-  omg = new double[nknots-1];
-  if (iomg != NULL) delete[] iomg;
-  iomg = new double[nknots-1];
-  double val;
-  for (unsigned int i = 0; i < nknots-1; ++i) {
-    omg[i] = val = 1.0 - gamma[i];
-    if (fabs(val) < ftol) gamone[i] = true; else {
-      iomg[i] = 1.0 / val;
-      gamone[i] = false;
-    }
-  }
-
-  if (fk != NULL) delete[] fk;
-  if (powarr != NULL) delete[] powarr;
-  fk = new double[nknots-1];
-  powarr = new double[nknots-1];
-
-  //Compute the total number of sources and the fk, powarr arrays
-  double m, tmp;
-  for (unsigned int i = 0; i < nknots-1; ++i) {
-    if (gamone[i]) {
-      tmp = log(knotpos[i]);
-      m = a[i] * (log(knotpos[i+1]) - tmp);
-    } else {
-      tmp = pow(knotpos[i], omg[i]);
-      m = a[i] * iomg[i] * (pow(knotpos[i+1], omg[i]) - tmp);
-    }
-    powarr[i] = tmp;
-    if (i == 0) fk[i] = m;
-    else fk[i] = m + fk[i-1];
-  }
-  base_n0 = fk[nknots-2];
-
-  //Compute the flux per area for the base model
-  base_flux = 0.0;
-  double tmg;
-  for (unsigned int i = 0; i < nknots-1; ++i) {
-    tmg = 2.0 - gamma[i];
-    if (fabs(tmg) < ftol)
-      base_flux += a[i] * log(knotpos[i+1]/knotpos[i]);
-    else
-      base_flux += 
-	a[i] * (pow(knotpos[i+1], tmg) - pow(knotpos[i], tmg)) / tmg;
-  }
-
-  //And the flux^2 per area
-  base_fluxsq = 0.0;
-  for (unsigned int i = 0; i < nknots-1; ++i) {
-    tmg = 3.0 - gamma[i];
-    if (fabs(tmg) < ftol)
-      base_fluxsq += a[i] * log(knotpos[i+1]/knotpos[i]);
-    else
-      base_fluxsq += 
-	a[i] * (pow(knotpos[i+1], tmg) - pow(knotpos[i], tmg)) / tmg;
-  }
 }
 
 bool numberCounts::isValid() const {
@@ -166,6 +154,41 @@ bool numberCounts::isValid() const {
   if (base_n0 <= 0) return false;
   return true;
 }
+
+/*!
+  Computes
+  \f[
+   \int dS\, S^{\alpha} \frac{dN}{dS}
+  \f]
+
+  \param[in] alpha  Power of flux
+  \returns Integral
+ */
+double numberCounts::splineInt(double alpha) const {
+  if (nknots < 2) return std::numeric_limits<double>::quiet_NaN();
+  if (! isValid()) return std::numeric_limits<double>::quiet_NaN();
+  double result, error;
+  void *params;
+  gsl_function F;
+  double minknot = knotpos[0];
+  double maxknot = knotpos[nknots-1];
+
+  varr[0] = static_cast<void*>(&alpha);
+  varr[1] = static_cast<void*>(splinelog);
+  varr[2] = static_cast<void*>(acc);
+  varr[3] = static_cast<void*>(&minknot);
+  varr[4] = static_cast<void*>(&maxknot);
+  params = static_cast<void*>(varr);
+
+  F.function = &evalPowfNKnotsSpline;
+  F.params = params;
+
+  gsl_integration_qag(&F, minknot, maxknot, 0.0, 1e-5, 1000,
+  		      GSL_INTEG_GAUSS41, gsl_work, &result, &error); 
+  return result;
+}
+
+
 
 /*!
   \returns The base number of sources per area
@@ -201,9 +224,7 @@ double numberCounts::getdNdS(double flux) const {
   if (flux < knotpos[0]) return 0.0;
   if (flux >= knotpos[nknots-1]) return 0.0;
   if (!isValid()) return std::numeric_limits<double>::quiet_NaN();
-  unsigned int loc;
-  loc = utility::binary_search_lte(flux, knotpos, nknots);
-  return a[loc] * pow(flux, -gamma[loc]);
+  return exp2(gsl_spline_eval(splinelog, log2(flux), acc)); 
 }
 
 /*!
@@ -262,15 +283,13 @@ double numberCounts::getR(double x, const beam& bm,
 
   //And now the actual computation
   double cval, cR, R, ibm;
-  unsigned int loc;
   R = 0.0;
   for (unsigned int i = 0; i < nnonzero; ++i) {
     ibm = inv_bm[i]; //1 / eta
     cval = x * ibm;
     if (cval < s_min) continue;
     if (cval >= s_max) continue;
-    loc = utility::binary_search_lte(cval, knotpos, nknots);
-    cR = a[loc] * pow(cval, -gamma[loc]);
+    cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
     R += bm_wts[i] * cR * ibm;
   }
 
@@ -338,31 +357,25 @@ void numberCounts::getR(unsigned int n, double minflux,
   prefac = prefac * prefac;
 
   //And now the actual computation.  We loop over each flux
-#pragma omp parallel 
-  {
-    double cflux, cval, cR, ibm, workR;
-    unsigned int loc;
-
-    #pragma omp for
-    for (unsigned int i = 0; i < n; ++i) {
-      cflux = minflux + static_cast<double>(i) * dflux;
-      if (cflux <= 0.0 || cflux >= s_max) {
-	//R is zero for this x
-	R[i] = 0.0;
-	continue;
-      }
-      workR = 0.0;
-      for (unsigned int j = 0; j < nnonzero; ++j) {
-	ibm = inv_bm[j]; //1 / eta
-	cval = cflux * ibm;
-	if (cval < s_min) continue;
-	if (cval >= s_max) continue;
-	loc = utility::binary_search_lte(cval, knotpos, nknots);
-	cR = a[loc] * pow(cval, -gamma[loc]);
-	workR += bm_wts[j] * cR * ibm;
-      }
-      R[i] = prefac * workR;
+  double cflux, cval, cR, ibm, workR;
+  
+  for (unsigned int i = 0; i < n; ++i) {
+    cflux = minflux + static_cast<double>(i) * dflux;
+    if (cflux <= 0.0 || cflux >= s_max) {
+      //R is zero for this x
+      R[i] = 0.0;
+      continue;
     }
+    workR = 0.0;
+    for (unsigned int j = 0; j < nnonzero; ++j) {
+      ibm = inv_bm[j]; //1 / eta
+      cval = cflux * ibm;
+      if (cval < s_min) continue;
+      if (cval >= s_max) continue;
+      cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
+      workR += bm_wts[j] * cR * ibm;
+    }
+    R[i] = prefac * workR;
   }
 }
 
@@ -376,32 +389,9 @@ double numberCounts::genSource(double udev) const {
   // Note that we can ignore curr_n0 here, since changing n_0
   // just changes the number of sources, not their distribution
   // in flux density
-  //  We want F[k-1] <= udev < F[k], so that S_k <= A < S_{k+1}
-  // where A is the value we are trying to generate
-  double prod = udev * base_n0;
-
-  if (prod < fk[0]) {
-    //Between the 0th and 1st knot, special case
-    if (gamone[0])
-      return knotpos[0] * exp(prod / a[0]);
-    else
-      return pow(omg[0] * prod / a[0] + powarr[0], iomg[0]);
-  }
-
-  unsigned int km1 = utility::binary_search_lte(prod, fk, nknots-1);
+  return gsl_interp_eval(gen_interp, gen_interp_cumsum,
+			 gen_interp_flux, udev, gen_interp_acc);
   
-  double delta = prod - fk[km1];
-  unsigned int k = km1 + 1;
-  if (fabs(delta / prod) < ftol) {
-    //Close enough! A = S_k
-    return knotpos[k];
-  } 
-  
-  delta /= a[k];
-  if (gamone[k]) 
-    return knotpos[k] * exp(delta);
-  else 
-    return pow(omg[k] * delta + powarr[k], iomg[k]);
 }
 
 bool numberCounts::writeToStream(std::ostream& os) const {
@@ -410,7 +400,7 @@ bool numberCounts::writeToStream(std::ostream& os) const {
      << std::setw(13) << "Log10 Knot value" << std::endl;
   for (unsigned int i = 0; i < nknots; ++i)
     os << " " << std::left << std::setw(13) << knotpos[i] << "  "
-       << std::setw(13) << log10( a[i] * pow(knotpos[i], -gamma[i])) 
+       << std::setw(13) << logknotvals[i] * pofd_coverage::ilogfac 
        << std::endl; 
   return true;
 }
@@ -419,4 +409,30 @@ bool numberCounts::writeToStream(std::ostream& os) const {
 std::ostream& operator<<(std::ostream& os, const numberCounts& b) {
   b.writeToStream(os);
   return os;
+}
+
+static double evalPowfNKnotsSpline(double x, void* params) {
+  //Params are:
+  // parmas[0] power
+  // params[1] spline (log2)
+  // params[2] accelerator
+  // params[3] minknot
+  // params[4] maxknot
+  //But this really has to be an array of pointers to void to work
+  void** vptr = static_cast<void**>(params);
+
+  double power = *static_cast<double*>(vptr[0]);
+  gsl_spline* spl = static_cast<gsl_spline*>(vptr[1]);
+  gsl_interp_accel* acc = static_cast<gsl_interp_accel*>(vptr[2]);
+  double minknot = *static_cast<double*>(vptr[3]);
+  double maxknot = *static_cast<double*>(vptr[4]);
+  
+  if (x < minknot || x >= maxknot) return 0.0;
+
+  double splval = exp2(gsl_spline_eval(spl, log2(x), acc));
+
+  if (fabs(power) < 1e-2) return splval;
+  if (fabs(power-1.0) < 1e-2) return x * splval;
+  if (fabs(power-2.0) < 1e-2) return x * x * splval;
+  return pow(x, power) * splval;
 }

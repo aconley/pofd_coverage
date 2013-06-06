@@ -27,9 +27,9 @@ class numberCounts {
   double base_n0; //!< Total number of sources in base model
   unsigned int nknots; //!< Number of flux density knots
   double* knotpos; //!< Positions of knots, length nknots
-  double* logknotpos; //!< Log of knot positions, length nknots
+  double* logknotpos; //!< Log2 of knot positions, length nknots
   double* knotvals; //!< Values of differential number counts at knotpos
-  double* logknotvals; //!< Log values of differential number counts at knotpos
+  double* logknotvals; //!< Log2 values of differential number counts at knotpos
 
   gsl_interp_accel *acc; //!< Spline lookup accelerator
   gsl_spline *splinelog; //!< Spline in log/log space

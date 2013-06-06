@@ -306,8 +306,8 @@ int main( int argc, char** argv ) {
     case 'h' :
       std::cout << "NAME" << std::endl;
       std::cout << "\tpofd_coverage_makeSim -- make simulated images for"
-		<< " a broken" << std::endl;
-      std::cout << "\t power law type model with Gaussian beams (1D) or the"
+		<< " a" << std::endl;
+      std::cout << "\t spline type model with Gaussian beams (1D) or the"
 		<< std::endl;
       std::cout << "\t same type of model paired with a log-normal color model"
 		<< std::endl;
@@ -327,9 +327,9 @@ int main( int argc, char** argv ) {
       std::cout << "DESCRIPTION" << std::endl;
       std::cout << "\tCreates a simulated image for a given model, and writes"
 		<< " them" << std::endl;
-      std::cout << "\tto outfile.  The number counts model in 1D is a broken "
-		<< "power" << std::endl;
-      std::cout << "\ta law model specified by modelfile, and by the number of"
+      std::cout << "\tto outfile.  The number counts model in 1D is a spline"
+		<< std::endl;
+      std::cout << "\ta model specified by modelfile, and by the number of"
 		<< std::endl;
       std::cout << "\tsources per unit area n0.  If you set n0 to zero, then" 
 		<< std::endl;

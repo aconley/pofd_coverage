@@ -59,13 +59,13 @@ numberCounts::numberCounts(const std::string& modelfile,
   for (unsigned int i = 0; i < nknots; ++i)
     logknotpos[i] = log2(knotpos[i]);
   
-  //These are read in as log_10, so we must convert to log_e
+  //These are read in as log_10, so we must convert to log_2
   logknotvals = new double[nknots];
   for (unsigned int i = 0; i < nknots; ++i)
     logknotvals[i] = kv[i] * pofd_coverage::logfac;
 
   knotvals = new double[nknots];
-  for (unsigned int i = 0; i < nknots; ++i) knotvals[i] = exp(logknotvals[i]);
+  for (unsigned int i = 0; i < nknots; ++i) knotvals[i] = exp2(logknotvals[i]);
 
   acc = gsl_interp_accel_alloc();
   splinelog = gsl_spline_alloc(gsl_interp_cspline,
@@ -430,6 +430,8 @@ static double evalPowfNKnotsSpline(double x, void* params) {
   if (x < minknot || x >= maxknot) return 0.0;
 
   double splval = exp2(gsl_spline_eval(spl, log2(x), acc));
+
+  std::cout << "For x: " << x << " spline: " << splval << std::endl;
 
   if (fabs(power) < 1e-2) return splval;
   if (fabs(power-1.0) < 1e-2) return x * splval;

@@ -28,6 +28,9 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile) {
   std::stringstream str;
   double currval;
 
+  std::cerr << "2D spline not implemented" << std::endl;
+  exit(1);
+
   std::ifstream initfs(modelfile.c_str());
   if (!initfs) {
     initfs.close();

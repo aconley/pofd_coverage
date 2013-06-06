@@ -381,7 +381,7 @@ int simManager::writeToFits(const std::string& outputfile) const {
   unsigned int utmp;
   double dtmp;
   fits_write_key(fp, TSTRING, const_cast<char*>("MODEL"),
-		 const_cast<char*>("Delta"), 
+		 const_cast<char*>("Spline"), 
 		 const_cast<char*>("Model type"),
 		 &status );
   dtmp = n0; //Must copy to temporary for const type handling

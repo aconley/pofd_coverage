@@ -528,7 +528,7 @@ int simImage::writeToFits(const std::string& outputfile) const {
   
   //Model params
   fits_write_key(fp, TSTRING, const_cast<char*>("MODEL"),
-		 const_cast<char*>("Broken Power"), 
+		 const_cast<char*>("Spline"), 
 		 const_cast<char*>("Model type"),
 		 &status);
 

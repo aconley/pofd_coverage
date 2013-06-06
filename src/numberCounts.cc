@@ -89,34 +89,41 @@ numberCounts::numberCounts(const std::string& modelfile,
   // Set up variables for generating sources
   // Note we integrate -down- in flux because the number counts
   // are expected to drop rapidly to lower values
+  // We use log spaced points rather than linearly spaced to concentrate
+  // more of the tabulated points at low fluxes where there should be
+  // more sources
   if (gen_ninterp < 2)
     throw pofdExcept("numberCounts","numberCounts",
 		     "Number of interpolation generation points must be >2", 3);
   // Two ingredients -- the cumulative normalized probablity (gen_interp_cumsum)
   // and the corresponding flux densities.
-  // First, set up the flux densities
+  // First, set up the flux densities -- note they are the log2 values!
   gen_interp_flux = new double[gen_ninterp];
-  double maxf = knotpos[nknots-1];
-  double df = (maxf - knotpos[0]) / static_cast<double>(gen_ninterp-1);
-  for (unsigned int i = 0; i < gen_ninterp; ++i)
-    gen_interp_flux[i] = maxf - static_cast<double>(i) * df;
+  double lmaxf = log2(knotpos[nknots-1]);
+  double lminf = log2(knotpos[0]);
+  double dlogf = (lmaxf - lminf) / static_cast<double>(gen_ninterp-1);
+  gen_interp_flux[0] = lmaxf;
+  for (unsigned int i = 1; i < gen_ninterp-1; ++i)
+    gen_interp_flux[i] = lmaxf - static_cast<double>(i) * dlogf;
+  gen_interp_flux[gen_ninterp-1] = lminf;
 
   // Now integrate down the number counts
   // Get cumulative distribution function using trapezoidal rule, at first
-  // un-normalized
+  // un-normalized.
   gen_interp_cumsum = new double[gen_ninterp];
-  double cumsum, cnts;
+  double cumsum, currf, prevf, df, currcnts, prevcnts;
+  prevf = exp2(gen_interp_flux[0]);
+  prevcnts = 0.0;
   cumsum = gen_interp_cumsum[0] = 0.0; //First bit has 0 counts
-  for (unsigned int i = 1; i < gen_ninterp-1; ++i) {
-    cnts = exp2(gsl_spline_eval(splinelog, log2(gen_interp_flux[i]), acc));
-    cumsum += df * cnts;
+  for (unsigned int i = 1; i < gen_ninterp; ++i) {
+    currf = exp2(gen_interp_flux[i]);
+    df = prevf - currf; // Sign flip because we are going down
+    currcnts = exp2(gsl_spline_eval(splinelog, gen_interp_flux[i], acc));
+    cumsum += 0.5 * df * (currcnts + prevcnts);
     gen_interp_cumsum[i] = cumsum;
+    prevf = currf;
+    prevcnts = currcnts;
   }
-  // Last step, 0.5 because of trap rule
-  cnts = exp2(gsl_spline_eval(splinelog, 
-			      log2(gen_interp_flux[gen_ninterp-1]), acc));
-  cumsum += 0.5 * df * cnts;
-  gen_interp_cumsum[gen_ninterp-1] = cumsum;
   //Normalize to the range 0 to 1; can skip the first entry (which is 0)
   double norm = 1.0 / cumsum;
   for (unsigned int i = 1; i < gen_ninterp-1; ++i) gen_interp_cumsum[i] *= norm;
@@ -388,9 +395,9 @@ void numberCounts::getR(unsigned int n, double minflux,
 double numberCounts::genSource(double udev) const {
   // Note that we can ignore curr_n0 here, since changing n_0
   // just changes the number of sources, not their distribution
-  // in flux density
-  return gsl_interp_eval(gen_interp, gen_interp_cumsum,
-			 gen_interp_flux, udev, gen_interp_acc);
+  // in flux density.  Recall that gen_interp_flux is the log2 flux.
+  return exp2(gsl_interp_eval(gen_interp, gen_interp_cumsum,
+			      gen_interp_flux, udev, gen_interp_acc));
   
 }
 
@@ -430,8 +437,6 @@ static double evalPowfNKnotsSpline(double x, void* params) {
   if (x < minknot || x >= maxknot) return 0.0;
 
   double splval = exp2(gsl_spline_eval(spl, log2(x), acc));
-
-  std::cout << "For x: " << x << " spline: " << splval << std::endl;
 
   if (fabs(power) < 1e-2) return splval;
   if (fabs(power-1.0) < 1e-2) return x * splval;

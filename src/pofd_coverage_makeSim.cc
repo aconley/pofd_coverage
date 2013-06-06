@@ -392,7 +392,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t\timage.  The data is then down-binned to the specified"
 		<< "size." << std::endl;
       std::cout << "\t\tThe default is to apply no oversampling." << std::endl;
-      std::cout << "\t--S, --seed SEED" << std::endl;
+      std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tUse this seed for the random number generator." 
 		<< std::endl;
       std::cout << "\t-v, --verbose" << std::endl;

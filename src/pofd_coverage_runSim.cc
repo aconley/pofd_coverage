@@ -504,9 +504,9 @@ int main(int argc, char **argv) {
       std::cout << "NAME" << std::endl;
       std::cout << "\tpofd_coverage_runSim -- make a set of "
 		<< "simulated images for" << std::endl;
-      std::cout << "\t a broken power law model with a"
-		<< " Gaussian beam (1D) and" << std::endl;
-      std::cout << "\t measure the number of objects per sq deg from them."
+      std::cout << "\t a spline model with a"
+		<< " Gaussian beam (1D) and measure" << std::endl;
+      std::cout << "\t the number of objects per sq deg from them."
 		<< std::endl;
       std::cout << "\t The 2D case uses the same 1D model paired with a"
 		<< " log-normal" << std::endl;
@@ -537,8 +537,7 @@ int main(int argc, char **argv) {
 		<< std::endl;
       std::cout << "\tfrom the raw model file is adopted." << std::endl;
       std::cout << std::endl;
-      std::cout << "\tThe number counts model in 1D is a broken "
-		<< "power law" << std::endl;
+      std::cout << "\tThe number counts model in 1D is a spline" << std::endl;
       std::cout << "\tmodel specified by modelfile, and by the number of"
 		<< std::endl;
       std::cout << "\tsources per unit area n0." << std::endl;

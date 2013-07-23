@@ -16,7 +16,7 @@
 #include "../include/global_settings.h"
 
 /*!
-  \brief Broken power law times log normal number counts
+  \brief Spline times log normal number counts
   \ingroup Models
 
   The full expression is
@@ -64,8 +64,12 @@ class numberCountsDouble {
   //Band 1
   unsigned int nknots; //!< Number of knot positions for counts in band one
   double *knotpos; //!< Locations of knots, band 1
+  double* logknotpos; //!< Log2 of band 1 knot positions, length nknots
   double* knotvals; //!< Values of differential number counts at knotpos, 
   double *logknotvals; //!< Ln values of differential number counts at knots, band 1
+
+  gsl_interp_accel *acc; //!< Spline lookup accelerator
+  gsl_spline *splinelog; //!< Spline in log/log space
 
   //LogNormal for band 2
   unsigned int nsigma; //!< Number of knot positions in sigma
@@ -79,15 +83,13 @@ class numberCountsDouble {
   gsl_interp *offsetinterp; //!< Offset interpolator
   gsl_interp_accel *accoffset; //!< Offset accelerator
 
-  //Internal information, band 1
-  void initM1Params(); //< Initialize internal arrays based on model, band 1
-  double* a; //!< Model a parameter for N_0 = base_n0.  Length nknots-1
-  double* gamma; //!< Model gammas.  Length nknots-1
-  bool *gamone; //!< Is gamma 1?  len nknots-1
-  double *fk; //!< Cumulative source numbers, len nknots-1
-  double *omg; //!< 1.0 - gamma, len knots-1
-  double *iomg; //!< 1.0 / (1.0 - gamma), len nknots-1
-  double *powarr; //!< Internal convenience array, len nknots-1
+  // Stuff for generating sources, band 1 (band 2 is easy)
+  unsigned int gen_ninterp; //!< Number of generated interpolation sources
+  double *gen_interp_flux; //!< Flux densities in interpolation
+  double *gen_interp_cumsum; //!< Cumulative probability value
+  gsl_interp *gen_interp; //!< Linear interpolant function
+  gsl_interp_accel *gen_interp_acc; //!< Accelerator
+ 
 
   double base_flux1; //!< Flux density per area for base model, band 1
   double base_fluxsq1; //!< Flux density squared per area for base model, b1
@@ -117,7 +119,7 @@ class numberCountsDouble {
   bool isValidLoaded() const; //!< See if model params are valid
  public:
   
-  numberCountsDouble(const std::string&);
+  numberCountsDouble(const std::string&, unsigned int=2000);
   ~numberCountsDouble();
 
   /*! \brief Get number of sources per area in base model*/

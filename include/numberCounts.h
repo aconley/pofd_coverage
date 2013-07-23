@@ -6,11 +6,16 @@
 #include<string>
 #include<ostream>
 
+#include<gsl/gsl_errno.h>
+#include<gsl/gsl_spline.h>
+#include<gsl/gsl_interp.h>
+#include<gsl/gsl_integration.h>
+
 #include "../include/global_settings.h"
 #include "../include/beam.h"
 
 /*!
-  \brief Broken power law number counts
+  \brief Spline based law number counts
 */
 
 class numberCounts {
@@ -18,23 +23,29 @@ class numberCounts {
 
   static const double ftol; //!< General floating point tolerance for equality
 
-  // Internally we represent the number counts as a_i S^-gamma_i
+  // Internally we represent the number counts as spline in log/log space
   double base_n0; //!< Total number of sources in base model
   unsigned int nknots; //!< Number of flux density knots
   double* knotpos; //!< Positions of knots, length nknots
+  double* logknotpos; //!< Log2 of knot positions, length nknots
   double* knotvals; //!< Values of differential number counts at knotpos
-  double* logknotvals; //!< Log values of differential number counts at knotpos
+  double* logknotvals; //!< Log2 values of differential number counts at knotpos
 
-  //Internal information
-  void initMParams(); //< Initialize internal arrays based on model
-  double* a; //!< Model a parameter for N_0 = base_n0.  Length nknots-1
-  double* gamma; //!< Model gammas.  Length nknots-1
-  bool *gamone; //!< Is gamma 1?  len nknots-1
-  double *fk; //!< Cumulative source numbers, len nknots-1
-  double *omg; //!< 1.0 - gamma, len knots-1
-  double *iomg; //!< 1.0 / (1.0 - gamma), len nknots-1
-  double *powarr; //!< Internal convenience array, len nknots-1
+  gsl_interp_accel *acc; //!< Spline lookup accelerator
+  gsl_spline *splinelog; //!< Spline in log/log space
 
+  gsl_integration_workspace *gsl_work; //!< Integration workspace for QAG
+  /*! \brief Integrates flux^power over number counts */
+  double splineInt(double power) const; 
+  void **varr; //!< Internal evil casting array for integration
+
+  // Stuff for generating sources
+  unsigned int gen_ninterp; //!< Number of generated interpolation sources
+  double *gen_interp_flux; //!< Flux densities in interpolation
+  double *gen_interp_cumsum; //!< Cumulative probability value
+  gsl_interp *gen_interp; //!< Linear interpolant function
+  gsl_interp_accel *gen_interp_acc; //!< Accelerator
+  
   double base_flux; //!< Flux per area for base model
   double base_fluxsq; //!< Flux squared per area for base model
 
@@ -44,7 +55,7 @@ class numberCounts {
   mutable double* inv_bm; //!< Histogrammed inverse beam
 
  public:
-  explicit numberCounts(const std::string&);  //!< Constructor with model file
+  explicit numberCounts(const std::string&, unsigned int=2000);  //!< Constructor with model file
   ~numberCounts();
 
   bool isValid() const; //!< See if model params are valid

@@ -469,8 +469,8 @@ int main( int argc, char** argv ) {
     switch(c) {
     case 'h' :
       std::cout << "NAME" << std::endl;
-      std::cout << "\tpofd_coverage_getPD -- get the P(D) for a broken power"
-		<< " law" << std::endl;
+      std::cout << "\tpofd_coverage_getPD -- get the P(D) for a spline"
+		<< std::endl;
       std::cout << "\t type model with a Gaussian beam (1D) or the same type"
 		<< " of model" << std::endl;
       std::cout << "\t paired with a log-normal color model in flux_2/flux_1."
@@ -489,9 +489,9 @@ int main( int argc, char** argv ) {
       std::cout << "DESCRIPTION" << std::endl;
       std::cout << "\tEvaluates P(D) for the specified model and writes it to" 
 		<< std::endl;
-      std::cout << "\toutfile.  The number counts model in 1D is a broken "
-		<< "power" << std::endl;
-      std::cout << "\tlaw model specified by modelfile, and by the number of"
+      std::cout << "\toutfile.  The number counts model in 1D is a spline"
+		<< std::endl;
+      std::cout << "\tmodel specified by modelfile, and by the number of"
 		<< std::endl;
       std::cout << "\tsources per unit area n0." << std::endl;
       std::cout << std::endl;

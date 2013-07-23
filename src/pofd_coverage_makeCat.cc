@@ -304,9 +304,7 @@ int main( int argc, char** argv ) {
     case 'h' :
       std::cout << "NAME" << std::endl;
       std::cout << "\tpofd_coverage_makeCat -- make simulated catalog for"
-		<< " a broken" << std::endl;
-      std::cout << "\t power law type model."
-		<< std::endl;
+		<< " a spline type model." << std::endl;
       std::cout << std::endl;
       std::cout << "SYNOPSIS" << std::endl;
       std::cout << "\t  pofd_coverage_makeCat [options] modelfile n0 "
@@ -314,9 +312,9 @@ int main( int argc, char** argv ) {
       std::cout << "DESCRIPTION" << std::endl;
       std::cout << "\tCreates a simulated catalog for a given model, and writes"
 		<< " them" << std::endl;
-      std::cout << "\tto outfile.  The number counts model in 1D is a broken"
-		<< " power" << std::endl;
-      std::cout << "\ta law model specified by modelfile, and the number of"
+      std::cout << "\tto outfile.  The number counts model in 1D is a spline"
+		<< std::endl;
+      std::cout << "\ta model specified by modelfile, and the number of"
 		<< std::endl;
       std::cout << "\tsources to generate is n0." << std::endl;
       std::cout << std::endl;

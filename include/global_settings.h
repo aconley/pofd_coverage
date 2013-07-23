@@ -9,7 +9,7 @@
   \brief Global convenience variables
 */
 namespace pofd_coverage {
-  const char version[] = "0.2.2"; //Version number
+  const char version[] = "0.2.3"; //Version number
 
   const double n_sigma_shift = 8.0; //!< Shift amount
   const double n_sigma_pad = 10.0; //!< Noise padding size in sigma
@@ -19,9 +19,9 @@ namespace pofd_coverage {
   const double two_pi = 2.0*pi; //!< \f$2 \pi \f$
   const double sqrt_pi_over_two = sqrt(pi/2.0); //!< \f$\sqrt{\pi/2}\f$
   const double isqrt_two_pi = 1.0/sqrt(two_pi); 
-  const double logfac = std::log(10.0); //!< Conversion base e, base 10
-  const double ilogfac = 1.0/logfac; //!< Inverse conversion factor
-  const double smallval=exp2(-100); //!< Log of small number (base 2)
+  const double logfac = log2(10.0); //!< Conversion base 2, base 10
+  const double ilogfac = 1.0 / logfac; //!< Inverse conversion factor
+  const double smallval= exp2(-100); //!< Log of small number (base 2)
   const double smalllogval=-100; //!< Log of small number
   const double log2toe = log(2); //!< Multiply by this to go from log2 to ln
   const double rhofac = 4*std::log(2)*3600.0*3600.0;

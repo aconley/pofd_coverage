@@ -93,7 +93,7 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   unsigned int ntot = nk+ns+no;
   if (wvec1.size() != ntot) {
     std::stringstream errstr;
-    errstr << "Expected " << ntot << " values, got: " 
+    errstr << "Expected " << ntot << " values from " << modelfile << ", got: " 
 	   << wvec1.size();
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
 		       errstr.str(), 6);

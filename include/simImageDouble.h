@@ -85,6 +85,9 @@ class simImageDouble {
   /*! \brief Does model have valid params */
   bool isValid() const;
 
+  /*! \brief Fits writer helper */
+  int writeFits(const std::string&, unsigned int) const;
+
  public:
 
   simImageDouble(unsigned int, unsigned int, double, double, double, double,
@@ -142,7 +145,8 @@ class simImageDouble {
   /*! \brief Unchecked data access, band 2 (unbinned) */
   double getData2(unsigned int i, unsigned int j) const {return data2[i*n2+j];}
 
-  int writeToFits(const std::string& file) const; //!< Write as fits file
+  int writeToFits(const std::string& file1,
+		  const std::string& file2) const; //!< Write as fits files
 
 };
 

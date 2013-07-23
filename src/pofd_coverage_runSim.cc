@@ -504,7 +504,7 @@ int main(int argc, char **argv) {
       std::cout << "NAME" << std::endl;
       std::cout << "\tpofd_coverage_runSim -- make a set of "
 		<< "simulated images for" << std::endl;
-      std::cout << "\t a splinemodel with a"
+      std::cout << "\t a spline model with a"
 		<< " Gaussian beam (1D) and measure" << std::endl;
       std::cout << "\t the number of objects per sq deg from them."
 		<< std::endl;

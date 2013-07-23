@@ -635,16 +635,19 @@ void simImageDouble::applyBinning() {
   is_binned = true;
 }
 
-
-
 /*!
-  \param[in] outputfile File to write to
-  \returns 0 on success, an error code (!=0) for anything else
+  Writes a single band to a fits file
 
-  Note this doesn't throw exceptions in keeping with the CFITSIO
-  error handling strategy
+  \param[in] outputfile Name of file to write to
+  \param[in] idx Which band to write (1 or 2)
+  \returns 0 on success, an error code (!=0) for anything else
 */
-int simImageDouble::writeToFits(const std::string& outputfile) const {
+int simImageDouble::writeFits(const std::string& outputfile, 
+			      unsigned int idx) const {
+
+  if (idx < 1 || idx > 2)
+    throw pofdExcept("simImageDouble","writeFits",
+		     "Invalid index", 1);
 
   //Make the fits file
   int status = 0;
@@ -657,7 +660,13 @@ int simImageDouble::writeToFits(const std::string& outputfile) const {
     return status;
   }
 
-  //Stuff for the primary header
+  //Make image array
+  long axissize[2];
+  axissize[0] = static_cast<long>(n1);
+  axissize[1] = static_cast<long>(n2);
+  fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
+  
+  // Write header
   int tval = 1;
   fits_write_key(fp, TLOGICAL, const_cast<char*>("SIMPLE"),
 		 &tval, const_cast<char*>("Primary Header"),&status);
@@ -671,18 +680,23 @@ int simImageDouble::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TLOGICAL, const_cast<char*>("Extend"),
 		 &tval, const_cast<char*>("Extensions may be present"),
 		 &status);
-  fits_write_history( fp, const_cast<char*>("Simulated image from pofd_coverage"),
-		      &status);
+  fits_write_history(fp, 
+		     const_cast<char*>("Simulated image from pofd_coverage"),
+		     &status);
   fits_write_date(fp, &status);
 
   //Model params
-  double tmpval;
   fits_write_key(fp, TSTRING, const_cast<char*>("MODEL"),
-		 const_cast<char*>("Spline-LogNormal"), 
+		 const_cast<char*>("Spline-Log Normal"), 
 		 const_cast<char*>("Model type"),
 		 &status);
-
+  tval = static_cast<int>(idx);
+  fits_write_key(fp, TINT, const_cast<char*>("BAND"), &tval,
+		 const_cast<char*>("Which band"),
+		 &status);
+  
   //Sim params
+  double tmpval;
   tmpval = fwhm1;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &tmpval, 
 		 const_cast<char*>("Beam fwhm, band 1 [arcsec]"), 
@@ -742,14 +756,7 @@ int simImageDouble::writeToFits(const std::string& outputfile) const {
 		     &status);
   fits_write_date(fp, &status);
 
-  //Now make two image arrays, one for each band
-  long axissize[2];
-  axissize[0] = static_cast<long>(n1);
-  axissize[1] = static_cast<long>(n2);
-  
-  fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
-  
-  //Header stuff for this image
+  // Astrometry
   fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE1"),
 		 const_cast<char*>("RA---TAN"),
 		 const_cast<char*>("WCS: Projection type axis 1"),&status);
@@ -790,59 +797,13 @@ int simImageDouble::writeToFits(const std::string& outputfile) const {
 
   //Do data writing.  We have to make a transposed copy of the
   // data to do this, which is irritating as hell
-  double *tmpdata = new double[ n1 ];
+  double *tmpdata = new double[n1];
   long fpixel[2] = { 1, 1 };
   for ( unsigned int j = 0; j < n2; ++j ) {
-    for (unsigned int i = 0; i < n1; ++i) tmpdata[i] = data1[i*n2+j];
-    fpixel[1] = static_cast<long>(j+1);
-    fits_write_pix(fp, TDOUBLE, fpixel, n1, tmpdata, &status);
-  }
-
-  //Second data array, band 2
-  fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
-  
-  //Header stuff for this image
-  fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE1"),
-		 const_cast<char*>("RA---TAN"),
-		 const_cast<char*>("WCS: Projection type axis 1"),&status);
-  fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE2"),
-		 const_cast<char*>("DEC--TAN"),
-		 const_cast<char*>("WCS: Projection type axis 2"),&status);
-  tmpval = n1/2;
-  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX1"), &tmpval, 
-		 const_cast<char*>("Ref pix of axis 1"), &status);
-  tmpval = n2/2;
-  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX2"), &tmpval, 
-		 const_cast<char*>("Ref pix of axis 2"), &status);
-  tmpval = 90.0; //Arbitrary
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
-		 const_cast<char*>("val at ref pix axis 1"), &status);
-  tmpval = 10.0; //Arbitrary
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL2"), &tmpval, 
-		 const_cast<char*>("val at ref pix axis 2"), &status);
-  tmpval = - pixsize/3600.0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_1"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 1,1"), &status);
-  tmpval = 0.0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_2"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 1,2"), &status);
-  tmpval = 0.0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_1"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 2,1"), &status);
-  tmpval = pixsize/3600.0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_2"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 2,2"), &status);
-  tmpval = 2000.0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("EPOCH"), &tmpval, 
-		 const_cast<char*>("WCS: Epoch of celestial pointing"), 
-		 &status);
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("EQUINOX"), &tmpval, 
-		 const_cast<char*>("WCS: Equinox of celestial pointing"), 
-		 &status);
-
-  //Data
-  for ( unsigned int j = 0; j < n2; ++j ) {
-    for (unsigned int i = 0; i < n1; ++i) tmpdata[i] = data2[i*n2+j];
+    if (idx == 1)
+      for (unsigned int i = 0; i < n1; ++i) tmpdata[i] = data1[i * n2 + j];
+    else
+      for (unsigned int i = 0; i < n1; ++i) tmpdata[i] = data2[i * n2 + j];
     fpixel[1] = static_cast<long>(j+1);
     fits_write_pix(fp, TDOUBLE, fpixel, n1, tmpdata, &status);
   }
@@ -854,5 +815,27 @@ int simImageDouble::writeToFits(const std::string& outputfile) const {
     fits_report_error(stderr,status);
     return status;
   }
+  return status;
+}
+
+/*!
+  \param[in] outputfile1 File to write band 1 map to
+  \param[in] outputfile2 File to write band 2 map to
+  \returns 0 on success, an error code (!=0) for anything else
+*/
+int simImageDouble::writeToFits(const std::string& outputfile1,
+				const std::string& outputfile2) const {
+
+  //Make the fits file
+  int status = 0;
+
+  status = writeFits(outputfile1, 1);
+  if (status)
+    throw pofdExcept("simImageDouble", "writeToFits",
+		     "Failure writing band 1 map", 1);
+  status = writeFits(outputfile2, 2);
+  if (status)
+    throw pofdExcept("simImageDouble", "writeToFits",
+		     "Failure writing band 2 map", 2);
   return status;
 }

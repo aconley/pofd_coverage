@@ -2,6 +2,8 @@
 #include<cmath>
 #include<limits>
 
+#include<fstream>
+
 #include<fitsio.h>
 
 #include "../include/global_settings.h"
@@ -341,10 +343,12 @@ void simImage::realize(const numberCounts& model, double n0,
     //Inject sources
     if (nsrcs > 0) {
       unsigned int idx1, idx2;
+      double flux;
       for (unsigned int i = 0; i < nsrcs; ++i) {
 	idx1 = static_cast<unsigned int>(rangen.doub() * n1);
 	idx2 = static_cast<unsigned int>(rangen.doub() * n2);
-	data[idx1 * n2 + idx2] += model.genSource(rangen.doub());
+	flux = model.genSource(rangen.doub());
+	data[idx1 * n2 + idx2] += flux;
       }
     }
     convolveWithBeam(n1, n2, data, n1, n2, data);

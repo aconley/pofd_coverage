@@ -678,7 +678,7 @@ int simImageDouble::writeToFits(const std::string& outputfile) const {
   //Model params
   double tmpval;
   fits_write_key(fp, TSTRING, const_cast<char*>("MODEL"),
-		 const_cast<char*>("Power-LogNormal"), 
+		 const_cast<char*>("Spline-LogNormal"), 
 		 const_cast<char*>("Model type"),
 		 &status);
 

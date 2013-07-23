@@ -99,8 +99,8 @@ numberCounts::numberCounts(const std::string& modelfile,
   // and the corresponding flux densities.
   // First, set up the flux densities -- note they are the log2 values!
   gen_interp_flux = new double[gen_ninterp];
-  double lmaxf = log2(knotpos[nknots-1]);
-  double lminf = log2(knotpos[0]);
+  double lmaxf = logknotpos[nknots-1];
+  double lminf = logknotpos[0];
   double dlogf = (lmaxf - lminf) / static_cast<double>(gen_ninterp-1);
   gen_interp_flux[0] = lmaxf;
   for (unsigned int i = 1; i < gen_ninterp-1; ++i)

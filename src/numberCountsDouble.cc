@@ -129,6 +129,7 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   for (unsigned int i = 0; i < nsigma; ++i) sigmapos[i] = wvec1[i+nk];
   sigmavals = new double[nsigma];
   for (unsigned int i = 0; i < nsigma; ++i) sigmavals[i] = wvec2[i+nk];
+
   sigmainterp = NULL;
   accsigma = NULL;
   if (nsigma == 2)
@@ -270,6 +271,8 @@ bool numberCountsDouble::isValidLoaded() const {
   if (sigmapos[0] <= 0.0) return false;
   for (unsigned int i = 1; i < nsigma; ++i)
     if (sigmapos[i] <= sigmapos[i-1]) return false;
+  for (unsigned int i = 0; i < nsigma; ++i)
+    if (sigmavals[i] <= 0.0) return false;
   for (unsigned int i = 0; i < nsigma; ++i)
     if (std::isnan(sigmavals[i])) return false;
 

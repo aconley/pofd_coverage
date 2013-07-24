@@ -1,5 +1,6 @@
 //PDDouble.cc
 #include<limits>
+#include<sstream>
 
 #include<fitsio.h>
 #include<fftw3.h>
@@ -199,24 +200,35 @@ void PDDouble::edgeFix(bool donorm) {
 
   //Get mean and vars
   double mn1, mn2, var1, var2;
-  getMeansAndVars(mn1,mn2,var1,var2,donorm);
-  if ( std::isnan( mn1 ) || std::isinf( mn1 ) ||
-       std::isnan( var1 ) || std::isinf( var1 ) ||
-       std::isnan( mn2 ) || std::isinf( mn2 ) ||
-       std::isnan( var2 ) || std::isinf( var2 ) )
+  getMeansAndVars(mn1, mn2, var1, var2, donorm);
+  if (std::isnan(mn1) || std::isinf(mn1) ||
+      std::isnan(var1) || std::isinf(var1) ||
+      std::isnan(mn2) || std::isinf(mn2) ||
+      std::isnan(var2) || std::isinf(var2)) {
+    std::stringstream errstr;
+    errstr << "Problem with means/vars: " << std::endl;
+    if (std::isnan(mn1)) errstr << std::endl << "Mean 1 is NaN";
+    if (std::isinf(mn1)) errstr << std::endl<< "Mean 1 is Inf";
+    if (std::isnan(mn2)) errstr << std::endl << "Mean 2 is NaN";
+    if (std::isinf(mn2)) errstr << std::endl << "Mean 2 is Inf";
+    if (std::isnan(var1)) errstr << std::endl << "Var 1 is NaN";
+    if (std::isinf(var1)) errstr << std::endl << "Var 1 is Inf";
+    if (std::isnan(var2)) errstr << std::endl << "Var 2 is NaN";
+    if (std::isinf(var2)) errstr << std::endl << "Var 2 is Inf";
     throw pofdExcept("PDDouble","edgeFix",
-		       "Problem with means/vars",2);
+		     errstr.str(),2);
+  }
   
-  double istdev1 = 1.0/sqrt(var1);
-  double istdev2 = 1.0/sqrt(var2);
+  double istdev1 = 1.0 / sqrt(var1);
+  double istdev2 = 1.0 / sqrt(var2);
 
   //Figure out what indexes these represent in x and y
   double maxfluxfix1, maxfluxfix2;
   int maxidx1, maxidx2;
-  maxfluxfix1 = mn1 - PDDouble::lowsigval*sqrt( var1 );
-  maxfluxfix2 = mn2 - PDDouble::lowsigval*sqrt( var2 );
-  maxidx1 = static_cast<int>( (maxfluxfix1 - minflux1) / dflux1 );
-  maxidx2 = static_cast<int>( (maxfluxfix2 - minflux2) / dflux2 );
+  maxfluxfix1 = mn1 - PDDouble::lowsigval*sqrt(var1);
+  maxfluxfix2 = mn2 - PDDouble::lowsigval*sqrt(var2);
+  maxidx1 = static_cast<int>((maxfluxfix1 - minflux1) / dflux1);
+  maxidx2 = static_cast<int>((maxfluxfix2 - minflux2) / dflux2);
   maxfluxfix1 = minflux1 + maxidx1*dflux1;
   maxfluxfix2 = minflux2 + maxidx2*dflux2;
   

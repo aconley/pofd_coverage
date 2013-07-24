@@ -199,12 +199,13 @@ int getPDSingle(int argc, char **argv) {
     double base_n0 = model.getBaseN0();
     pfactory.initPD(nflux, sigma, maxflux, base_n0 > n0 ? base_n0 : n0, 
 		    model, bm, pixsize, nfwhm, nbins);
-    pfactory.getPD(n0, pd, return_log, true);
-    
+
    if (write_r) {
       if (verbose) std::cout << "Writing R to " << r_file << std::endl;
       pfactory.writeRToFile(r_file);
     }
+    
+    pfactory.getPD(n0, pd, return_log, true);
     
     //Write it
     if (verbose) std::cout << "Writing P(D) to " << outputfile 
@@ -417,12 +418,13 @@ int getPDDouble(int argc, char **argv) {
     pfactory.initPD(nflux, sigma1, sigma2, maxflux1, maxflux2, 
 		    base_n0 > n0 ? base_n0 : n0, model, bm, pixsize, 
 		    nfwhm, nbins);
-    pfactory.getPD(n0, pd, return_log, true);
 
     if (write_r) {
       if (verbose) std::cout << "Writing R to " << r_file << std::endl;
       pfactory.writeRToFile(r_file);
     }
+
+    pfactory.getPD(n0, pd, return_log, true);
     
     //Write it
     if (verbose) std::cout << "Writing P(D) to " << outputfile 

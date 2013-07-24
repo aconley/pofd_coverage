@@ -224,19 +224,11 @@ void PDFactoryDouble::free() {
   \param[in] filename Name of wisdom file
 */
 bool PDFactoryDouble::addWisdom(const std::string& filename) {
-  FILE *fp = NULL;
-  fp = fopen( filename.c_str(), "r" );
-  if (!fp) {
-    std::stringstream str;
-    str << "Error opening wisdom file: " << filename;
-    throw pofdExcept("PDFactoryDouble","addWisdom",str.str(),1);
-  }
-  if (fftw_import_wisdom_from_file(fp) == 0) {
+  if (fftw_import_wisdom_from_filename(filename.c_str()) == 0) {
     std::stringstream str;
     str << "Error reading wisdom file: " << wisdom_file;
-    throw pofdExcept("PDFactoryDouble","addWisdom",str.str(),2);
+    throw pofdExcept("PDFactoryDouble", "addWisdom", str.str(), 2);
   }
-  fclose(fp);
   fftw_plan_style = FFTW_WISDOM_ONLY;
   has_wisdom = true;
   wisdom_file = filename;
@@ -611,7 +603,9 @@ void PDFactoryDouble::initPD(unsigned int n,
     throw pofdExcept("PDFactoryDouble", "initPD", 
 		     "Invalid (non-positive) n0", 7);
 
-  resize(n); //Must allocate space before we plan
+  //Must allocate space before we plan -- including the R variables
+  resize(n); 
+  allocateRvars();
   
   //Make the plans, or keep the old ones if possible
   // Do this before doing R fill, as plan construction can
@@ -633,21 +627,23 @@ void PDFactoryDouble::initPD(unsigned int n,
     plan = fftw_plan_dft_r2c_2d(intn, intn, rvals, rtrans,
 				fftw_plan_style);
   }
+  if (plan == NULL) {
+    std::stringstream str;
+    str << "Plan creation failed for forward transform of size: " << intn
+	<< " by " << intn;
+    if (has_wisdom) str << std::endl << "Your wisdom file may not have"
+			<< " that size";
+    throw pofdExcept("PDFactoryDouble","initPD",str.str(),14);
+  }
   if ((plan_size != n) || (plan_inv == NULL)) {
     if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
     plan_inv = fftw_plan_dft_c2r_2d(intn, intn, pval, pofd,
 				    fftw_plan_style);
   }
-  if (plan == NULL) {
-    std::stringstream str;
-    str << "Plan creation failed for forward transform of size: " << n;
-    if (has_wisdom) str << std::endl << "Your wisdom file may not have"
-			<< " that size";
-    throw pofdExcept("PDFactoryDouble","initPD",str.str(),14);
-  }
   if (plan_inv == NULL) {
     std::stringstream str;
-    str << "Plan creation failed for inverse transform of size: " << n;
+    str << "Plan creation failed for inverse transform of size: " << intn
+	<< " by " << intn;
     if (has_wisdom) str << std::endl << "Your wisdom file may not have"
 			<< " that size";
     throw pofdExcept("PDFactoryDouble","initPD",str.str(),15);
@@ -822,7 +818,7 @@ void PDFactoryDouble::initPD(unsigned int n,
 #ifdef TIMING
   starttime = std::clock();
 #endif
-  fftw_execute_dft_r2c(plan,rvals,rtrans);
+  fftw_execute_dft_r2c(plan, rvals, rtrans);
 #ifdef TIMING
   fftTime += std::clock() - starttime;
 #endif
@@ -1110,7 +1106,6 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
   edgeTime += std::clock() - starttime;
 #endif
   
-
   //Now mean subtract each axis
 #ifdef TIMING
   starttime = std::clock();

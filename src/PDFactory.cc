@@ -310,7 +310,8 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
 
   //Allocate/resize internal arrays
   resize(n);
-  if (! isRTransAllocated ) {
+  if (!isRTransAllocated) {
+    //This has to be done before we plan if we have wisdom
     if (rtrans != NULL) fftw_free(rtrans);
     unsigned int fsize = n / 2 + 1;
     rtrans = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);

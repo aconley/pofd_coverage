@@ -75,10 +75,16 @@ class numberCounts {
   /*!\brief Get number of source responses for base model */
   double getR(double, const beam&, double, double,
 	      unsigned int) const;
+  /*!\brief Get number of source responses for base model */
+  double getR(double, const beam&, double, double,
+	      unsigned int, unsigned int) const;
 
   /*!\brief Get number of source responses for base model, general case, array*/
   void getR(unsigned int, double, double, const beam&, 
 	    double, double, unsigned int, double*) const;
+  /*!\brief Get number of source responses for base model, general case, array*/
+  void getR(unsigned int, double, double, const beam&, 
+	    double, double, unsigned int, unsigned int, double*) const;
   
   /*! \brief Generate a source flux from model */
   double genSource(double val) const;

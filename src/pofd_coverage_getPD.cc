@@ -26,6 +26,7 @@ static struct option long_options[] = {
   {"nflux", required_argument, 0, 'n'},
   {"nfwhm", required_argument, 0, 'N'},
   {"nbins", required_argument, 0, '0'},
+  {"oversamp", required_argument, 0, 'o'},
   {"pixsize", required_argument, 0, 'p'},
   {"rfile", required_argument, 0, 'r'},
   {"sigma", required_argument, 0, 's'},
@@ -36,7 +37,7 @@ static struct option long_options[] = {
   {"wisdom", required_argument, 0, 'w'},
   {0,0,0,0}
 };
-char optstring[] = "dhe:fln:N:0:p:r:s:3:4:vVw:";
+char optstring[] = "dhe:fln:N:0:o:p:r:s:3:4:vVw:";
 
 ///////////////////////////////
 
@@ -50,6 +51,7 @@ int getPDSingle(int argc, char **argv) {
   unsigned int nflux, nbins;
   bool has_wisdom, verbose, return_log, write_fits, has_user_pixsize, write_r;
   std::string wisdom_file, r_file;
+  unsigned int oversample;
 
   //Defaults
   sigma               = 2e-3;
@@ -63,12 +65,13 @@ int getPDSingle(int argc, char **argv) {
   has_user_pixsize    = false;
   pixsize             = 3.0;
   write_r             = false;
+  oversample          = 1;
 
   int c;
   int option_index = 0;
   optind = 1; //Reset parse
-  while ( ( c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index ) ) != -1 ) 
+  while ((c = getopt_long(argc,argv,optstring,long_options,
+			  &option_index)) != -1) 
     switch(c) {
     case 'f' :
       write_fits = true;
@@ -84,6 +87,9 @@ int getPDSingle(int argc, char **argv) {
       break;
     case '0':
       nbins = static_cast<unsigned int>(atoi(optarg));
+      break;
+    case 'o':
+      oversample = static_cast<unsigned int>(atoi(optarg));
       break;
     case 'p':
       has_user_pixsize = true;
@@ -160,6 +166,10 @@ int getPDSingle(int argc, char **argv) {
 	      << std::endl;
     return 1;
   }
+  if (oversample % 2 == 0) {
+    std::cout << "Invalid (non-odd) oversampling" << oversample << std::endl;
+    return 1;
+  }
 
   try {
     numberCounts model(modelfile);
@@ -183,6 +193,7 @@ int getPDSingle(int argc, char **argv) {
     if (verbose) {
       printf("   Beam fwhm:          %0.2f\n", bm.getFWHM());
       printf("   Beam area:          %0.3e\n", bm.getEffectiveArea());
+      printf("   Pixel size:         %0.2f\n", pixsize);
       printf("   Flux per area:      %0.2f\n",
 	     model.getBaseFluxPerArea());
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
@@ -190,6 +201,8 @@ int getPDSingle(int argc, char **argv) {
       printf("   sigma:              %0.4f\n", sigma);
       if (return_log) 
 	printf("  Returning log( P(D) ) rather than P(D)\n");
+      if (oversample != 1)
+	printf("oversamp:              %u\n", oversample);
     }
 
     //Get P(D)
@@ -198,7 +211,7 @@ int getPDSingle(int argc, char **argv) {
 			   << maxflux << std::endl;
     double base_n0 = model.getBaseN0();
     pfactory.initPD(nflux, sigma, maxflux, base_n0 > n0 ? base_n0 : n0, 
-		    model, bm, pixsize, nfwhm, nbins);
+		    model, bm, pixsize, nfwhm, nbins, oversample);
 
    if (write_r) {
       if (verbose) std::cout << "Writing R to " << r_file << std::endl;
@@ -267,8 +280,8 @@ int getPDDouble(int argc, char **argv) {
   int c;
   int option_index = 0;
   optind = 1; //Reset parse
-  while ( ( c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index ) ) != -1 ) 
+  while ((c = getopt_long(argc,argv,optstring,long_options,
+			  &option_index)) != -1) 
     switch(c) {
     case 'f' :
       write_fits = true;
@@ -285,6 +298,9 @@ int getPDDouble(int argc, char **argv) {
     case '0':
       nbins = static_cast<unsigned int>(atoi(optarg));
       break;
+    case 'o':
+      std::cerr << "Oversampling not supported for 2D model" << std::endl;
+      return 1;
     case 'p':
       has_user_pixsize = true;
       pixsize = atof(optarg);
@@ -398,6 +414,7 @@ int getPDDouble(int argc, char **argv) {
       printf("   Beam fwhm2:         %0.2f\n", bm.getFWHM2());
       printf("   Beam area1:         %0.3e\n", bm.getEffectiveArea1());
       printf("   Beam area2:         %0.3e\n", bm.getEffectiveArea2());
+      printf("   Pixel size:         %0.2f\n", pixsize);
       printf("   Flux per area1:     %0.2f\n",
 	     model.getBaseFluxPerArea1());
       printf("   Flux per area2:     %0.2f\n",
@@ -584,6 +601,9 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tName of wisdom file (prepared with fftw-wisdom)." 
 		<< std::endl;
       std::cout << "\tONE-D MODEL OPTIONS" << std::endl;
+      std::cout << "\t-o, --oversample VALUE" << std::endl;
+      std::cout << "\t\tAmount to oversample the beam; must be odd integer."
+		<< " (def: 1)" << std::endl;
       std::cout << "\t-s, --sigma VALUE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (def: 0.002)" << std::endl;
       std::cout << "\tTWO-D MODEL OPTIONS" << std::endl;
@@ -606,7 +626,7 @@ int main( int argc, char** argv ) {
     }
 
   if (!twod)
-    return getPDSingle(argc,argv);
+    return getPDSingle(argc, argv);
   else
-    return getPDDouble(argc,argv);
+    return getPDDouble(argc, argv);
 }

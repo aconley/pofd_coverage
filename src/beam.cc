@@ -133,6 +133,96 @@ void beam::getBeam(unsigned int n, double pixsize,
   delete[] fac;
 }
 
+
+/*!
+  \params[in] n  Number of pixels along each dimension.  Should be odd
+  \params[in] pixsize Size of pixels in arcsec
+  \params[in] oversamp Oversampling.  Must be odd
+  \params[out] bm Returns beam in row-major order.  Must be pre-allocated by
+                   caller and be of length n * n
+
+  The beam is center normalized.	     
+ */
+void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
+		   double* const bm) const {
+
+  //Quick return
+  if (oversamp == 1) {
+    getBeam(n, pixsize, bm);
+    return;
+  }
+
+  //Input checks
+  if (n == 0) {
+    std::stringstream errstr;
+    errstr << "n (" << n << ") should be positive";
+    throw pofdExcept("beam", "getBeam", errstr.str(), 1);
+  }
+  if (n % 2 == 0) {
+    std::stringstream errstr;
+    errstr << "n (" << n << ") should be odd";
+    throw pofdExcept("beam", "getBeam", errstr.str(), 2);
+  }
+  if (pixsize <= 0.0) {
+    std::stringstream errstr;
+    errstr << "pixsize (" << pixsize << ") should be positive";
+    throw pofdExcept("beam", "getBeam", errstr.str(), 3);
+  }
+  if (oversamp == 0) {
+    std::stringstream errstr;
+    errstr << "oversampling (" << oversamp << ") should be positive";
+    throw pofdExcept("beam", "getBeam", errstr.str(), 5);
+  }
+  if (oversamp % 2 == 0) {
+    std::stringstream errstr;
+    errstr << "oversampling (" << oversamp << ") should be odd";
+    throw pofdExcept("beam", "getBeam", errstr.str(), 6);
+  }
+  if (bm == NULL)
+    throw pofdExcept("beam", "getBeam", "bm is not allocated", 4);
+
+  //Make factorized beam, then multiply and sum
+  unsigned int ngen = oversamp * n;
+  double pixgen = pixsize / static_cast<double>(oversamp);
+  double* fac = new double[ngen];
+  double sig = fwhm * pofd_coverage::fwhmfac / pixgen; //Gaussian sigma in pix
+  double expfac = - 0.5 / (sig * sig);
+  int ni = static_cast<int>(ngen);
+  int no2 = ni / 2;
+  double dist;
+  double normfac = 1.0 / static_cast<double>(oversamp);
+  for (int i = 0; i < ni; ++i) {
+    dist = fabs(i - no2);
+    fac[i] = normfac * exp(expfac * dist * dist);
+  }
+
+  // Zero out
+  for (unsigned int i = 0; i < n * n; ++i)
+    bm[i] = 0.0;
+
+  // Form the sum
+  double val;
+  double* rowptr;
+  unsigned int minip, maxip, minjp, maxjp;
+  for (unsigned int i = 0; i < n; ++i) {
+    rowptr = bm + i * n;
+    minip = i * oversamp;
+    maxip = minip + oversamp;
+    for (unsigned int i_p = minip; i_p < maxip; ++i_p) {
+      val = fac[i_p];
+      for (unsigned int j = 0; j < n; ++j) {
+	minjp = j * oversamp;
+	maxjp = minjp + oversamp;
+	for (unsigned int j_p = minjp; j_p < maxjp; ++j_p)
+	  rowptr[j] += val * fac[j_p];
+      }
+    }
+  }
+
+  delete[] fac;
+}
+
+
 /*!
   \params[in] n  Number of pixels along each dimension.  Should be odd
   \params[in] pixsize Size of pixels in arcsec
@@ -213,6 +303,141 @@ void beam::getBeamHist(unsigned int n, double pixsize,
     fval = fac[i];
     for (unsigned int j = 0; j < n; ++j) {
       val = fval * fac[j];
+      if (val < cminval) continue;  //Ignore
+      idx = static_cast<unsigned int>((log2(val) - minbinval) / histstep);
+      meanbinval[idx] += val;
+      initwt[idx] += 1;
+    }
+  }
+  delete[] fac;
+
+  //Now cut down to those elements that are actually filled and
+  // copy accross.  We use the mean value of the entries in the
+  // bin as that bins coordinate.
+  nnonzero = 0;
+  for (unsigned int i = 0; i < nbins; ++i) wt[i] = 0;
+  for (unsigned int i = 0; i < nbins; ++i) bm[i] = 0.0;
+  for (unsigned int i = 0; i < nbins; ++i) {
+    if (initwt[i] != 0) {
+      wt[nnonzero] = initwt[i];
+      bm[nnonzero] = meanbinval[i] / static_cast<double>(initwt[i]);
+      ++nnonzero;
+    }
+  }
+  delete[] initwt;
+  delete[] meanbinval;
+  if (nnonzero == 0)
+    throw pofdExcept("beam", "getBeamHist", "No binned elements", 7);  
+
+  if (inverse)
+    for (unsigned int i = 0; i < nnonzero; ++i)
+      bm[i] = 1.0 / bm[i];
+
+}
+
+
+/*!
+  \params[in] n  Number of pixels along each dimension.  Should be odd
+  \params[in] pixsize Size of pixels in arcsec
+  \params[in] nbins Number of bins of output
+  \params[in] oversamp Oversampling.  Must be odd
+  \param[out] nnonzero The number of elements of wt/bm that are filled
+  \params[out] wt Returns histogrammed beam weights or order nbins
+  \params[out] bm Returns histogrammed beam values.  
+                   Must be pre-allocated by caller and be of length nbins
+  \params[in] inverse If set, return one over the beam (for non-zero entries)
+
+  The beam is center normalized, and binned in log sized bins.
+  The first nnonzero entries contain the actual data.
+ */
+void beam::getBeamHist(unsigned int n, double pixsize,
+		       unsigned int nbins, unsigned int oversamp,
+		       unsigned int& nnonzero,
+		       unsigned int* const wt,
+		       double* const bm,
+		       bool inverse) const {
+
+  const double minval = 1e-5; //Always ignore beam values below this
+
+  if (oversamp == 1) {
+    getBeamHist(n, pixsize, nbins, nnonzero, wt, bm, inverse);
+    return;
+  }
+
+  //Input checks
+  if (n == 0) {
+    std::stringstream errstr;
+    errstr << "n (" << n << ") should be positive";
+    throw pofdExcept("beam", "getBeamHist", errstr.str(), 1);
+  }
+  if (n % 2 == 0) {
+    std::stringstream errstr;
+    errstr << "n (" << n << ") should be odd";
+    throw pofdExcept("beam", "getBeamHist", errstr.str(), 2);
+  }
+  if (pixsize <= 0.0) {
+    std::stringstream errstr;
+    errstr << "pixsize (" << pixsize << ") should be positive";
+    throw pofdExcept("beam", "getBeamHist", errstr.str(), 3);
+  }
+  if (oversamp == 0) {
+    std::stringstream errstr;
+    errstr << "oversampling (" << oversamp << ") should be positive";
+    throw pofdExcept("beam", "getBeamHist", errstr.str(), 7);
+  }
+  if (oversamp % 2 == 0) {
+    std::stringstream errstr;
+    errstr << "oversampling (" << oversamp << ") should be odd";
+    throw pofdExcept("beam", "getBeamHist", errstr.str(), 8);
+  }
+
+  if (nbins == 0)
+    throw pofdExcept("beam", "getBeamHist", "nbins must be positive", 4);
+  if (wt == NULL)
+    throw pofdExcept("beam", "getBeamHist", "wt is not allocated", 5);
+  if (bm == NULL)
+    throw pofdExcept("beam", "getBeamHist", "bm is not allocated", 6);
+
+ 
+  //Make factorized beam
+  unsigned int ngen = oversamp * n;
+  double pixgen = pixsize / static_cast<double>(oversamp);
+  double* fac = new double[ngen];
+  double sig = fwhm * pofd_coverage::fwhmfac / pixgen; //Gaussian sigma in pix
+  double expfac = - 0.5 / (sig * sig);
+  int ni = static_cast<int>(ngen);
+  int no2 = ni / 2;
+  double dist;
+  double normfac = 1.0 / static_cast<double>(oversamp);
+  for (int i = 0; i < ni; ++i) {
+    dist = fabs(i - no2);
+    fac[i] = normfac * exp(expfac * dist * dist);
+  }
+
+  //figure out the minval
+  double minprod = 0.0;
+  for (unsigned int i = 0; i < oversamp; ++i)
+    for (unsigned int j = 0; j < oversamp; ++j)
+      minprod += fac[i] * fac[j];
+
+  double cminval = (minval > minprod) ? minval : 0.999 * minprod;
+  double minbinval = log2(cminval);
+  double maxbinval = log2(1.001); //Assuming beam peaks at one.
+  double histstep = (maxbinval - minbinval) / static_cast<double>(nbins);
+
+  unsigned int* initwt = new unsigned int[nbins];
+  double* meanbinval = new double[nbins];
+  for (unsigned int i = 0; i < nbins; ++i) meanbinval[i] = 0.0;
+  for (unsigned int i = 0; i < nbins; ++i) initwt[i] = 0;
+
+  unsigned int idx;
+  double val;
+  for (unsigned int i = 0; i < n; ++i) {
+    for (unsigned int j = 0; j < n; ++j) {
+      val = 0.0;
+      for (unsigned int i_p = i * oversamp; i_p < (i + 1) * oversamp; ++i_p)
+	for (unsigned int j_p = j * oversamp; j_p < (j + 1) * oversamp; ++j_p)
+	  val += fac[i_p] * fac[j_p];
       if (val < cminval) continue;  //Ignore
       idx = static_cast<unsigned int>((log2(val) - minbinval) / histstep);
       meanbinval[idx] += val;

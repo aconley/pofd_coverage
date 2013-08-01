@@ -34,8 +34,16 @@ class beam {
   /*!\brief Get 2D beam*/
   void getBeam(unsigned int, double, double* const) const; 
 
+  /*!\brief Get 2D beam with oversampling*/
+  void getBeam(unsigned int, double, unsigned int, double* const) const;
+
   /*!\brief Get 2D histogrammed beam*/
   void getBeamHist(unsigned int, double, unsigned int,
+		   unsigned int&, unsigned int* const,
+		   double* const, bool=false) const;
+
+  /*!\brief Get 2D histogrammed beam with oversampling*/
+  void getBeamHist(unsigned int, double, unsigned int, unsigned int,
 		   unsigned int&, unsigned int* const,
 		   double* const, bool=false) const;
 

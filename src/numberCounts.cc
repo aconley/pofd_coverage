@@ -246,8 +246,25 @@ double numberCounts::getdNdS(double flux) const {
 double numberCounts::getR(double x, const beam& bm,
 			  double pixsize, double nfwhm,
 			  unsigned int nbins) const {
+  return getR(x, bm, pixsize, nfwhm, nbins, 1);
+}
 
-  //This could be done much more efficiently (see the old pofd_mcmc
+/*!
+  \param[in] x The value R is desired for
+  \param[in] bm The beam
+  \param[in] pixsize The pixel size, in arcseconds
+  \param[in] nfwhm The number of beam fwhm to use in the computation
+  \param[in] nbins The number of bins in the beam histogramming
+  \param[in] oversamp Oversampling amount for beam
+
+  \returns R(x) computed for the base input model.
+*/
+double numberCounts::getR(double x, const beam& bm,
+			  double pixsize, double nfwhm,
+			  unsigned int nbins,
+			  unsigned int oversamp) const {
+
+  //This can be done much more efficiently (see the old pofd_mcmc
   // code), but the idea here is to only really compute R once
   // and then reuse it again and again so we prize simplicity over
   // efficiency.
@@ -286,7 +303,8 @@ double numberCounts::getR(double x, const beam& bm,
   unsigned int nnonzero;
 
   //Load inverse histogrammed beam
-  bm.getBeamHist(npix, pixsize, nbins, nnonzero, bm_wts, inv_bm, true);
+  bm.getBeamHist(npix, pixsize, nbins, oversamp, nnonzero, bm_wts, 
+		 inv_bm, true);
 
   //And now the actual computation
   double cval, cR, R, ibm;
@@ -304,6 +322,7 @@ double numberCounts::getR(double x, const beam& bm,
   return prefac * prefac * R;
 }
 
+
 /*!\brief Get number of source responses, vector version 
 
   \param[in] n The number of values to compute R for
@@ -318,11 +337,35 @@ double numberCounts::getR(double x, const beam& bm,
 
   R is computed for the base model		 
 */
+void numberCounts::getR(unsigned int n, double minflux,
+			double maxflux, const beam& bm, 
+			double pixsize, double nfwhm,
+			unsigned int nbins, 
+			double* R) const {
+  getR(n, minflux, maxflux, bm, pixsize, nfwhm, nbins, 1, R);
+}
+
+/*!\brief Get number of source responses, vector version 
+
+  \param[in] n The number of values to compute R for
+  \param[in] minflux The minimum value to compute R for
+  \param[in] maxflux The maximum value to compute R for
+  \param[in] bm The beam
+  \param[in] pixsize The pixel size, in arcseconds
+  \param[in] nfwhm The number of beam fwhm to use in the computation
+  \param[in] nbins The number of bins in the beam histogramming
+  \param[in] oversamp The oversampling in the beam
+  \param[out] R The returned values of R, of length n.  Must
+                be pre-allocated by the caller
+
+  R is computed for the base model		 
+*/
 
 void numberCounts::getR(unsigned int n, double minflux,
 			double maxflux, const beam& bm, 
 			double pixsize, double nfwhm,
-			unsigned int nbins, double* R) const {
+			unsigned int nbins, unsigned int oversamp,
+			double* R) const {
 
   //As for the scalar version of getR above, this could be done much more
   // efficiently but we aim for simplicity rather than efficiency
@@ -358,7 +401,8 @@ void numberCounts::getR(unsigned int n, double minflux,
 						0.9999999999);
   npix = 2 * npix + 1;
   unsigned int nnonzero;
-  bm.getBeamHist(npix, pixsize, nbins, nnonzero, bm_wts, inv_bm, true);
+  bm.getBeamHist(npix, pixsize, nbins, oversamp, nnonzero, 
+		 bm_wts, inv_bm, true);
 
   double prefac = pixsize / 3600.0;
   prefac = prefac * prefac;

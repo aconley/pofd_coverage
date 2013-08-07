@@ -25,6 +25,7 @@ class simImage {
 
   double fwhm; //!< Beam FWHM in arcsec
   double sigi; //!< Instrumental noise
+  double sigrng; //!< Fractional noise range (max - min) in units of sigi
   double esmooth; //!< Additional Gaussian smoothing FWHM in arcsec
 
   bool is_binned; //!< Has data been binned
@@ -69,10 +70,13 @@ class simImage {
   /*! \brief Do convolution with extra smoothing bit */
   void convolveWithAdd();
 
+  /*! \brief Add instrument noise */
+  void addInstNoise();
+
  public:
 
   simImage(unsigned int, unsigned int, double,
-	   double, double, double=0.0, unsigned int=1, 
+	   double, double, double=0.0, double=0.0, unsigned int=1, 
 	   unsigned int=1000); //!< Constructor with parameters
   ~simImage(); //!< Destructor
 
@@ -88,8 +92,11 @@ class simImage {
   double getBinCent0() const { return bincent0; } //!< Get bin 0 center
   double getBinDelta() const { return bindelta; } //!< Get bin size
 
-  /*! \brief Noise in current simulated image */
+  /*! \brief Mean noise in current simulated image */
   double getNoise() const;
+
+  /*! \brief Noise range in current simulated image */
+  double getNoiseRange() const { return sigrng; }
 
   double getSmoothedNoiseEstimate() const; //!< Returns noise level estimate for smoothed image
 

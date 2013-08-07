@@ -30,6 +30,7 @@ static struct option long_options[] = {
   {"sigma",required_argument,0,'s'},
   {"sigma1",required_argument,0,'#'},
   {"sigma2",required_argument,0,'$'},
+  {"sigrange", required_argument, 0, 'R'},
   {"seed",required_argument,0,'S'},
   {"verbose",no_argument,0,'v'},
   {"version",no_argument,0,'V'},
@@ -37,7 +38,7 @@ static struct option long_options[] = {
   {0,0,0,0}
 };
 
-char optstring[] = "hbde:!:@:f:1:n:N2:3:4:o:s:#:$:S:vVw:";
+char optstring[] = "hbde:!:@:f:1:n:N2:3:4:o:s:#:$:S:R:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -47,7 +48,7 @@ int runSimSingle(int argc, char **argv) {
   double esmooth; //Extra smoothing amount
   unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample;
   double pixsize, n0rangefrac, n0initrange;
-  double sigma; //Instrument noise, unsmoothed
+  double sigma, sigrange; //Instrument noise, unsmoothed, and range
   std::string outputfile; //Ouput pofd option
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like;
   unsigned long long int seed;
@@ -60,6 +61,7 @@ int runSimSingle(int argc, char **argv) {
   n0rangefrac         = 0.1;
   n0initrange         = 0.15;
   sigma               = 0.002;
+  sigrange            = 0.0;
   verbose             = false;
   has_wisdom          = false;
   esmooth             = 0.0;
@@ -109,6 +111,9 @@ int runSimSingle(int argc, char **argv) {
     case 's' :
       sigma = atof(optarg);
       break;
+    case 'R':
+      sigrange = atof(optarg);
+      break;
     case 'S' :
       has_user_seed = true;
       seed = static_cast<unsigned long long int>( atoi(optarg) );
@@ -138,6 +143,14 @@ int runSimSingle(int argc, char **argv) {
 
   if (sigma < 0.0) {
     std::cout << "Invalid instrument noise level: must be >= 0.0" << std::endl;
+    return 1;
+  }
+  if (sigrange < 0.0) {
+    std::cout << "Invalid sigma range: must be >= 0.0" << std::endl;
+    return 1;
+  }
+  if (sigrange > 2.0) {
+    std::cout << "Invalid sigma range: must be <= 2.0" << std::endl;
     return 1;
   }
   if (n0initrange <= 0.0) {
@@ -207,6 +220,8 @@ int runSimSingle(int argc, char **argv) {
       printf("   Area:               %0.2f\n",area);
       printf("   N0:                 %0.3e\n",n0);
       printf("   sigma:              %0.4f\n",sigma);
+      if (sigrange > 0)
+	printf("   sigma range:        %0.2f\n",sigrange);
       printf("   fftsize:            %u\n",fftsize);
       if (esmooth > 0) 
 	printf("   esmooth:            %0.2f\n",esmooth);
@@ -221,8 +236,8 @@ int runSimSingle(int argc, char **argv) {
     }
 
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike, 
-		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, sigma, n0, 
-		   esmooth, oversample, use_binning, nbins);
+		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, sigma, 
+		   sigrange, n0, esmooth, oversample, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -255,7 +270,7 @@ int runSimDouble(int argc, char **argv) {
   double esmooth1, esmooth2; //Extra smoothing amount
   unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample;
   double pixsize, n0rangefrac, n0initrange;
-  double sigma1, sigma2; //Instrument noise, unsmoothed
+  double sigma1, sigma2, sigrange; //Instrument noise, unsmoothed, and range
   std::string outputfile; //Ouput pofd option
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like;
   unsigned long long int seed;
@@ -269,6 +284,7 @@ int runSimDouble(int argc, char **argv) {
   n0initrange         = 0.15;
   sigma1              = 0.002;
   sigma2              = 0.002;
+  sigrange            = 0.0;
   verbose             = false;
   has_wisdom          = false;
   esmooth1            = 0.0;
@@ -325,6 +341,9 @@ int runSimDouble(int argc, char **argv) {
     case '$' :
       sigma2 = atof(optarg);
       break;
+    case 'R':
+      sigrange = atof(optarg);
+      break;
     case 'S' :
       has_user_seed = true;
       seed = static_cast<unsigned long long int>( atoi(optarg) );
@@ -358,9 +377,17 @@ int runSimDouble(int argc, char **argv) {
 	      << "but is: " << sigma1 << std::endl;
     return 1;
   }
-  if (sigma1 < 0.0) {
+  if (sigma2 < 0.0) {
     std::cout << "Invalid instrument noise level, band 2: must be >= 0.0 "
 	      << "but is: " << sigma2 << std::endl;
+    return 1;
+  }
+  if (sigrange < 0.0) {
+    std::cout << "Invalid sigma range: must be >= 0.0" << std::endl;
+    return 1;
+  }
+  if (sigrange > 2.0) {
+    std::cout << "Invalid sigma range: must be <= 2.0" << std::endl;
     return 1;
   }
   if (n0initrange <= 0.0) {
@@ -442,6 +469,8 @@ int runSimDouble(int argc, char **argv) {
       printf("   N0:                 %0.3e\n",n0);
       printf("   sigma1:             %0.4f\n",sigma1);
       printf("   sigma2:             %0.4f\n",sigma2);
+      if (sigrange > 0)
+	printf("   sigma range:        %0.2f\n",sigrange);
       printf("   fftsize:            %u by %u\n", fftsize, fftsize);
       if (esmooth1 > 0) 
 	printf("   esmooth1:           %0.2f\n",esmooth1);
@@ -459,8 +488,8 @@ int runSimDouble(int argc, char **argv) {
 
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
-			 sigma1, sigma2, n0, esmooth1, esmooth2, oversample, 
-			 use_binning, nbins);
+			 sigma1, sigma2, sigrange, n0, esmooth1, esmooth2, 
+			 oversample, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -629,6 +658,15 @@ int main(int argc, char **argv) {
       std::cout << "\t\timage.  The data is then down-binned to the specified"
 		<< "size." << std::endl;
       std::cout << "\t\tThe default is to apply no oversampling." << std::endl;
+      std::cout << "\t-R, --sigrange VALUE" << std::endl;
+      std::cout << "\t\tUse a non-constant noise range, where the sigma is"
+		<< std::endl;
+      std::cout << "\t\tdistributed uniformly between maxnoise and minnoise"
+		<< " such" << std::endl;
+      std::cout << "\t\tthat (max_noise - min_noise) = VALUE * sigma and the "
+		<< " mean" << std::endl;
+      std::cout << "\t\tnoise is still the specified sigma. (def: 0)" 
+		<< std::endl;
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tSet user specified seed, otherwise taken from time."
 		<< std::endl;

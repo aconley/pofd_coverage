@@ -52,6 +52,7 @@ class simManager {
   double n0; //!< Number of sources per sq deg in input model
   std::string modelfile; //!< File we got model from
   double sig_i; //!< Instrument noise
+  double sigrng; //!< Sigma range; see simImage
   double sig_i_sm; //!< Smoothed instrument noise; is sig_i if no smoothing
 
   //Stuff for doing individual sims
@@ -86,7 +87,7 @@ class simManager {
 	     double N0RANGEFRAC=0.1, unsigned int FFTSIZE=262144, 
 	     unsigned int N1=720, unsigned int N2=720,
 	     double PIXSIZE=5.0, double FWHM=15.0, double SIGI=0.005, 
-	     double N0=2.6e3, double ESMOOTH=0.0,
+	     double SIGRNG=0.0, double N0=2.6e3, double ESMOOTH=0.0,
 	     unsigned int OVERSAMPLE=1, bool USEBIN=false,
 	     unsigned int NBINS=1000);
   ~simManager();

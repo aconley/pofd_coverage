@@ -55,6 +55,7 @@ static double minfunc(double x, void* params) {
   \param[in] PIXSIZE Pixel size, in arcsec
   \param[in] FWHM Fwhm of beam, in arcsec
   \param[in] SIGI Instrument noise (without smoothing) in Jy
+  \param[in] SIGRNG Instrument noise range (max - min in sigma units)
   \param[in] N0 Simulated number of sources per sq deg.
   \param[in] ESMOOTH Amount of extra smoothing to apply
   \param[in] OVERSAMPLE Amount of oversampling to use when simulating image
@@ -67,13 +68,14 @@ simManager::simManager(const std::string& MODELFILE,
 		       double N0RANGEFRAC, unsigned int FFTSIZE,
 		       unsigned int N1, unsigned int N2, 
 		       double PIXSIZE, double FWHM, double SIGI, 
-		       double N0, double ESMOOTH,
+		       double SIGRNG, double N0, double ESMOOTH,
 		       unsigned int OVERSAMPLE, bool USEBIN,
 		       unsigned int NBINS) :
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), fftsize(FFTSIZE),
-  n0(N0), sig_i(SIGI), sig_i_sm(SIGI), fwhm(FWHM), pixsize(PIXSIZE),
-  simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, OVERSAMPLE, NBINS), 
+  n0(N0), sig_i(SIGI), sigrng(SIGRNG), sig_i_sm(SIGI), fwhm(FWHM), 
+  pixsize(PIXSIZE), 
+  simim(N1, N2, PIXSIZE, FWHM, SIGI, SIGRNG, ESMOOTH, OVERSAMPLE, NBINS), 
   oversample(OVERSAMPLE), use_binning(USEBIN), model(MODELFILE), 
   esmooth(ESMOOTH) {
 
@@ -432,6 +434,10 @@ int simManager::writeToFits(const std::string& outputfile) const {
   dtmp = sig_i;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI"), &dtmp, 
 		 const_cast<char*>("Instrument noise"), 
+		 &status);
+  dtmp = sigrng;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGRNG"), &dtmp, 
+		 const_cast<char*>("Instrument noise range"), 
 		 &status);
   if (do_extra_smooth) {
     dtmp = sig_i_sm;

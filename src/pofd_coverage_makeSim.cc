@@ -24,17 +24,18 @@ static struct option long_options[] = {
   {"sigma",required_argument,0,'s'},
   {"sigma1",required_argument,0,'3'},
   {"sigma2",required_argument,0,'4'},
+  {"sigrange", required_argument, 0, 'R'},
   {"verbose",no_argument,0,'v'},
   {"version",no_argument,0,'V'},
   {0,0,0,0}
 };
-char optstring[] = "de:1:2:ho:S:s:3:4:vV";
+char optstring[] = "de:1:2:ho:R:S:s:3:4:vV";
 
 
 int makeSimSingle(int argc, char **argv) {
 
   unsigned int n1, n2;
-  double n0, pixsize, sigma, fwhm;
+  double n0, pixsize, sigma, fwhm, sigrange;
   double extra_smooth; //Additional smoothing
   std::string modelfile, outputfile;
   unsigned long long int user_seed;
@@ -45,6 +46,7 @@ int makeSimSingle(int argc, char **argv) {
   do_extra_smooth     = false;
   extra_smooth        = 0.0;
   sigma               = 0.0;
+  sigrange            = 0.0;
   verbose             = false;
   user_seed           = 0;
   have_user_seed      = false;
@@ -62,6 +64,9 @@ int makeSimSingle(int argc, char **argv) {
       break;
     case 'o':
       oversample = atoi(optarg);
+      break;
+    case 'R':
+      sigrange = atof(optarg);
       break;
     case 'S' :
       have_user_seed = true;
@@ -101,6 +106,14 @@ int makeSimSingle(int argc, char **argv) {
     std::cout << "Invalid noise level: must be >= 0.0" << std::endl;
     return 1;
   }
+  if (sigrange < 0.0) {
+    std::cout << "Invalid sigma range: must be >= 0.0" << std::endl;
+    return 1;
+  }
+  if (sigrange > 2.0) {
+    std::cout << "Invalid sigma range: must be <= 2.0" << std::endl;
+    return 1;
+  }
   if (fwhm < 0.0) {
     std::cout << "Invalid (non-positive) FWHM" << std::endl;
     return 1;
@@ -125,7 +138,7 @@ int makeSimSingle(int argc, char **argv) {
       std::cout << "Base model n0: " << model.getBaseN0()
 		<< " Your value: " << n0 << std::endl;
 
-    simImage dim(n1, n2, pixsize, fwhm, sigma, extra_smooth,
+    simImage dim(n1, n2, pixsize, fwhm, sigma, sigrange, extra_smooth,
 		 oversample);
     if (have_user_seed) dim.setSeed( user_seed );
     dim.realize(model, n0, do_extra_smooth, true, false); //Do mean subtract
@@ -152,7 +165,7 @@ int makeSimSingle(int argc, char **argv) {
 int makeSimDouble(int argc, char **argv) {
 
   unsigned int n1, n2;
-  double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2;
+  double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2, sigrange;
   double extra_smooth1, extra_smooth2; //Additional smoothing
   std::string modelfile, outputfile1, outputfile2; 
   unsigned long long int user_seed;
@@ -169,6 +182,7 @@ int makeSimDouble(int argc, char **argv) {
   user_seed           = 0;
   have_user_seed      = false;
   oversample          = 1;
+  sigrange            = 0.0;
 
   int c;
   int option_index = 0;
@@ -186,6 +200,9 @@ int makeSimDouble(int argc, char **argv) {
       break;
     case 'o':
       oversample = atoi(optarg);
+      break;
+    case 'R':
+      sigrange = atof(optarg);
       break;
     case 'S' :
       have_user_seed = true;
@@ -234,6 +251,14 @@ int makeSimDouble(int argc, char **argv) {
     std::cout << "Invalid band 2 noise level: must be >= 0.0" << std::endl;
     return 1;
   }
+  if (sigrange < 0.0) {
+    std::cout << "Invalid sigma range: must be >= 0.0" << std::endl;
+    return 1;
+  }
+  if (sigrange > 2.0) {
+    std::cout << "Invalid sigma range: must be <= 2.0" << std::endl;
+    return 1;
+  }
   if (fwhm1 < 0.0) {
     std::cout << "Invalid (non-positive) FWHM band 1" << std::endl;
     return 1;
@@ -268,7 +293,7 @@ int makeSimDouble(int argc, char **argv) {
       std::cout << "Base model n0: " << model.getBaseN0()
 		<< " Your value: " << n0 << std::endl;
 
-    simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, 
+    simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, sigrange,
 		       extra_smooth1, extra_smooth2, oversample);
     if (have_user_seed) dim.setSeed( user_seed );
     dim.realize(model, n0, do_extra_smooth, true, false); //Do mean subtract
@@ -393,6 +418,15 @@ int main( int argc, char** argv ) {
       std::cout << "\t\timage.  The data is then down-binned to the specified"
 		<< "size." << std::endl;
       std::cout << "\t\tThe default is to apply no oversampling." << std::endl;
+      std::cout << "\t-R, --sigrange VALUE" << std::endl;
+      std::cout << "\t\tUse a non-constant noise range, where the sigma is"
+		<< std::endl;
+      std::cout << "\t\tdistributed uniformly between maxnoise and minnoise"
+		<< " such" << std::endl;
+      std::cout << "\t\tthat (max_noise - min_noise) = VALUE * sigma and the "
+		<< " mean" << std::endl;
+      std::cout << "\t\tnoise is still the specified sigma. (def: 0)" 
+		<< std::endl;
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tUse this seed for the random number generator." 
 		<< std::endl;

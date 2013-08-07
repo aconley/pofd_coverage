@@ -54,6 +54,7 @@ static double minfunc(double x, void* params) {
   \param[in] FWHM2 Fwhm of band 2 beam, in arcsec
   \param[in] SIGI1 Instrument noise (without smoothing) in Jy, band 1
   \param[in] SIGI2 Instrument noise (without smoothing) in Jy, band 2
+  \param[in] SIGRNG Instrument noise range (max - min in sigma units)
   \param[in] N0 Simulated number of sources per sq deg.
   \param[in] ESMOOTH Amount of extra smoothing to apply
   \param[in] OVERSAMPLE Oversampling of simulated image
@@ -66,16 +67,16 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   double N0RANGEFRAC, unsigned int FFTSIZE,
 				   unsigned int N1, unsigned int N2, 
 				   double PIXSIZE, double FWHM1, double FWHM2, 
-				   double SIGI1, double SIGI2, double N0, 
-				   double ESMOOTH1, double ESMOOTH2,
+				   double SIGI1, double SIGI2, double SIGRNG,
+				   double N0, double ESMOOTH1, double ESMOOTH2,
 				   unsigned int OVERSAMPLE,
 				   bool USEBIN, unsigned int NBINS) :
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), fftsize(FFTSIZE),
-  n0(N0), sig_i1(SIGI1), sig_i2(SIGI2), sig_i1_sm(SIGI1), sig_i2_sm(SIGI2),
-  fwhm1(FWHM1), fwhm2(FWHM2), pixsize(PIXSIZE),
-  simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, 
-	OVERSAMPLE, NBINS), 
+  n0(N0), sig_i1(SIGI1), sig_i2(SIGI2), sigrng(SIGRNG), sig_i1_sm(SIGI1), 
+  sig_i2_sm(SIGI2), fwhm1(FWHM1), fwhm2(FWHM2), pixsize(PIXSIZE),
+  simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, SIGRNG, ESMOOTH1, 
+	ESMOOTH2, OVERSAMPLE, NBINS), 
   use_binning(USEBIN), model(MODELFILE), 
   esmooth1(ESMOOTH1), esmooth2(ESMOOTH2) {
 
@@ -461,6 +462,10 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   dtmp = sig_i2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &dtmp, 
 		 const_cast<char*>("Instrument noise, band 1"), 
+		 &status);
+  dtmp = sigrng;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGRNG"), &dtmp, 
+		 const_cast<char*>("Instrument noise range"), 
 		 &status);
   if (do_extra_smooth) {
     dtmp = sig_i1_sm;

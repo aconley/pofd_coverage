@@ -31,6 +31,7 @@ class simImageDouble {
   double bm_pixearea2; //!< Beam area in pixels, band 2
   double sigi1; //!< Instrumental (white) noise in band 1
   double sigi2; //!< Instrumental (white) noise in band 2
+  double sigrng; //!< Fractional noise range (max - min) in units of sigi
   double esmooth1; //!< Additional Gaussian smoothing FWHM in arcsec, band 1
   double esmooth2; //!< Additional Gaussian smoothing FWHM in arcsec, band 2
 
@@ -82,6 +83,9 @@ class simImageDouble {
   /*! \brief Do convolution with extra smoothing bit */
   void convolveWithAdd();
 
+  /*! \brief Add instrument noise */
+  void addInstNoise();
+
   /*! \brief Does model have valid params */
   bool isValid() const;
 
@@ -91,7 +95,7 @@ class simImageDouble {
  public:
 
   simImageDouble(unsigned int, unsigned int, double, double, double, double,
-		 double, double=0.0, double=0.0, unsigned int=1, 
+		 double, double=0.0, double=0.0, double=0.0, unsigned int=1, 
 		 unsigned int=1000);
   ~simImageDouble(); //!< Destructor
 
@@ -114,7 +118,8 @@ class simImageDouble {
   std::pair<double,double> getNoise() const;
   /*! \brief Returns noise level estimate for smoothed image*/
   std::pair<double,double> getSmoothedNoiseEstimate() const; 
-
+  /*! \brief Noise range in current simulated image */
+  double getNoiseRange() const { return sigrng; }
 
   std::pair<double,double> meanSubtract(); //!< Subtract off means
   void getMean(double&, double&) const; //!< Get mean in each band

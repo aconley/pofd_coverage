@@ -51,6 +51,7 @@ class simManagerDouble {
   double n0; //!< Number of sources per sq deg in input model
   double sig_i1; //!< Instrument noise, band 1
   double sig_i2; //!< Instrument noise, band 2
+  double sigrng; //!< Sigma range; see simImage
   double sig_i1_sm; //!< Smoothed instrument noise, band 1
   double sig_i2_sm; //!< Smoothed instrument noise, band 2
 
@@ -84,8 +85,8 @@ class simManagerDouble {
 		   double N0RANGEFRAC=0.1, unsigned int FFTSIZE=4096, 
 		   unsigned int N1=720, unsigned int N2=720, 
 		   double PIXSIZE=5, double FWHM1=15, double FWHM2=20, 
-		   double SIGI1=0.004, double SIGI2=0.006, double N0=2.63e3, 
-		   double ESMOOTH1=0, double ESMOOTH2=0, 
+		   double SIGI1=0.004, double SIGI2=0.006, double SIGRNG=0.0,
+		   double N0=2.63e3, double ESMOOTH1=0, double ESMOOTH2=0, 
 		   unsigned int OVERSAMPLE=1,
 		   bool USEBIN=false, unsigned int NBINS=1000);
   ~simManagerDouble();

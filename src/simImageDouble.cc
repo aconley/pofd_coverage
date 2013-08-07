@@ -12,11 +12,26 @@
 
 simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 			       double FWHM1, double FWHM2, double SIGI1, 
-			       double SIGI2, double ESMOOTH1, double ESMOOTH2,
-			       unsigned int OVERSAMPLE, unsigned int NBINS) {
+			       double SIGI2, double SIGRNG, double ESMOOTH1, 
+			       double ESMOOTH2, unsigned int OVERSAMPLE, 
+			       unsigned int NBINS) {
   n1 = N1;
+  if (n1 == 0)
+    throw pofdExcept("simImageDouble", "simImageDouble",
+		     "Invalid (zero) n1", 1);
   n2 = N2;
+  if (n2 == 0)
+    throw pofdExcept("simImageDouble", "simImageDouble",
+		     "Invalid (zero) n2", 2);
+
   oversample = OVERSAMPLE;
+  if (oversample == 0)
+    throw pofdExcept("simImageDouble", "simImageDouble",
+		     "Invalid (zero) oversample", 3);
+  if ((oversample % 2) == 0)
+    throw pofdExcept("simImageDouble", "simImageDouble",
+		     "Invalid (non-odd) oversample", 4);
+
   ngen1 = n1 * oversample;
   ngen2 = n2 * oversample;
   data1 = new double[n1 * n2];
@@ -27,13 +42,40 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
     gen_2 = new double[ngen1 * ngen2];
   } else
     gen_1 = gen_2 = NULL;
+
   pixsize = PIXSIZE;
+  if (pixsize <= 0.0)
+    throw pofdExcept("simImageDouble", "simImageDouble",
+		     "Invalid (non-positive) pixel size", 5);
   pixsize_gen = PIXSIZE / static_cast<double>(oversample);
 
+
   fwhm1 = FWHM1;
+  if (fwhm1 <= 0.0)
+    throw pofdExcept("simImageDouble", "simImageDouble",
+		     "Invalid (non-positive) FWHM1", 6);  
   fwhm2 = FWHM2;
+  if (fwhm2 <= 0.0)
+    throw pofdExcept("simImageDouble", "simImageDouble",
+		     "Invalid (non-positive) FWHM2", 6);
+
   sigi1 = SIGI1;
+  if (sigi1 < 0.0)
+    throw pofdExcept("simImageDouble", "simImageDouble",
+		     "Invalid (negative) instrument noise", 7);
   sigi2 = SIGI2;
+  if (sigi2 < 0.0)
+    throw pofdExcept("simImageDouble", "simImageDouble",
+		     "Invalid (negative) instrument noise", 7);
+
+  sigrng = SIGRNG;
+  if (sigrng < 0.0)
+    throw pofdExcept("simImage", "simImage",
+		     "Invalid (negative) noise range", 8);
+  if (sigrng > 2.0)
+    throw pofdExcept("simImage", "simImage",
+		     "Invalid (> 2) noise range", 8);
+			       
   is_full = false;
   esmooth1 = ESMOOTH1;
   esmooth2 = ESMOOTH2;
@@ -117,6 +159,8 @@ bool simImageDouble::isValid() const {
   if (fwhm2 <= 0.0) return false;
   if (sigi1 < 0.0) return false;
   if (sigi2 < 0.0) return false;
+  if (sigrng < 0.0) return false;
+  if (sigrng > 2.0) return false;
   if (esmooth1 < 0.0) return false;
   if (esmooth2 < 0.0) return false;
   return true;
@@ -423,12 +467,7 @@ void simImageDouble::realize(const numberCountsDouble& model,
   convolveWithBeam();
 
   //Add instrument noise
-  if (sigi1 > 0.0)
-    for (unsigned int i = 0; i < n1*n2; ++i)
-      data1[i] += sigi1 * rangen.gauss();
-  if (sigi2 > 0.0)
-    for (unsigned int i = 0; i < n1*n2; ++i)
-      data2[i] += sigi2 * rangen.gauss();
+  addInstNoise();
 
   //Extra smoothing, if set
   if ( extra_smooth && ( (nsrcs > 0) || (sigi1 > 0.0 || sigi2 > 0.0) ) ) {
@@ -448,6 +487,39 @@ void simImageDouble::realize(const numberCountsDouble& model,
   //bin
   if (bin) applyBinning();
 
+}
+
+void simImageDouble::addInstNoise() {
+  if (sigi1 == 0 && sigi2 == 0) return;
+  if (sigrng == 0) {
+    // All noise has the same value
+    if (sigi1 > 0.0)
+      for (unsigned int i = 0; i < n1*n2; ++i)
+	data1[i] += sigi1 * rangen.gauss();
+    if (sigi2 > 0.0)
+      for (unsigned int i = 0; i < n1*n2; ++i)
+	data2[i] += sigi2 * rangen.gauss();
+  } else {
+    // Non-constant noise
+    // The idea is that the noise is gaussian with a standard deviation
+    // that ranges from sigmin to sigmax such that
+    // (sigmax - sigmin) / sigma is sigrng and the mean noise is sigma
+    double minnoise, maxnoise, noiserange;
+    if (sigi1 > 0.0) {
+      maxnoise = (1 + 0.5 * sigrng) * sigi1;
+      minnoise = (1 - 0.5 * sigrng) * sigi1;
+      noiserange = maxnoise - minnoise;
+      for (unsigned int i = 0; i < n1 * n2; ++i)
+	data1[i] += (noiserange * rangen.doub() + minnoise) * rangen.gauss();
+    }
+    if (sigi2 > 0.0) {
+      maxnoise = (1 + 0.5 * sigrng) * sigi2;
+      minnoise = (1 - 0.5 * sigrng) * sigi2;
+      noiserange = maxnoise - minnoise;
+      for (unsigned int i = 0; i < n1 * n2; ++i)
+	data2[i] += (noiserange * rangen.doub() + minnoise) * rangen.gauss();
+    }
+  }
 }
 
 std::pair<double,double> simImageDouble::meanSubtract() {
@@ -733,7 +805,11 @@ int simImageDouble::writeFits(const std::string& outputfile,
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &tmpval, 
 		 const_cast<char*>("Instrument noise, band 1"), 
 		 &status);
-  
+  tmpval = sigrng;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGRNG"), &tmpval, 
+		 const_cast<char*>("Instrument noise range"), 
+		 &status);
+
   if (smooth_applied) {
     double tmpval2;
     std::pair<double, double> ns;

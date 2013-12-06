@@ -36,6 +36,7 @@ configure
 depcomp
 install-sh
 ltmain.sh
+compile
 autom4te.cache/
 m4/
 missing

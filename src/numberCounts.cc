@@ -16,7 +16,7 @@ static double evalPowfNKnotsSpline(double, void*); //!< Evaluates f^pow dN/dS
 
 /*!
   \param[in] modelfile Name of file to read base model from
- */
+*/
 numberCounts::numberCounts(const std::string& modelfile,
 			   unsigned int NINTERP) : gen_ninterp(NINTERP) {
 

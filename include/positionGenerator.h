@@ -1,0 +1,76 @@
+//positionGenerator.h
+
+#ifndef __positionGenerator__
+#define __positionGenerator__
+
+#include<string>
+#include<vector>
+#include<utility>
+
+#include<fftw3.h>
+
+#include<gsl/gsl_errno.h>
+#include<gsl/gsl_spline.h>
+#include<gsl/gsl_interp.h>  
+
+#include "../include/ran.h"
+
+/*!
+  \brief Holds power spectrum
+
+  Uses log spline interpolation internally
+*/
+class powerSpectrum {
+ private:
+  unsigned int nk; //!< Number of k values
+  double mink; //!< Minimum value of k
+  double maxk; //!< Maximum value of k
+  double *logk; //!< log k
+  double *logpk; //!< log P(k)
+
+  gsl_interp_accel *acc; //!< Spline lookup accelerator
+  gsl_spline *spline_logpk; //!< Spline of P(k)
+
+  void init(const std::vector<double>& k, const std::vector<double>& p_k);
+
+ public:
+  powerSpectrum(const std::string&); //!< Constructor from file
+  powerSpectrum(const std::vector<double>& k, 
+		const std::vector<double>& p_k); //!< Constructor from vecs
+  ~powerSpectrum();
+
+  double getPk(double) const; //!< Get P_k for specified k
+  double getLogPk(double) const; //!< Get Log P_k for specified k
+}
+
+// In principle, we could also have a uniform position generator,
+// maybe with a base class, etc.  But the uniform one is so trivial
+// it's just silly.
+
+/*!
+  \brief Generates positions on the sky obeying a power spectrum
+*/
+class positionGeneratorClustered {
+ private:
+  unsigned int nx; //!< x dimension to generate over
+  unsigned int ny; //!< y dimension to generate over
+
+  //Internal storage -- only allocated when needed
+  double *k; //!< 2D k arrays
+  double *probarr; //!< Normalized probability array
+
+  // FFTW stuff
+  fftw_plan plan;     //!< Holds forward transformation plan
+  fftw_plan plan_inv; //!< Holds inverse transformation plan
+
+ public:
+  positionGeneratorClustered(unsigned int, unsigned int, double,
+			     const powerSpectrum&, const ran&);
+  ~positionGeneratorClustered();
+
+  void generate(ran&); //!< generate from power spectrum
+  
+  std::pair<double> getPosition(ran&) const; //!< Get position of single source
+}
+
+#endif

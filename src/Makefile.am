@@ -3,7 +3,8 @@ noinst_LTLIBRARIES = libcover.la
 libcover_la_SOURCES = pofdExcept.cc utility.cc numberCounts.cc \
 	numberCountsDouble.cc beam.cc doublebeam.cc \
 	PDFactory.cc PDFactoryDouble.cc PD.cc PDDouble.cc \
-	simImage.cc simImageDouble.cc simManager.cc simManagerDouble.cc
+	positionGenerator.cc simImage.cc simImageDouble.cc \
+	simManager.cc simManagerDouble.cc
 
 bin_PROGRAMS = pofd_coverage_makeCat pofd_coverage_makeSim \
 	pofd_coverage_getPD pofd_coverage_runSim

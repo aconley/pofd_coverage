@@ -31,7 +31,7 @@ class powerSpectrum {
   gsl_interp_accel *acc; //!< Spline lookup accelerator
   gsl_spline *spline_logpk; //!< Spline of P(k)
 
-  void init(const std::vector<double>& k, const std::vector<double>& p_k);
+  void init(const std::vector<double>&, const std::vector<double>&);
 
  public:
   powerSpectrum(const std::string&); //!< Constructor from file
@@ -41,7 +41,7 @@ class powerSpectrum {
 
   double getPk(double) const; //!< Get P_k for specified k
   double getLogPk(double) const; //!< Get Log P_k for specified k
-}
+};
 
 // In principle, we could also have a uniform position generator,
 // maybe with a base class, etc.  But the uniform one is so trivial
@@ -54,10 +54,13 @@ class positionGeneratorClustered {
  private:
   unsigned int nx; //!< x dimension to generate over
   unsigned int ny; //!< y dimension to generate over
+  unsigned int nyhalf; //!< ny / 2 + 1
+  double pixsize; //!< Pixel size in arcsec (square pixels assumed)
 
   //Internal storage -- only allocated when needed
   double *k; //!< 2D k arrays
   double *probarr; //!< Normalized probability array
+  fftw_complex* probarr_trans; //!< Fourier transformed prob array
 
   // FFTW stuff
   fftw_plan plan;     //!< Holds forward transformation plan
@@ -65,12 +68,16 @@ class positionGeneratorClustered {
 
  public:
   positionGeneratorClustered(unsigned int, unsigned int, double,
-			     const powerSpectrum&, const ran&);
+			     const std::string&);
   ~positionGeneratorClustered();
 
   void generate(ran&); //!< generate from power spectrum
-  
-  std::pair<double> getPosition(ran&) const; //!< Get position of single source
-}
+ 
+  /*!\brief Get position of single source*/
+  std::pair<unsigned int, unsigned int> getPosition(ran&) const;
+
+  int writeProbToFits(const std::string&) const; //!< Write prob image to FITS file
+
+};
 
 #endif

@@ -520,7 +520,7 @@ int simImage::writeToFits(const std::string& outputfile) const {
 
   fits_create_file(&fp, outputfile.c_str(), &status);
   if (status) {
-    fits_report_error(stderr,status);
+    fits_report_error(stderr, status);
     return status;
   }
 
@@ -595,54 +595,55 @@ int simImage::writeToFits(const std::string& outputfile) const {
 		 const_cast<char*>("DEC--TAN"),
 		 const_cast<char*>("WCS: Projection type axis 2"),&status);
   tmpval = n1/2;
-  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX1"), &tmpval, 
-		 const_cast<char*>("Ref pix of axis 1"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX1"), &tmpval, 
+		 const_cast<char*>("Ref pix of axis 1"), &status);
   tmpval = n2/2;
-  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX2"), &tmpval, 
-		 const_cast<char*>("Ref pix of axis 2"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX2"), &tmpval, 
+		 const_cast<char*>("Ref pix of axis 2"), &status);
   tmpval = 90.0; //Arbitrary
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
-		 const_cast<char*>("val at ref pix axis 1"), &status );
+		 const_cast<char*>("val at ref pix axis 1"), &status);
   tmpval = 10.0; //Arbitrary
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL2"), &tmpval, 
-		 const_cast<char*>("val at ref pix axis 2"), &status );
+		 const_cast<char*>("val at ref pix axis 2"), &status);
   tmpval = - pixsize/3600.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_1"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 1,1"), &status );
+		 const_cast<char*>("Pixel scale axis 1,1"), &status);
   tmpval = 0.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_2"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 1,2"), &status );
+		 const_cast<char*>("Pixel scale axis 1,2"), &status);
   tmpval = 0.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_1"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 2,1"), &status );
+		 const_cast<char*>("Pixel scale axis 2,1"), &status);
   tmpval = pixsize/3600.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_2"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 2,2"), &status );
+		 const_cast<char*>("Pixel scale axis 2,2"), &status);
   tmpval = 2000.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("EPOCH"), &tmpval, 
 		 const_cast<char*>("WCS: Epoch of celestial pointing"), 
-		 &status );
+		 &status);
   fits_write_key(fp, TDOUBLE, const_cast<char*>("EQUINOX"), &tmpval, 
 		 const_cast<char*>("WCS: Equinox of celestial pointing"), 
-		 &status );
+		 &status);
 
   //Do data writing.  We have to make a transposed copy of the
   // data to do this, which is irritating as hell
   double *tmpdata = new double[ n1 ];
   long fpixel[2] = { 1, 1 };
   for ( unsigned int j = 0; j < n2; ++j ) {
-    for (unsigned int i = 0; i < n1; ++i) tmpdata[i] = data[i*n2+j];
-    fpixel[1] = static_cast<long>(j+1);
+    for (unsigned int i = 0; i < n1; ++i) tmpdata[i] = data[i * n2 + j];
+    fpixel[1] = static_cast<long>(j + 1);
     fits_write_pix(fp, TDOUBLE, fpixel, n1, tmpdata, &status);
   }
   delete[] tmpdata;
 
   //Close up and go home
-  fits_close_file(fp,&status);
+  fits_close_file(fp, &status);
   if (status) {
-    fits_report_error(stderr,status);
+    fits_report_error(stderr, status);
     return status;
   }
 
   return status;
 }
+

@@ -764,10 +764,10 @@ int simImageDouble::writeFits(const std::string& outputfile,
 		 const_cast<char*>("DEC--TAN"),
 		 const_cast<char*>("WCS: Projection type axis 2"),&status);
   tmpval = n1/2;
-  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX1"), &tmpval, 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX1"), &tmpval, 
 		 const_cast<char*>("Ref pix of axis 1"), &status);
   tmpval = n2/2;
-  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX2"), &tmpval, 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX2"), &tmpval, 
 		 const_cast<char*>("Ref pix of axis 2"), &status);
   tmpval = 90.0; //Arbitrary
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
@@ -812,7 +812,7 @@ int simImageDouble::writeFits(const std::string& outputfile,
   fits_close_file(fp, &status);
 
   if (status) {
-    fits_report_error(stderr,status);
+    fits_report_error(stderr, status);
     return status;
   }
   return status;

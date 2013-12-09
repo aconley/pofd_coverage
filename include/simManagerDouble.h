@@ -86,7 +86,8 @@ class simManagerDouble {
 		   double PIXSIZE=5, double FWHM1=15, double FWHM2=20, 
 		   double SIGI1=0.004, double SIGI2=0.006, double N0=2.63e3, 
 		   double ESMOOTH1=0, double ESMOOTH2=0, 
-		   unsigned int OVERSAMPLE=1,
+		   unsigned int OVERSAMPLE=1, 
+		   const std::string& powerspecfile="",
 		   bool USEBIN=false, unsigned int NBINS=1000);
   ~simManagerDouble();
 

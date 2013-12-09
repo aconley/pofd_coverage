@@ -28,12 +28,12 @@ powerSpectrum::powerSpectrum(const std::string& filename) {
   const unsigned int nreq = 2;
   while (!ifs.eof()) {
     std::getline(ifs, line);
-    if (line[0] == '#') continue; //Skip comments
+    if (line[0] == '#' || line[0] == '%') continue; //Skip comments
     
     //Parse into words, stipping spaces
     utility::stringwords(line, words);
     if (words.size() == 0) continue; //Nothing on line (with spaces removed)
-    if (words[0][0] == '#') continue; //Comment line
+    if (words[0][0] == '#' or words[0][0] == '%') continue; //Comment line
     if (words.size() < nreq) continue; //Has wrong number of entries
     str.str(words[0]); str.clear(); str >> currval;
     kin.push_back(currval);
@@ -139,32 +139,31 @@ positionGeneratorClustered::positionGeneratorClustered(unsigned int NX,
 		     "positionGeneratorClustered",
 		     "Invalid (non-positive) pixel size", 1);
 
-  // Now, generate k
+  // Now, generate the scaling factor
   powerSpectrum powspec(powerfile);
-  
-  double tail_invk = pixsize / 1.296e6;
+
+  // First we generate the k values, and store them in scl
+  double tail_invk = 60.0 / pixsize;
   unsigned int nkx = nx / 2 + 1;
-  double kxfac = tail_invk / nx;
+  double kxfac = tail_invk / static_cast<double>(nx);
   unsigned int nky = ny / 2 + 1;
-  double kyfac = tail_invk / ny;
+  double kyfac = tail_invk / static_cast<double>(ny);
   double kxfacsq = kxfac * kxfac;
   double kyfacsq = kyfac * kyfac;
 
-  // fill in k; k first stores the k values, then
-  // stores the p(k) values
   unsigned int xtmp, ytmp;
   double kxval, kyval;
-  k = new double[nx * ny];
+  scl = new double[nx * ny];
   for (unsigned int i = 0; i < nkx; ++i) {
     kxval = kxfacsq * static_cast<double>(i * i);
     for (unsigned int j = 0; j < nky; ++j) {
       kyval = kyfacsq * static_cast<double>(j * j);
-      k[ny * i + j] = sqrt(kxval + kyval);
+      scl[ny * i + j] = sqrt(kxval + kyval);
     }
     for (unsigned int j = nky; j < ny; ++j) {
       ytmp = ny - j;
       kyval = kyfacsq * static_cast<double>(ytmp * ytmp);
-      k[ny * i + j] = sqrt(kxval + kyval);
+      scl[ny * i + j] = sqrt(kxval + kyval);
     }
   }
   for (unsigned int i = nkx; i < nx; ++i) {
@@ -172,23 +171,23 @@ positionGeneratorClustered::positionGeneratorClustered(unsigned int NX,
     kxval = kxfacsq * static_cast<double>(xtmp * xtmp);
     for (unsigned int j = 0; j < nky; ++j) {
       kyval = kyfacsq * static_cast<double>(j * j);
-      k[ny * i + j] = sqrt(kxval + kyval);
+      scl[ny * i + j] = sqrt(kxval + kyval);
     }
     for (unsigned int j = nky; j < ny; ++j) {
       ytmp = ny - j;
       kyval = kyfacsq * static_cast<double>(ytmp * ytmp);
-      k[ny * i + j] = sqrt(kxval + kyval);
+      scl[ny * i + j] = sqrt(kxval + kyval);
     }
   }
 
-  // Apply the power spectrum
-  for (unsigned int i = 0; i < nx * ny; ++i)
-    k[i] = powspec.getPk(k[i]);
-  k[0] = 0.0; //Mean 0
+  // Now build the scaling factor, which is sqrt(P(k))
+  scl[0] = 0.0; //Mean 0
+  for (unsigned int i = 1; i < nx * ny; ++i)
+    scl[i] = sqrt(powspec.getPk(scl[i]));
 }
 
 positionGeneratorClustered::~positionGeneratorClustered() {
-  delete[] k;
+  delete[] scl;
   if (probarr != NULL) fftw_free(probarr);
   if (probarr_trans != NULL) fftw_free(probarr_trans);
   if (plan != NULL) fftw_destroy_plan(plan); 
@@ -230,15 +229,15 @@ void positionGeneratorClustered::generate(ran& rangen) {
   // Fill
   for (unsigned int i = 0; i < nx * ny; ++i)
     probarr[i] = rangen.doub();
-  
+
   // Transform
   fftw_execute(plan);
 
-  // Multiply by k
+  // Multiply by the scaling factor
   double val;
   for (unsigned int i = 0; i < nx; ++i)
     for (unsigned int j = 0; j <= nyhalf; ++j) {
-      val = k[i * ny + j];
+      val = scl[i * ny + j];
       probarr_trans[i * nyhalf + j][0] *= val;
       probarr_trans[i * nyhalf + j][1] *= val;
     }
@@ -254,7 +253,7 @@ void positionGeneratorClustered::generate(ran& rangen) {
     if (currval > maxval) maxval = currval;
     if (currval < minval) minval = currval;
   }
-  
+
   double rng = maxval - minval;
   if (rng == 0)
     for (unsigned int i = 0; i < nx * ny; ++i)

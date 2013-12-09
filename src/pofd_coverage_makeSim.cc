@@ -14,21 +14,22 @@
 
 //Set up global option index that can be used for both single and double case
 static struct option long_options[] = {
-  {"double",no_argument,0,'d'},
-  {"extra_smooth",required_argument,0,'e'},
-  {"extra_smooth1",required_argument,0,'1'},
-  {"extra_smooth2",required_argument,0,'2'},
+  {"double", no_argument, 0, 'd'},
+  {"extra_smooth", required_argument, 0, 'e'},
+  {"extra_smooth1", required_argument, 0, '1'},
+  {"extra_smooth2", required_argument, 0, '2'},
   {"help", no_argument, 0, 'h'},
   {"oversample", required_argument, 0, 'o'},
-  {"seed", required_argument, 0,'S'},
-  {"sigma",required_argument,0,'s'},
-  {"sigma1",required_argument,0,'3'},
-  {"sigma2",required_argument,0,'4'},
-  {"verbose",no_argument,0,'v'},
-  {"version",no_argument,0,'V'},
+  {"powerspec", required_argument, 0, 'p'},
+  {"seed", required_argument, 0, 'S'},
+  {"sigma", required_argument, 0, 's'},
+  {"sigma1", required_argument, 0, '3'},
+  {"sigma2", required_argument, 0, '4'},
+  {"verbose", no_argument, 0, 'v'},
+  {"version", no_argument, 0, 'V'},
   {0,0,0,0}
 };
-char optstring[] = "de:1:2:ho:S:s:3:4:vV";
+char optstring[] = "de:1:2:ho:p:S:s:3:4:vV";
 
 
 int makeSimSingle(int argc, char **argv) {
@@ -36,7 +37,7 @@ int makeSimSingle(int argc, char **argv) {
   unsigned int n1, n2;
   double n0, pixsize, sigma, fwhm;
   double extra_smooth; //Additional smoothing
-  std::string modelfile, outputfile;
+  std::string modelfile, outputfile, powspecfile;
   unsigned long long int user_seed;
   bool verbose, do_extra_smooth, have_user_seed;
   unsigned int oversample;
@@ -49,6 +50,7 @@ int makeSimSingle(int argc, char **argv) {
   user_seed           = 0;
   have_user_seed      = false;
   oversample          = 1;
+  powspecfile         = "";
 
   int c;
   int option_index = 0;
@@ -62,6 +64,9 @@ int makeSimSingle(int argc, char **argv) {
       break;
     case 'o':
       oversample = atoi(optarg);
+      break;
+    case 'p':
+      powspecfile = std::string(optarg);
       break;
     case 'S' :
       have_user_seed = true;
@@ -114,7 +119,6 @@ int makeSimSingle(int argc, char **argv) {
     return 1;
   }
   
-
   try {
     numberCounts model(modelfile);
     if (n0 == 0) {
@@ -126,7 +130,7 @@ int makeSimSingle(int argc, char **argv) {
 		<< " Your value: " << n0 << std::endl;
 
     simImage dim(n1, n2, pixsize, fwhm, sigma, extra_smooth,
-		 oversample);
+		 oversample, 1000, powspecfile);
     if (have_user_seed) dim.setSeed( user_seed );
     dim.realize(model, n0, do_extra_smooth, true, false); //Do mean subtract
 
@@ -154,7 +158,7 @@ int makeSimDouble(int argc, char **argv) {
   unsigned int n1, n2;
   double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2;
   double extra_smooth1, extra_smooth2; //Additional smoothing
-  std::string modelfile, outputfile1, outputfile2; 
+  std::string modelfile, outputfile1, outputfile2, powerspecfile; 
   unsigned long long int user_seed;
   bool verbose, do_extra_smooth, have_user_seed;
   unsigned int oversample;
@@ -169,6 +173,7 @@ int makeSimDouble(int argc, char **argv) {
   user_seed           = 0;
   have_user_seed      = false;
   oversample          = 1;
+  powerspecfile       = "";
 
   int c;
   int option_index = 0;
@@ -186,6 +191,9 @@ int makeSimDouble(int argc, char **argv) {
       break;
     case 'o':
       oversample = atoi(optarg);
+      break;
+    case 'p':
+      powerspecfile = std::string(optarg);
       break;
     case 'S' :
       have_user_seed = true;
@@ -269,7 +277,8 @@ int makeSimDouble(int argc, char **argv) {
 		<< " Your value: " << n0 << std::endl;
 
     simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, 
-		       extra_smooth1, extra_smooth2, oversample);
+		       extra_smooth1, extra_smooth2, oversample, 1000,
+		       powerspecfile);
     if (have_user_seed) dim.setSeed( user_seed );
     dim.realize(model, n0, do_extra_smooth, true, false); //Do mean subtract
 
@@ -393,6 +402,13 @@ int main( int argc, char** argv ) {
       std::cout << "\t\timage.  The data is then down-binned to the specified"
 		<< "size." << std::endl;
       std::cout << "\t\tThe default is to apply no oversampling." << std::endl;
+      std::cout << "\t-p, --powerspec FILENAME" << std::endl;
+      std::cout << "\t\tName of text file giving k, P(k) (in 1/arcmin and "
+		<< "Jy/sr)" << std::endl;
+      std::cout << "\t\tfor on-sky source clustering to include in simulation."
+		<< " If" << std::endl;
+      std::cout << "\t\tnot specified, the sources are uniformly distributed."
+		<< std::endl;
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tUse this seed for the random number generator." 
 		<< std::endl;

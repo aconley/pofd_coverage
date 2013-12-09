@@ -13,7 +13,8 @@
 
 simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 		   double FWHM, double SIGI, double ESMOOTH, 
-		   unsigned int OVERSAMPLE, unsigned int NBINS) {
+		   unsigned int OVERSAMPLE, unsigned int NBINS,
+		   const std::string& powerspecfile) {
   n1 = N1;
   n2 = N2;
   oversample = OVERSAMPLE;
@@ -21,7 +22,10 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   ngen2 = n2 * oversample;
   data = new double[n1*n2];
   work = new double[ngen1 * ngen2];
-  if (oversample > 1)
+  if (oversample == 0)
+    throw pofdExcept("simImage", "simImage", 
+		     "Invalid (non-positive) oversample", 1);
+  else if (oversample > 1)
     gen_image = new double[ngen1 * ngen2];
   else
     gen_image = NULL;
@@ -44,6 +48,16 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   seed += static_cast<unsigned long long int>(clock());
   rangen.set_seed(seed);
   
+  // Position generator if needed
+  if (powerspecfile.empty()) {
+    use_clustered_pos = false;
+    posgen = NULL;
+  } else {
+    use_clustered_pos = true;
+    posgen = new positionGeneratorClustered(ngen1, ngen2, pixsize_gen,
+					    powerspecfile);
+  }
+
   // Set up array to hold 1D beams (center normalized)
   // Note that the beam is set up in oversampled space
   const double nfwhm = 3.5;
@@ -72,6 +86,7 @@ simImage::~simImage() {
   delete[] data;
   delete[] work;
   if (gen_image != NULL) delete[] gen_image;
+  if (posgen != NULL) delete posgen;
   delete[] gauss;
   if (gauss_add != NULL) delete[] gauss_add;
   if (binval != NULL) delete[] binval;
@@ -137,11 +152,12 @@ void simImage::convolveInner(unsigned int n, const double* const arr,
 			     double* const outarr) {
   //inarr, outarr must be same size (ni1 by ni2)
   //This makes use of the work array to hold the intermediate product
-  //The input array may be data (if we aren't oversampling) or gen_image
-  // (if we are oversampling)
+  //In use, the input array may be data (if we aren't oversampling) or 
+  // gen_image (if we are oversampling)
 
-  //Here we take major advantage of the fact that a Gaussian beam factorizes
-  //to do this as two 1D convolutions, along rows then columns
+  //Here we take advantage of the fact that a Gaussian beam factorizes
+  //to do this as two 1D convolutions, along rows then columns.  This is
+  // a large speedup
 
   //Do the column convolution first -- that is, convolve
   // along the second index of the input array, store in work
@@ -241,10 +257,16 @@ void simImage::convolveInner(unsigned int n, const double* const arr,
   }
 }
 
+void simImage::convolveWithBeamInPlace(unsigned int n1, unsigned int n2,
+				       double* const inout) {
+  convolveInner(ngauss, gauss, n1, n2, inout, inout);
+  smooth_applied = false;
+}
+
 void simImage::convolveWithBeam(unsigned int ni1, unsigned int ni2,
 				double* const input, unsigned int no1,
 				unsigned int no2, double* const output) {
-
+  //This is the general version -- it can handle downsampling if needed
   if (ni1 != no1 || ni2 != no2) {
     //From input to work2 via work
     convolveInner(ngauss, gauss, ni1, ni2, input, gen_image);
@@ -271,10 +293,12 @@ void simImage::convolveWithAdd() {
   // and the extra amount of smoothing, and is derived from the
   // relation between the peak value of a Gaussian beam and it's
   // area
-  const double prefac = 4*std::log(2)/pofd_coverage::pi;
-  double normval = prefac * (fwhm*fwhm + esmooth*esmooth)*pixsize*pixsize / 
-    (fwhm*fwhm*esmooth*esmooth);
-  for (unsigned int i = 0; i < n1*n2; ++i)
+  const double prefac = 4 * std::log(2)/pofd_coverage::pi;
+  double fwhm2 = fwhm * fwhm;
+  double esmooth2 = esmooth * esmooth;
+  double normval = prefac * (fwhm2 + esmooth2) * pixsize * pixsize / 
+    (fwhm2 + esmooth2);
+  for (unsigned int i = 0; i < n1 * n2; ++i)
     data[i] *= normval;
   smooth_applied = true;
 }
@@ -287,16 +311,18 @@ double simImage::getNoise() const {
 
 //Will return estimated smoothed noise, even if current image is not smoothed
 double simImage::getSmoothedNoiseEstimate() const {
-  const double prefac = sqrt(2*std::log(2)/pofd_coverage::pi);
+  const double prefac = sqrt(2 * std::log(2) / pofd_coverage::pi);
   if (sigi == 0) return 0.0;
   if (esmooth <= 0.0) return sigi;
-  return prefac*sigi*pixsize*(fwhm*fwhm+esmooth*esmooth) / 
-    ( esmooth * fwhm*fwhm );
+  double fwhm2 = fwhm * fwhm;
+  return prefac * sigi * pixsize * (fwhm2 + esmooth * esmooth) / 
+    (esmooth * fwhm2);
 }
 
 
 double simImage::getArea() const {
-  return pixsize*pixsize*n1*n2/(3600.0*3600.0);
+  double val = pixsize / 3600.0;
+  return val * val * n1 * n2;
 }
 
 /*!
@@ -306,7 +332,7 @@ double simImage::getArea() const {
   \params[in] extra_smooth Apply additional Gaussian smoothing
   \params[in] meansub Do mean subtraction
   \params[in] bin Create binned image data
- */
+*/
 void simImage::realize(const numberCounts& model, double n0,
 		       bool extra_smooth, bool meansub, bool bin) {
 
@@ -322,17 +348,34 @@ void simImage::realize(const numberCounts& model, double n0,
   double area = getArea();
   unsigned int nsrcs = static_cast<unsigned int>(area * n0);
   
+  // Set up the position generator if it will be needed
+  if (use_clustered_pos) posgen->generate(rangen);
+
   //Inject sources
   if (oversample > 1) {
     //Generate in oversampled gen_image
     for (unsigned int i = 0; i < ngen1 * ngen2; ++i) gen_image[i] = 0.0;
     if (nsrcs > 0) {
       unsigned int idx1, idx2;
-      for (unsigned int i = 0; i < nsrcs; ++i) {
-	idx1 = static_cast<unsigned int>(rangen.doub() * ngen1);
-	idx2 = static_cast<unsigned int>(rangen.doub() * ngen2);
-	gen_image[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
+      if (use_clustered_pos) {
+	// Clustered positions
+	std::pair<unsigned int, unsigned int> pos;
+	for (unsigned int i = 0; i < nsrcs; ++i) {
+	  pos = posgen->getPosition(rangen);
+	  idx1 = pos.first;
+	  idx2 = pos.second;
+	  gen_image[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
+	}
+      } else {
+	// Uniform distribution -- easy!
+	for (unsigned int i = 0; i < nsrcs; ++i) {
+	  idx1 = static_cast<unsigned int>(rangen.doub() * ngen1);
+	  idx2 = static_cast<unsigned int>(rangen.doub() * ngen2);
+	  gen_image[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
+	}
       }
+      // This also moves the data from gen_image to the data array
+      // and downsamples
       convolveWithBeam(ngen1, ngen2, gen_image, n1, n2, data);
     }
   } else {
@@ -340,18 +383,26 @@ void simImage::realize(const numberCounts& model, double n0,
     for (unsigned int i = 0; i < n1 * n2; ++i)
       data[i] = 0.0;
 
-    //Inject sources
+    //Inject sources, much like above except no downsampling
     if (nsrcs > 0) {
       unsigned int idx1, idx2;
-      double flux;
-      for (unsigned int i = 0; i < nsrcs; ++i) {
-	idx1 = static_cast<unsigned int>(rangen.doub() * n1);
-	idx2 = static_cast<unsigned int>(rangen.doub() * n2);
-	flux = model.genSource(rangen.doub());
-	data[idx1 * n2 + idx2] += flux;
+      if (use_clustered_pos) {
+	std::pair<unsigned int, unsigned int> pos;
+	for (unsigned int i = 0; i < nsrcs; ++i) {
+	  pos = posgen->getPosition(rangen);
+	  idx1 = pos.first;
+	  idx2 = pos.second;
+	  data[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
+	}
+      } else {
+	for (unsigned int i = 0; i < nsrcs; ++i) {
+	  idx1 = static_cast<unsigned int>(rangen.doub() * n1);
+	  idx2 = static_cast<unsigned int>(rangen.doub() * n2);
+	  data[idx1 * n2 + idx2] += model.genSource(rangen.doub());
+	}
       }
     }
-    convolveWithBeam(n1, n2, data, n1, n2, data);
+    convolveWithBeamInPlace(n1, n2, data);
   }
   is_full = true;
 
@@ -463,7 +514,7 @@ double simImage::getBeamSumSq() const {
 
 /*!
   Keeps the original, unbinned image around as well
- */
+*/
 void simImage::applyBinning() {
   if (!is_full)
     throw pofdExcept("simImage","applyBinning",
@@ -538,11 +589,12 @@ int simImage::writeToFits(const std::string& outputfile) const {
 
   //Sim params
   double tmpval = fwhm;
+  int tmpi = 0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &tmpval, 
 		 const_cast<char*>("Beam fwhm [arcsec]"), 
 		 &status);
   if (smooth_applied) {
-    int tmpi = 1;
+    tmpi = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
@@ -551,12 +603,11 @@ int simImage::writeToFits(const std::string& outputfile) const {
 		   const_cast<char*>("Extra smoothing fwhm [arcsec]"), 
 		   &status);
   } else {
-    int tmpi = 0;
+    tmpi = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
   }
-
 
   tmpval = sigi;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI"), &tmpval, 
@@ -568,10 +619,6 @@ int simImage::writeToFits(const std::string& outputfile) const {
 		   const_cast<char*>("Smoothed instrument noise"), 
 		   &status);
   }
-  fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
-		 const_cast<char*>(pofd_coverage::version), 
-		 const_cast<char*>("pofd_coverage version"),
-		 &status);
 
   if (oversample > 1) {
     unsigned int utmp = oversample;
@@ -580,8 +627,16 @@ int simImage::writeToFits(const std::string& outputfile) const {
 		    &status);
   }
 
-  fits_write_history(fp, 
-		     const_cast<char*>("Simulated image from pofd_coverage"),
+  if (use_clustered_pos) tmpi = 1; else tmpi = 0;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &tmpi,
+		 const_cast<char*>("Use clustered positions"), &status);
+
+  fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
+		 const_cast<char*>(pofd_coverage::version), 
+		 const_cast<char*>("pofd_coverage version"),
+		 &status);
+
+  fits_write_history(fp,const_cast<char*>("Simulated image from pofd_coverage"),
 		     &status);
   fits_write_date(fp, &status);
 

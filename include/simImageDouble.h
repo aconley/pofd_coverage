@@ -8,6 +8,7 @@
 
 #include "../include/numberCountsDouble.h"
 #include "../include/ran.h"
+#include "../include/positionGenerator.h"
 
 /*!
   \brief Data class for creating and holding double (two-band) simulated
@@ -41,6 +42,10 @@ class simImageDouble {
   unsigned int* binval; //!< Number of elements in each bin (row-major order)
 
   mutable ran rangen; //!< Random number generator
+
+  // Generator for positions if not uniform
+  bool use_clustered_pos; //!< Use clustered positions (rather than uniform)
+  positionGeneratorClustered *posgen; //!< Position generator if not uniform
 
   bool is_full; //!< A realization has been generated
 
@@ -92,7 +97,7 @@ class simImageDouble {
 
   simImageDouble(unsigned int, unsigned int, double, double, double, double,
 		 double, double=0.0, double=0.0, unsigned int=1, 
-		 unsigned int=1000);
+		 unsigned int=1000, const std::string& powerspec="");
   ~simImageDouble(); //!< Destructor
 
   /*! \brief Set random number generator seed */
@@ -101,6 +106,8 @@ class simImageDouble {
   /*! Generate realization of model */
   void realize(const numberCountsDouble&, double,
 	       bool=false,bool=false,bool=false);
+
+  bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 
   bool isBinned() const { return is_binned; } //!< Is data binned?
   void applyBinning(); //!< Takes an unbinned image and bins it

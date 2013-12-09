@@ -43,7 +43,7 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   bool has_nknots = false;
   while (!initfs.eof()) {
     std::getline(initfs,line);
-    if (line[0] == '#') continue; //Comment
+    if (line[0] == '#' || line[0] == '%') continue; //Comment
     utility::stringwords(line,words);
     if (words.size() == 0) continue; //Nothing on line (with spaces removed)
     if (words.size() < 3) continue; //Has wrong number of entries
@@ -58,18 +58,18 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
     throw pofdExcept("numberCountsDouble","numberCountsDouble",
 		     "Unable to find number of knots line",2);
   }
-  if ( nk < 2 ) {
+  if (nk < 2) {
     initfs.close();
     throw pofdExcept("numberCountsDouble","numberCountsDouble",
 		       "Need at least 2 band 1 knots",3);
   }
-  if ( ns < 1 ) {
+  if (ns < 1) {
     initfs.close();
     throw pofdExcept("numberCountsDouble","numberCountsDouble",
 		       "Need at least one sigma color model knot",4);
 
   }
-  if ( no < 1 ) {
+  if (no < 1) {
     initfs.close();
     throw pofdExcept("numberCountsDouble","numberCountsDouble",
 		       "Need at least one offset color model knot",5);
@@ -78,10 +78,10 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   //Read in values
   while (!initfs.eof()) {
     std::getline(initfs,line);
-    if (line[0] == '#') continue; //Comment
+    if (line[0] == '#' || line[0] == '%') continue; //Comment
     utility::stringwords(line,words);
     if (words.size() == 0) continue; //Nothing on line (with spaces removed)
-    if (words[0][0] == '#') continue; //Comment line
+    if (words[0][0] == '#' || words[0][0] == '%') continue; //Comment line
     if (words.size() < 2) continue; //Has wrong number of entries
     str.str(words[0]); str.clear(); str >> currval;
     wvec1.push_back(currval);

@@ -27,6 +27,7 @@ static struct option long_options[] = {
   {"n0initrange",required_argument,0,'3'},
   {"n0rangefrac",required_argument,0,'4'},
   {"oversample",required_argument,0,'o'},
+  {"powspec", required_argument, 0, 'p'},
   {"sigma",required_argument,0,'s'},
   {"sigma1",required_argument,0,'#'},
   {"sigma2",required_argument,0,'$'},
@@ -37,7 +38,7 @@ static struct option long_options[] = {
   {0,0,0,0}
 };
 
-char optstring[] = "hbde:!:@:f:1:n:N2:3:4:o:s:#:$:S:vVw:";
+char optstring[] = "hbde:!:@:f:1:n:N2:3:4:o:p:s:#:$:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -49,6 +50,7 @@ int runSimSingle(int argc, char **argv) {
   double pixsize, n0rangefrac, n0initrange;
   double sigma; //Instrument noise, unsmoothed
   std::string outputfile; //Ouput pofd option
+  std::string powerspecfile; //Power spectrum file
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like;
   unsigned long long int seed;
   std::string wisdom_file;
@@ -69,7 +71,8 @@ int runSimSingle(int argc, char **argv) {
   nbins               = 1000;
   use_binning         = false;
   map_like            = true;
-  
+  powerspecfile       = "";
+
   int c;
   int option_index = 0;
   optind = 1; //Rewind 
@@ -105,6 +108,9 @@ int runSimSingle(int argc, char **argv) {
       break;
     case 'o' :
       oversample = atoi(optarg);
+      break;
+    case 'p':
+      powerspecfile = std::string(optarg);
       break;
     case 's' :
       sigma = atof(optarg);
@@ -212,6 +218,8 @@ int runSimSingle(int argc, char **argv) {
 	printf("   esmooth:            %0.2f\n",esmooth);
       if (oversample > 1)
 	printf("   oversampling:       %u\n",oversample);
+      if (!powerspecfile.empty())
+	printf("   n0rangefrac         %s\n", powerspecfile.c_str());
       if (use_binning)
 	printf("   nbins:              %u\n",nbins);
       if (map_like) {
@@ -222,7 +230,7 @@ int runSimSingle(int argc, char **argv) {
 
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike, 
 		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, sigma, n0, 
-		   esmooth, oversample, use_binning, nbins);
+		   esmooth, oversample, powerspecfile, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -257,6 +265,7 @@ int runSimDouble(int argc, char **argv) {
   double pixsize, n0rangefrac, n0initrange;
   double sigma1, sigma2; //Instrument noise, unsmoothed
   std::string outputfile; //Ouput pofd option
+  std::string powerspecfile; // Power spectrum file
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like;
   unsigned long long int seed;
   std::string wisdom_file;
@@ -279,7 +288,8 @@ int runSimDouble(int argc, char **argv) {
   nbins               = 1000;
   use_binning         = false;
   map_like            = true;
-  
+  powerspecfile       = "";
+
   int c;
   int option_index = 0;
   optind = 1; //Rewind 
@@ -318,6 +328,9 @@ int runSimDouble(int argc, char **argv) {
       break;
     case 'o' :
       oversample = atoi(optarg);
+      break;
+    case 'p':
+      powerspecfile = std::string(optarg);
       break;
     case '#' :
       sigma1 = atof(optarg);
@@ -449,6 +462,8 @@ int runSimDouble(int argc, char **argv) {
 	printf("   esmooth2:           %0.2f\n",esmooth2);
       if (oversample > 1)
 	printf("   oversampling:       %u\n",oversample);
+      if (!powerspecfile.empty())
+	printf("   n0rangefrac         %s\n", powerspecfile.c_str());
       if (use_binning)
 	printf("   nbins:              %u\n",nbins);
       if (map_like) {
@@ -460,7 +475,7 @@ int runSimDouble(int argc, char **argv) {
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
 			 sigma1, sigma2, n0, esmooth1, esmooth2, oversample, 
-			 use_binning, nbins);
+			 powerspecfile, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -629,6 +644,13 @@ int main(int argc, char **argv) {
       std::cout << "\t\timage.  The data is then down-binned to the specified"
 		<< "size." << std::endl;
       std::cout << "\t\tThe default is to apply no oversampling." << std::endl;
+      std::cout << "\t-p, --powerspec FILENAME" << std::endl;
+      std::cout << "\t\tName of text file giving k, P(k) (in 1/arcmin and "
+		<< "Jy/sr)" << std::endl;
+      std::cout << "\t\tfor on-sky source clustering to include in simulation."
+		<< " If" << std::endl;
+      std::cout << "\t\tnot specified, the sources are uniformly distributed."
+		<< std::endl;
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tSet user specified seed, otherwise taken from time."
 		<< std::endl;

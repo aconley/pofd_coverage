@@ -7,6 +7,7 @@
 
 #include "../include/ran.h"
 #include "../include/numberCounts.h"
+#include "../include/positionGenerator.h"
 
 /*!
   \brief Data class for creating and holding simulated
@@ -34,6 +35,10 @@ class simImage {
   unsigned int* binval; //!< Number of elements in each bin
 
   mutable ran rangen; //!< Random number generator
+
+  // Generator for positions if not uniform
+  bool use_clustered_pos; //!< Use clustered positions (rather than uniform)
+  positionGeneratorClustered *posgen; //!< Position generator if not uniform
 
   bool is_full; //!< A realization has been generated
 
@@ -63,7 +68,9 @@ class simImage {
 		     unsigned int, unsigned int, double* const,
 		     double* const); //!< Inner convolution function
 
-  /*! \brief Do convolution with beams */
+  /*! \brief Do convolution with beams in place*/
+  void convolveWithBeamInPlace(unsigned int, unsigned int, double* const);
+  /*! \brief Do convolution with beams, also possibly downsampling */
   void convolveWithBeam(unsigned int, unsigned int, double* const,
 			unsigned int, unsigned int, double* const);
   /*! \brief Do convolution with extra smoothing bit */
@@ -73,7 +80,7 @@ class simImage {
 
   simImage(unsigned int, unsigned int, double,
 	   double, double, double=0.0, unsigned int=1, 
-	   unsigned int=1000); //!< Constructor with parameters
+	   unsigned int=1000, const std::string& powerfile=""); //!< Constructor with parameters
   ~simImage(); //!< Destructor
 
   /*! \brief Set random number generator seed */
@@ -81,6 +88,8 @@ class simImage {
   
   void realize(const numberCounts&, double, bool=false,bool=false,
 	       bool=false); //!< Generate realization of model
+
+  bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 
   bool isBinned() const { return is_binned; } //!< Is data binned?
   void applyBinning(); //!< Takes an unbinned image and bins it

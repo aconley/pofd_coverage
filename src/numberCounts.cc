@@ -35,12 +35,12 @@ numberCounts::numberCounts(const std::string& modelfile,
   const unsigned int nreq = 2;
   while (!ifs.eof()) {
     std::getline(ifs,line);
-    if (line[0] == '#') continue; //Skip comments
+    if (line[0] == '#' || line[0] == '%') continue; //Skip comments
     
     //Parse into words, stipping spaces
     utility::stringwords(line,words);
     if (words.size() == 0) continue; //Nothing on line (with spaces removed)
-    if (words[0][0] == '#') continue; //Comment line
+    if (words[0][0] == '#' || words[0][0] == '%') continue; //Comment line
     if (words.size() < nreq) continue; //Has wrong number of entries
     str.str(words[0]); str.clear(); str >> currval;
     kp.push_back(currval);

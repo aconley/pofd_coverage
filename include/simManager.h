@@ -87,8 +87,8 @@ class simManager {
 	     unsigned int N1=720, unsigned int N2=720,
 	     double PIXSIZE=5.0, double FWHM=15.0, double SIGI=0.005, 
 	     double N0=2.6e3, double ESMOOTH=0.0,
-	     unsigned int OVERSAMPLE=1, bool USEBIN=false,
-	     unsigned int NBINS=1000);
+	     unsigned int OVERSAMPLE=1, const std::string& POWERSPECFILE="",
+	     bool USEBIN=false, unsigned int NBINS=1000);
   ~simManager();
 
   void setSeed(unsigned long long int seed) { simim.setSeed(seed); }

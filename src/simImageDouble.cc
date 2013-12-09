@@ -13,7 +13,8 @@
 simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 			       double FWHM1, double FWHM2, double SIGI1, 
 			       double SIGI2, double ESMOOTH1, double ESMOOTH2,
-			       unsigned int OVERSAMPLE, unsigned int NBINS) {
+			       unsigned int OVERSAMPLE, unsigned int NBINS,
+			       const std::string& powerspecfile) {
   n1 = N1;
   n2 = N2;
   oversample = OVERSAMPLE;
@@ -22,6 +23,9 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   data1 = new double[n1 * n2];
   data2 = new double[n1 * n2];
   work  = new double[ngen1 * ngen2];
+  if (oversample == 0)
+    throw pofdExcept("simImageDouble", "simImageDouble", 
+		     "Invalid (non-positive) oversample", 1);
   if (oversample > 1) {
     gen_1 = new double[ngen1 * ngen2];
     gen_2 = new double[ngen1 * ngen2];
@@ -51,7 +55,17 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   seed = static_cast<unsigned long long int>(time(NULL));
   seed += static_cast<unsigned long long int>(clock());
   rangen.set_seed(seed);
-  
+
+   // Position generator if needed
+  if (powerspecfile.empty()) {
+    use_clustered_pos = false;
+    posgen = NULL;
+  } else {
+    use_clustered_pos = true;
+    posgen = new positionGeneratorClustered(ngen1, ngen2, pixsize_gen,
+					    powerspecfile);
+  }
+ 
   //Set up array to hold 1D beams in each band (center normalized)
   //We have to decide how far out to go.  Note that the beams are set
   // up in oversampled space
@@ -102,6 +116,7 @@ simImageDouble::~simImageDouble() {
   delete[] work;
   if (gen_1 != NULL) delete[] gen_1;
   if (gen_2 != NULL) delete[] gen_2;
+  if (posgen != NULL) delete posgen;
   delete[] gauss1;
   delete[] gauss2;
   if (ngauss_add1 > 0) delete[] gauss_add1;
@@ -384,6 +399,9 @@ void simImageDouble::realize(const numberCountsDouble& model,
   double area = getArea();
   unsigned int nsrcs = static_cast<unsigned int>(area * n0);
 
+  // Set up the position generator if it will be needed
+  if (use_clustered_pos) posgen->generate(rangen);
+
   //Inject sources
   std::pair<double, double> src;
   if (oversample > 1) {
@@ -392,13 +410,25 @@ void simImageDouble::realize(const numberCountsDouble& model,
     for (unsigned int i = 0; i < ngen1 * ngen2; ++i) gen_2[i] = 0.0;
     if (nsrcs > 0) {
       unsigned int idx1, idx2, combidx;
-      for (unsigned int i = 0; i < nsrcs; ++i) {
-	idx1 = static_cast<unsigned int>(rangen.doub() * ngen1);
-	idx2 = static_cast<unsigned int>(rangen.doub() * ngen2);
-	src = model.genSource(rangen.doub(), rangen.gauss());
-	combidx = idx1 * ngen2 + idx2;
-	gen_1[combidx] += src.first;
-	gen_2[combidx] += src.second;
+      if (use_clustered_pos) {
+	// Clustered positions
+	std::pair<unsigned int, unsigned int> pos;
+	for (unsigned int i = 0; i < nsrcs; ++i) {
+	  pos = posgen->getPosition(rangen);
+	  combidx = pos.first * ngen2 + pos.second;
+	  src = model.genSource(rangen.doub(), rangen.gauss());
+	  gen_1[combidx] += src.first;
+	  gen_2[combidx] += src.second;
+	} 
+      } else {
+	for (unsigned int i = 0; i < nsrcs; ++i) {
+	  idx1 = static_cast<unsigned int>(rangen.doub() * ngen1);
+	  idx2 = static_cast<unsigned int>(rangen.doub() * ngen2);
+	  combidx = idx1 * ngen2 + idx2;
+	  src = model.genSource(rangen.doub(), rangen.gauss());
+	  gen_1[combidx] += src.first;
+	  gen_2[combidx] += src.second;
+	}
       }
     }
   } else {
@@ -409,13 +439,25 @@ void simImageDouble::realize(const numberCountsDouble& model,
     //Inject sources
     if (nsrcs > 0) {
       unsigned int idx1, idx2, combidx;
-      for (unsigned int i = 0; i < nsrcs; ++i) {
-	idx1 = static_cast<unsigned int>(rangen.doub() * n1);
-	idx2 = static_cast<unsigned int>(rangen.doub() * n2);
-	src = model.genSource(rangen.doub(), rangen.gauss());
-	combidx = idx1 * ngen2 + idx2;
-	data1[combidx] += src.first;
-	data2[combidx] += src.second;
+      if (use_clustered_pos) {
+	// Clustered positions
+	std::pair<unsigned int, unsigned int> pos;
+	for (unsigned int i = 0; i < nsrcs; ++i) {
+	  pos = posgen->getPosition(rangen);
+	  combidx = pos.first * n2 + pos.second;
+	  src = model.genSource(rangen.doub(), rangen.gauss());
+	  data1[combidx] += src.first;
+	  data2[combidx] += src.second;
+	} 
+      } else {
+	for (unsigned int i = 0; i < nsrcs; ++i) {
+	  idx1 = static_cast<unsigned int>(rangen.doub() * n1);
+	  idx2 = static_cast<unsigned int>(rangen.doub() * n2);
+	  combidx = idx1 * n2 + idx2;
+	  src = model.genSource(rangen.doub(), rangen.gauss());
+	  data1[combidx] += src.first;
+	  data2[combidx] += src.second;
+	}
       }
     }
   }
@@ -696,6 +738,7 @@ int simImageDouble::writeFits(const std::string& outputfile,
 		 &status);
   
   //Sim params
+  int tmpi = 0;
   double tmpval;
   tmpval = fwhm1;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &tmpval, 
@@ -706,7 +749,7 @@ int simImageDouble::writeFits(const std::string& outputfile,
 		 const_cast<char*>("Beam fwhm, band 2 [arcsec]"), 
 		 &status);
   if (smooth_applied) {
-    int tmpi = 1;
+    tmpi = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
@@ -719,7 +762,7 @@ int simImageDouble::writeFits(const std::string& outputfile,
 		   const_cast<char*>("Extra smoothing fwhm, band 2 [arcsec]"), 
 		   &status);
   } else {
-    int tmpi = 0;
+    tmpi = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
@@ -731,9 +774,21 @@ int simImageDouble::writeFits(const std::string& outputfile,
 		 &status);
   tmpval = sigi2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &tmpval, 
-		 const_cast<char*>("Instrument noise, band 1"), 
+		 const_cast<char*>("Instrument noise, band 2"), 
 		 &status);
   
+  if (oversample > 1) {
+    unsigned int utmp = oversample;
+    fits_write_key(fp, TUINT, const_cast<char*>("OVERSMPL"), &utmp, 
+		    const_cast<char*>("Oversampling factor"), 
+		    &status);
+  }
+
+  if (use_clustered_pos) tmpi = 1; else tmpi = 0;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &tmpi,
+		 const_cast<char*>("Use clustered positions"), &status);
+
+
   if (smooth_applied) {
     double tmpval2;
     std::pair<double, double> ns;

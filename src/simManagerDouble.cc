@@ -57,6 +57,8 @@ static double minfunc(double x, void* params) {
   \param[in] N0 Simulated number of sources per sq deg.
   \param[in] ESMOOTH Amount of extra smoothing to apply
   \param[in] OVERSAMPLE Oversampling of simulated image
+  \param[in] POWERSPECFILE File containing power spectrum for on-sky source
+              distribution.  If not provided, uniform sampling is used.
   \param[in] USEBIN Bin the data in the likelihood calculation
   \param[in] NBINS Number of bins in binned data
  */
@@ -69,13 +71,14 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   double SIGI1, double SIGI2, double N0, 
 				   double ESMOOTH1, double ESMOOTH2,
 				   unsigned int OVERSAMPLE,
+				   const std::string& POWERSPECFILE,
 				   bool USEBIN, unsigned int NBINS) :
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), fftsize(FFTSIZE),
   n0(N0), sig_i1(SIGI1), sig_i2(SIGI2), sig_i1_sm(SIGI1), sig_i2_sm(SIGI2),
   fwhm1(FWHM1), fwhm2(FWHM2), pixsize(PIXSIZE),
   simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, 
-	OVERSAMPLE, NBINS), 
+	OVERSAMPLE, NBINS, POWERSPECFILE), 
   use_binning(USEBIN), model(MODELFILE), 
   esmooth1(ESMOOTH1), esmooth2(ESMOOTH2) {
 
@@ -393,8 +396,9 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   }
 
   //Write header stuff
-  unsigned int utmp;
-  double dtmp;
+  unsigned int utmp = 0;
+  int itmp = 0;
+  double dtmp = 0.0;
   fits_write_key(fp, TSTRING, const_cast<char*>("MODEL"),
 		 const_cast<char*>("Spline-Log Normal"), 
 		 const_cast<char*>("Model type"),
@@ -436,8 +440,8 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		 &status);
 
   if (do_extra_smooth) {
-    int tmpi = 1;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
     dtmp = esmooth1;
@@ -448,8 +452,8 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		   const_cast<char*>("Extra smoothing fwhm, band 2 [arcsec]"), 
 		   &status);
   } else {
-    int tmpi = 0;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
   }
@@ -474,8 +478,8 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   }
   
   if (use_binning) {
-    int tmpi = 1;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("USEBIN"), &tmpi,
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("USEBIN"), &itmp,
 		   const_cast<char*>("Use binned likelihood"), 
 		   &status);
     utmp = simim.getNBins();
@@ -483,12 +487,15 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		   const_cast<char*>("Number of bins in Likelihood"), 
 		   &status);
   } else {
-    int tmpi = 0;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("USEBIN"), &tmpi,
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("USEBIN"), &itmp,
 		   const_cast<char*>("Use binned likelihood"), 
 		   &status);
   }
-  
+  itmp = static_cast<int>(simim.isClustered());
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &itmp,
+		 const_cast<char*>("Use clustered positions"), &status);
+
   
   dtmp = simim.getPixSize();
   fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp, 
@@ -521,8 +528,8 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		 &status);
   
   if (do_map_like) {
-    int tmpi = 1;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("MAPLIKE"), &tmpi,
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MAPLIKE"), &itmp,
 		   const_cast<char*>("Do map out likelihood"), 
 		   &status);
     utmp = nlike;
@@ -534,12 +541,11 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		   const_cast<char*>("N0 range fraction"), 
 		   &status);
   } else {
-    int tmpi = 0;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("MAPLIKE"), &tmpi,
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MAPLIKE"), &itmp,
 		   const_cast<char*>("Do map out likelihood"), 
 		   &status);
   }
-  
   
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
 		 const_cast<char*>(pofd_coverage::version), 

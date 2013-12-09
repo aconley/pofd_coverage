@@ -58,8 +58,8 @@ class positionGeneratorClustered {
   double pixsize; //!< Pixel size in arcsec (square pixels assumed)
 
   //Internal storage -- only allocated when needed
-  double *k; //!< 2D k arrays
-  double *probarr; //!< Normalized probability array
+  double *scl; //!< Power spectrum scaling array (row major 2D nx by ny)
+  double *probarr; //!< Normalized probability array (row major 2D nx by ny)
   fftw_complex* probarr_trans; //!< Fourier transformed prob array
 
   // FFTW stuff

@@ -15,9 +15,11 @@
 powerSpectrum::powerSpectrum(const std::string& filename) {
   // Just read the file, pass it to init
   std::ifstream ifs(filename.c_str());
-  if (!ifs)
-    throw pofdExcept("numberCounts","numberCounts",
-		     "Unable to open input model file",1);
+  if (!ifs) {
+    std::stringstream errstr;
+    errstr << "Unable to open input model file: " << filename;
+    throw pofdExcept("numberCounts", "numberCounts", errstr.str(), 1);
+  }
 
   //Do the read into temporary vectors, then copy
   std::string line;

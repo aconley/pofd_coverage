@@ -219,7 +219,7 @@ int runSimSingle(int argc, char **argv) {
       if (oversample > 1)
 	printf("   oversampling:       %u\n",oversample);
       if (!powerspecfile.empty())
-	printf("   n0rangefrac         %s\n", powerspecfile.c_str());
+	printf("   clustering P(k):    %s\n", powerspecfile.c_str());
       if (use_binning)
 	printf("   nbins:              %u\n",nbins);
       if (map_like) {
@@ -463,7 +463,7 @@ int runSimDouble(int argc, char **argv) {
       if (oversample > 1)
 	printf("   oversampling:       %u\n",oversample);
       if (!powerspecfile.empty())
-	printf("   n0rangefrac         %s\n", powerspecfile.c_str());
+	printf("   clustering P(k):    %s\n", powerspecfile.c_str());
       if (use_binning)
 	printf("   nbins:              %u\n",nbins);
       if (map_like) {

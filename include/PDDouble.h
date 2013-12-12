@@ -29,8 +29,8 @@ class PDDouble {
   unsigned int n2; //!< Current size along dimension 2
   unsigned int capacity; //!< Current capacity
 
-  double getLogLikeBinned(const simImageDouble&) const;
-  double getLogLikeUnbinned(const simImageDouble&) const;
+  double getLogLikeBinned(const simImageDouble&, unsigned int=1) const;
+  double getLogLikeUnbinned(const simImageDouble&, unsigned int=1) const;
 
  public:
   PDDouble(unsigned int N1=0, double MINFLUX1=0.0, double DFLUX1=0.0,
@@ -90,7 +90,7 @@ class PDDouble {
   unsigned int getDim2() const { return n2; }
 
   /*! \brief Get Log likelihood of data set*/
-  double getLogLike(const simImageDouble&) const;
+  double getLogLike(const simImageDouble&, unsigned int=1) const;
 
   std::ostream& writeToStream(std::ostream& os) const; //!< Write summary
 

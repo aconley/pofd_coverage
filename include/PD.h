@@ -27,8 +27,8 @@ class PD {
   unsigned int n; //!< Current size
   unsigned int capacity; //!< Current capacity
 
-  double getLogLikeBinned(const simImage&) const;
-  double getLogLikeUnbinned(const simImage&) const;
+  double getLogLikeBinned(const simImage&, unsigned int=1) const;
+  double getLogLikeUnbinned(const simImage&, unsigned int=1) const;
 
  public:
   PD(unsigned int N=0, double MINFLUX=0.0, double DFLUX=0.0,
@@ -74,7 +74,7 @@ class PD {
   unsigned int getDim() const { return n; }
 
   /*! \brief Get Log likelihood of data set*/
-  double getLogLike(const simImage&) const;
+  double getLogLike(const simImage&, unsigned int=1) const;
 
   std::ostream& writeToStream(std::ostream& os) const; //!< Write summary
 

@@ -36,6 +36,7 @@ class simManager {
   bool do_map_like; //!< Create the likelihood map?
   unsigned int nlike; //!< Number of likelihoods to compute
   double n0rangefrac; //!< Fractional range in n0 to cover
+  unsigned int like_sparcity; //!< Sparcity of likelihood computation
 
   unsigned int fftsize; //!< Size of FFT
 
@@ -88,7 +89,8 @@ class simManager {
 	     double PIXSIZE=5.0, double FWHM=15.0, double SIGI=0.005, 
 	     double N0=2.6e3, double ESMOOTH=0.0,
 	     unsigned int OVERSAMPLE=1, const std::string& POWERSPECFILE="",
-	     bool USEBIN=false, unsigned int NBINS=1000);
+	     unsigned int SPARCITY=1, bool USEBIN=false, 
+	     unsigned int NBINS=1000);
   ~simManager();
 
   void setSeed(unsigned long long int seed) { simim.setSeed(seed); }

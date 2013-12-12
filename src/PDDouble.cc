@@ -823,65 +823,79 @@ int PDDouble::writeToFits( const std::string& outputfile ) const {
   return status;
 }
 
-double PDDouble::getLogLike(const simImageDouble& data) const {
-  if (pd_ == NULL) throw pofdExcept("PDDouble","getLogLike",
-				      "pd not filled before likelihood calc",1);
+/*!
+  \param[in] data Data to compute Log likelihood for
+  \param[in] sparcity Sampling for Log likelihood calculation
+  \returns Log Likelihood of data with respect to P(D)
+*/
+double PDDouble::getLogLike(const simImageDouble& data,
+			    unsigned int sparcity) const {
+  if (pd_ == NULL) throw pofdExcept("PDDouble", "getLogLike",
+				    "pd not filled before likelihood calc", 1);
   unsigned int ndata = data.getN1() * data.getN2();
-  if (ndata == 0) throw pofdExcept("PDDouble","getLogLike",
-				     "No data present",2);
+  if (ndata == 0) throw pofdExcept("PDDouble", "getLogLike",
+				   "No data present", 2);
 
-  if (data.isBinned()) return getLogLikeBinned(data);
-  else return getLogLikeUnbinned(data);
+  if (data.isBinned()) return getLogLikeBinned(data, sparcity);
+  else return getLogLikeUnbinned(data, sparcity);
 }
 
-double PDDouble::getLogLikeUnbinned(const simImageDouble& data) const {
+double PDDouble::getLogLikeUnbinned(const simImageDouble& data,
+				    unsigned int sparcity) const {
+
   unsigned int ndata = data.getN1() * data.getN2();
+  if (sparcity > ndata)
+     throw pofdExcept("PDDouble", "getLogLikeUnbinned",
+		     "sparcity is larger than data size", 1);
 
   //Quantities for edge test
-  double maxflux1 = minflux1 + static_cast<double>(n1-1)*dflux1;
-  double maxflux2 = minflux2 + static_cast<double>(n2-1)*dflux2;
+  double maxflux1 = minflux1 + static_cast<double>(n1-1) * dflux1;
+  double maxflux2 = minflux2 + static_cast<double>(n2-1) * dflux2;
 
   int idx1, idx2, n2idx1; //!< Index look up
   unsigned int n2n1, baseidx;
-  n2n1 = n2*n1;
+  n2n1 = n2 * n1;
 
   const double* flux1;
   const double* flux2;
   double cflux1, cflux2, loglike, interp_val, delt1, delt2;
   double u,t,omu,omt;
-  double idflux1 = 1.0/dflux1;
-  double idflux2 = 1.0/dflux2;
+  double idflux1 = 1.0 / dflux1;
+  double idflux2 = 1.0 / dflux2;
 
   loglike = 0.0;
   flux1 = data.getData1();
   flux2 = data.getData2();
 
   loglike = 0.0;
+  unsigned int delta_idx;
+  if (sparcity > 1) delta_idx = sparcity; else delta_idx = 1;
+
   //Do interpolation.  Note we don't call getPDval, since
   // we do the interpolation here always in log space no matter
   // how it is stored internally, and because it's more efficient
   // to do it in house.
   if (logflat) {
     //Internal information is stored as log2 of P(D)
-    for (unsigned int i = 0; i < ndata; ++i) {
+    for (unsigned int i = 0; i < ndata; i += delta_idx) {
       cflux1 = flux1[i]; cflux2 = flux2[i];
       //Get effective indices
-      delt1 = (cflux1-minflux1)*idflux1;
-      delt2 = (cflux2-minflux2)*idflux2;
-      idx1 = static_cast<int>( delt1 );
-      idx2 = static_cast<int>( delt2 );
-      n2idx1 = n2*idx1;
-      if ( cflux1 <= minflux1 ) {
-	if ( cflux2 <= minflux2 ) interp_val = pd_[0];
-        else if ( cflux2 >= maxflux2 ) interp_val = pd_[n2-1];
+      delt1 = (cflux1 - minflux1) * idflux1;
+      delt2 = (cflux2 - minflux2) * idflux2;
+      idx1 = static_cast<int>(delt1);
+      idx2 = static_cast<int>(delt2);
+      n2idx1 = n2 * idx1;
+      if (cflux1 <= minflux1) {
+	if (cflux2 <= minflux2) interp_val = pd_[0];
+        else if (cflux2 >= maxflux2) interp_val = pd_[n2-1];
         else interp_val = pd_[idx2];
-      } else if ( cflux1 >= maxflux1 ) {
+      } else if (cflux1 >= maxflux1) {
         if (cflux2 <= minflux2) interp_val = pd_[n2n1-n1];
-        else if ( cflux2 >= maxflux2 ) interp_val = pd_[n2n1-1];
+        else if (cflux2 >= maxflux2) interp_val = pd_[n2n1-1];
         else interp_val = pd_[n2n1-n1+idx2];
-      } else if ( cflux2 <= minflux2 ) {
+      } else if (cflux2 <= minflux2) {
         interp_val = pd_[n2idx1];
-      } else if ( cflux2 >= maxflux2 ) {
+      } else if (cflux2 >= maxflux2) {
         interp_val = pd_[n2idx1+n2-1];
       } else {
         //Not off edge
@@ -889,8 +903,8 @@ double PDDouble::getLogLikeUnbinned(const simImageDouble& data) const {
         u = delt2 - static_cast<double>(idx2);
         omu = 1.0 - u; omt = 1.0 - t;
         baseidx = n2idx1+idx2;
-        interp_val = omt*(omu*pd_[baseidx] + u*pd_[baseidx+1]) +
-          t*(omu*pd_[baseidx+n2] + u*pd_[baseidx+n2+1]);
+        interp_val = omt * ( omu * pd_[baseidx] + u * pd_[baseidx+1]) +
+          t * (omu * pd_[baseidx+n2] + u * pd_[baseidx+n2+1]);
       }
       loglike += interp_val;
     }
@@ -899,25 +913,25 @@ double PDDouble::getLogLikeUnbinned(const simImageDouble& data) const {
     //Note that it would be insane to do this multiplicatively,
     // then take the log.  Also, it's better to interpolate
     // in log space than interpolate, then log
-    for (unsigned int i = 0; i < ndata; ++i) {
+    for (unsigned int i = 0; i < ndata; i += delta_idx) {
       cflux1 = flux1[i]; cflux2 = flux2[i];
-      delt1 = (cflux1-minflux1)*idflux1;
-      delt2 = (cflux2-minflux2)*idflux2;
-      idx1 = static_cast<int>( delt1 );
-      idx2 = static_cast<int>( delt2 );
-      n2idx1 = n2*idx1;
+      delt1 = (cflux1 - minflux1) * idflux1;
+      delt2 = (cflux2 - minflux2) * idflux2;
+      idx1 = static_cast<int>(delt1);
+      idx2 = static_cast<int>(delt2);
+      n2idx1 = n2 * idx1;
       
-      if ( cflux1 < minflux1 ) {
-        if ( cflux2 < minflux2 ) interp_val = log2(pd_[0]);
-        else if ( cflux2 > maxflux2 ) interp_val = log2(pd_[n2-1]);
+      if (cflux1 < minflux1) {
+        if (cflux2 < minflux2) interp_val = log2(pd_[0]);
+        else if (cflux2 > maxflux2) interp_val = log2(pd_[n2-1]);
         else interp_val = log2(pd_[idx2]);
-      } else if ( cflux1 > maxflux1 ) {
+      } else if (cflux1 > maxflux1) {
         if (cflux2 < minflux2) interp_val = log2(pd_[n2n1-n1]);
-        else if ( cflux2 > maxflux2 ) interp_val = log2(pd_[n2n1-1]);
+        else if (cflux2 > maxflux2) interp_val = log2(pd_[n2n1-1]);
         else interp_val = log2(pd_[n2n1-n1+idx2]);
-      } else if ( cflux2 < minflux2 ) {
+      } else if (cflux2 < minflux2) {
         interp_val = log2(pd_[n2idx1]);
-      } else if ( cflux2 > maxflux2 ) {
+      } else if (cflux2 > maxflux2) {
         interp_val = log2(pd_[n2idx1+n2-1]);
       } else {
         //Not off edge
@@ -926,25 +940,30 @@ double PDDouble::getLogLikeUnbinned(const simImageDouble& data) const {
         omu = 1.0 - u; omt = 1.0-t;
         
         baseidx = n2idx1+idx2;
-        interp_val = omt*(omu*log2(pd_[baseidx]) + u*log2(pd_[baseidx+1])) +
-          t*(omu*log2(pd_[baseidx+n2]) + u*log2(pd_[baseidx+n2+1]));
+        interp_val = omt * (omu * log2(pd_[baseidx]) + 
+			    u * log2(pd_[baseidx+1])) +
+          t * (omu * log2(pd_[baseidx+n2]) + u * log2(pd_[baseidx+n2+1]));
       }
       loglike += interp_val;
     }
   }
   //This has been base 2 -- convert back to base e
-  return pofd_coverage::log2toe*loglike;
+  return pofd_coverage::log2toe * loglike;
 }
 
 
-double PDDouble::getLogLikeBinned(const simImageDouble& data) const {
+double PDDouble::getLogLikeBinned(const simImageDouble& data,
+				  unsigned int sparcity) const {
   if (!data.isBinned())
-    throw pofdExcept("PDDouble","getLogLikeBinned",
-		     "Data is not binned",1);
+    throw pofdExcept("PDDouble", "getLogLikeBinned",
+		     "Data is not binned", 1);
+  if ((sparcity > 1) && (sparcity != data.binSparcity()))
+    throw pofdExcept("PDDouble", "getLogLikeBinned",
+		     "Sparcity of binning doesn't match request", 2);
 
   //Quantities for edge test
-  double maxflux1 = minflux1 + static_cast<double>(n1-1)*dflux1;
-  double maxflux2 = minflux2 + static_cast<double>(n2-1)*dflux2;
+  double maxflux1 = minflux1 + static_cast<double>(n1-1) * dflux1;
+  double maxflux2 = minflux2 + static_cast<double>(n2-1) * dflux2;
 
   int idx1, idx2, n2idx1; //!< Index look up
   unsigned int baseidx, n2n1;
@@ -980,19 +999,19 @@ double PDDouble::getLogLikeBinned(const simImageDouble& data) const {
       for (unsigned int j = 0; j < nbins; ++j) {
 	ninbin = binptr[j];
 	if (ninbin == 0) continue;  //skip calculation
-	cflux2 = bincent02 + static_cast<double>(j)*bindelta2;
-	idx2 = static_cast<int>( (cflux2-minflux2)*idflux2 );
-	if ( cflux1 < minflux1 ) {
-	  if ( cflux2 < minflux2 ) interp_val = pd_[0];
-	  else if ( cflux2 > maxflux2 ) interp_val = pd_[n2-1];
+	cflux2 = bincent02 + static_cast<double>(j) * bindelta2;
+	idx2 = static_cast<int>((cflux2 - minflux2) * idflux2);
+	if (cflux1 < minflux1) {
+	  if (cflux2 < minflux2) interp_val = pd_[0];
+	  else if (cflux2 > maxflux2) interp_val = pd_[n2-1];
 	  else interp_val = pd_[idx2];
-	} else if ( cflux1 > maxflux1 ) {
+	} else if (cflux1 > maxflux1) {
 	  if (cflux2 < minflux2) interp_val = pd_[n2n1-n1];
-	  else if ( cflux2 > maxflux2 ) interp_val = pd_[n2n1-1];
+	  else if (cflux2 > maxflux2) interp_val = pd_[n2n1-1];
 	  else interp_val = pd_[n2n1-n1+idx2];
-	} else if ( cflux2 < minflux2 ) {
+	} else if (cflux2 < minflux2) {
 	  interp_val = pd_[n2idx1];
-	} else if ( cflux2 > maxflux2 ) {
+	} else if (cflux2 > maxflux2) {
 	  interp_val = pd_[n2idx1+n2-1];
 	} else {
 	  //Not off edge
@@ -1022,17 +1041,17 @@ double PDDouble::getLogLikeBinned(const simImageDouble& data) const {
 	cflux2 = bincent02 + static_cast<double>(j)*bindelta2;
 	idx2 = static_cast<int>( (cflux2-minflux2)*idflux2 );
 	
-	if ( cflux1 < minflux1 ) {
-	  if ( cflux2 < minflux2 ) interp_val = log2(pd_[0]);
-	  else if ( cflux2 > maxflux2 ) interp_val = log2(pd_[n2-1]);
+	if (cflux1 < minflux1) {
+	  if (cflux2 < minflux2) interp_val = log2(pd_[0]);
+	  else if (cflux2 > maxflux2) interp_val = log2(pd_[n2-1]);
 	  else interp_val = log2(pd_[idx2]);
-	} else if ( cflux1 > maxflux1 ) {
+	} else if (cflux1 > maxflux1) {
 	  if (cflux2 < minflux2) interp_val = log2(pd_[n2n1-n1]);
-	  else if ( cflux2 > maxflux2 ) interp_val = log2(pd_[n2n1-1]);
+	  else if (cflux2 > maxflux2) interp_val = log2(pd_[n2n1-1]);
 	  else interp_val = log2(pd_[n2n1-n1+idx2]);
-	} else if ( cflux2 < minflux2 ) {
+	} else if (cflux2 < minflux2) {
 	  interp_val = log2(pd_[n2idx1]);
-	} else if ( cflux2 > maxflux2 ) {
+	} else if (cflux2 > maxflux2) {
 	  interp_val = log2(pd_[n2idx1+n2-1]);
 	} else {
 	  //Not off edge

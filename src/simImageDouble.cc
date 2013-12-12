@@ -44,6 +44,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   smooth_applied = false;
   is_binned = false;
   nbins = NBINS;
+  bin_sparcity = 1;
   bincent01 = 0.0;
   bindelta1 = 0.0;
   bincent02 = 0.0;
@@ -382,10 +383,12 @@ double simImageDouble::getArea() const {
   \params[in] extra_smooth Apply additional Gaussian smoothing
   \params[in] meansub Do mean subtraction
   \params[in] bin Create binned image data
+  \params[in] sparsebin Only take every this many pixels in binned image.
+                         Does nothing if no binning.
  */
 void simImageDouble::realize(const numberCountsDouble& model,
 			     double n0, bool extra_smooth, bool meansub, 
-			     bool bin) {
+			     bool bin, unsigned int sparsebin) {
 
   if (!isValid())
     throw pofdExcept("simImageDouble", "realize",
@@ -488,7 +491,7 @@ void simImageDouble::realize(const numberCountsDouble& model,
   if (meansub) meanSubtract();
 
   //bin
-  if (bin) applyBinning();
+  if (bin) applyBinning(sparsebin); else is_binned = false;
 
 }
 
@@ -631,26 +634,33 @@ std::pair<double,double> simImageDouble::getBeamSumSq() const {
 }
 
 /*!
+  \param[in] sparsebin Only take every this many pixels when binning. 1 means
+                        fully sampled (0 is also interpreted to mean the same
+			thing)
+
   Keeps the original, unbinned image around as well
  */
-void simImageDouble::applyBinning() {
+void simImageDouble::applyBinning(unsigned int sparsebin) {
   if (!is_full)
     throw pofdExcept("simImageDouble","applyBinning",
 		     "Trying to bin empty image",1);
 
   if (nbins == 0) throw pofdExcept("simImageDouble","applyBinning",
 				   "Trying to bin with no bins",2);
+  if (sparsebin >= n1 * n2) 
+    throw pofdExcept("simImageDouble", "applyBinning",
+		     "Sparse binning factor larger than simulated image", 3);
 
   //Only allocated the first time we bin
   //There is no way to change nbins after initialization
   if (binval == NULL)
-    binval = new unsigned int[nbins*nbins];
-  for (unsigned int i = 0; i < nbins*nbins; ++i)
+    binval = new unsigned int[nbins * nbins];
+  for (unsigned int i = 0; i < nbins * nbins; ++i)
     binval[i] = 0;
 
   //First, we need the minimum and maximum
   double minval1, maxval1, minval2, maxval2;
-  getMinMax(minval1,maxval1,minval2,maxval2);
+  getMinMax(minval1, maxval1, minval2, maxval2);
   
   //We want to put the max and min in the center of the top and
   // bottom bin
@@ -669,10 +679,13 @@ void simImageDouble::applyBinning() {
   double ibindelta1 = 1.0/bindelta1;
   double ibindelta2 = 1.0/bindelta2;
   unsigned int idx1, idx2;
-  for (unsigned int i = 0; i < n1*n2; ++i) {
-    idx1 = static_cast<unsigned int>( (data1[i]-bincent01)*ibindelta1 + 0.5 );
-    idx2 = static_cast<unsigned int>( (data2[i]-bincent02)*ibindelta2 + 0.5 );
-    binval[idx1*nbins+idx2] += 1;
+  if (sparsebin > 1) bin_sparcity = sparsebin; else bin_sparcity = 1;
+  for (unsigned int i = 0; i < n1 * n2; i += bin_sparcity) {
+    idx1 = static_cast<unsigned int>((data1[i] - bincent01) * 
+				     ibindelta1 + 0.5);
+    idx2 = static_cast<unsigned int>((data2[i] - bincent02) * 
+				     ibindelta2 + 0.5);
+    binval[idx1 * nbins + idx2] += 1;
   }
   is_binned = true;
 }

@@ -391,23 +391,30 @@ int PD::writeToFits( const std::string& outputfile ) const {
   return status;
 }
 
-double PD::getLogLike(const simImage& data) const {
+/*!
+  \param[in] data Data to compute Log likelihood for
+  \param[in] sparcity Sampling for Log likelihood calculation
+  \returns Log Likelihood of data with respect to P(D)
+*/
+double PD::getLogLike(const simImage& data, unsigned int sparcity) const {
   if (pd_ == NULL) throw pofdExcept("PD","getLogLike",
                                     "pd not filled before likelihood calc",1);
   unsigned int ndata = data.getN1()*data.getN2();
   if (ndata == 0) throw pofdExcept("PD","getLogLike",
-			       "No data present",2);
-
-  if (data.isBinned()) return getLogLikeBinned(data);
-  else return getLogLikeUnbinned(data);
+				   "No data present",2);
+  if (data.isBinned()) return getLogLikeBinned(data, sparcity);
+  else return getLogLikeUnbinned(data, sparcity);
 }
 
-double PD::getLogLikeBinned(const simImage& data) const {
+double PD::getLogLikeBinned(const simImage& data, unsigned int sparcity) const {
 
   if (!data.isBinned())
-    throw pofdExcept("PD","getLogLikeBinned",
-		     "Data is not binned",1);
-
+    throw pofdExcept("PD", "getLogLikeBinned",
+		     "Data is not binned", 1);
+  if ((sparcity > 1) && (sparcity != data.binSparcity()))
+    throw pofdExcept("PD", "getLogLikeBinned",
+		     "Sparcity of binning doesn't match request", 2);
+      
   //Quantities for edge test
   double maxflux = minflux + static_cast<double>(n-1)*dflux;
 
@@ -418,48 +425,48 @@ double PD::getLogLikeBinned(const simImage& data) const {
   double t, delt, maxfluxval;
   loglike = 0.0;
   bins = data.getBinnedData();
-  bincent0 = data.getBinCent0();
+      bincent0 = data.getBinCent0();
   bindelta = data.getBinDelta();
   nbins = data.getNBins();
-  double idflux = 1.0/dflux;
+  double idflux = 1.0 / dflux;
   maxfluxval = maxflux - dflux;
 
   if (logflat) {
     for (unsigned int i = 0; i < nbins; ++i) {
       ninbin = bins[i];
       if (ninbin == 0) continue;
-      cflux = bincent0 + static_cast<double>(i)*bindelta;
+      cflux = bincent0 + static_cast<double>(i) * bindelta;
       //Get effective index
-      if ( cflux < minflux ) loglike += static_cast<double>(ninbin)*pd_[0];
-      else if ( cflux > maxfluxval ) 
-	loglike += static_cast<double>(ninbin)*pd_[n-1];
+      if (cflux < minflux) loglike += static_cast<double>(ninbin) * pd_[0];
+      else if (cflux > maxfluxval) 
+	loglike += static_cast<double>(ninbin)  *pd_[n-1];
       else {
         //Not off edge
-	delt = (cflux-minflux)*idflux;
-	idx = static_cast<int>( delt );
+	delt = (cflux - minflux) * idflux;
+	idx = static_cast<int>(delt);
 	t   = delt - static_cast<double>(idx);
-	loglike += ((1.0-t)*pd_[idx] + t*pd_[idx+1]) *
+	loglike += ((1.0 - t) * pd_[idx] + t * pd_[idx+1]) *
 	  static_cast<double>(ninbin);
       }
     }
   } else {
     //Not stored as log -- inefficient, but supported
-    //Note that it would be insane to do this multiplicatively,
+    //It would be insane to do this multiplicatively,
     // then take the log.  Also, it's better to interpolate
     // in log space than interpolate, then log
     for (unsigned int i = 0; i < nbins; ++i) {
       ninbin = bins[i];
       if (ninbin == 0) continue;
-      cflux = bincent0 + static_cast<double>(i)*bindelta;
-      delt = (cflux-minflux)*idflux;
-      idx = static_cast<int>( delt );
-      if ( cflux < minflux ) 
+      cflux = bincent0 + static_cast<double>(i) * bindelta;
+      delt = (cflux - minflux) * idflux;
+      idx = static_cast<int>(delt);
+      if (cflux < minflux) 
 	loglike += static_cast<double>(ninbin)*log2(pd_[0]);
-      else if ( cflux > maxfluxval ) 
+      else if (cflux > maxfluxval) 
 	loglike += static_cast<double>(ninbin)*log2(pd_[n-1]);
       else {
 	t   = delt - static_cast<double>(idx);
-	loglike += ((1.0-t)*log2(pd_[idx]) + t*log2(pd_[idx+1])) *
+	loglike += ((1.0 - t) * log2(pd_[idx]) + t * log2(pd_[idx+1])) *
 	  static_cast<double>(ninbin);
       }
     }
@@ -468,9 +475,14 @@ double PD::getLogLikeBinned(const simImage& data) const {
   return pofd_coverage::log2toe * loglike;
 }
 
-double PD::getLogLikeUnbinned(const simImage& data) const {
+double PD::getLogLikeUnbinned(const simImage& data, 
+			      unsigned int sparcity) const {
 
-  unsigned int ndata = data.getN1()*data.getN2();
+  unsigned int ndata = data.getN1() * data.getN2();
+
+  if (sparcity > ndata)
+    throw pofdExcept("PD", "getLogLikeUnbinned",
+		     "sparcity is larger than data size", 1);
 
   //Quantities for edge test
   double maxflux = minflux + static_cast<double>(n-1)*dflux;
@@ -483,35 +495,38 @@ double PD::getLogLikeUnbinned(const simImage& data) const {
   double idflux = 1.0/dflux;
   maxfluxval = maxflux - dflux;
 
+  unsigned int delta_idx;
+  if (sparcity > 1) delta_idx = sparcity; else delta_idx = 1;
+
   if (logflat) {
     //Stored as log2 P(D)
-    for (unsigned int i = 0; i < ndata; ++i) {
+    for (unsigned int i = 0; i < ndata; i += delta_idx) {
       cflux = flux[i];
       //Get effective index
-      if ( cflux <= minflux ) loglike += pd_[0];
-      else if ( cflux >= maxfluxval ) loglike += pd_[n-1];
+      if (cflux <= minflux) loglike += pd_[0];
+      else if (cflux >= maxfluxval) loglike += pd_[n-1];
       else {
         //Not off edge
-	delt = (cflux-minflux)*idflux;
-	idx = static_cast<int>( delt );
+	delt = (cflux - minflux) * idflux;
+	idx = static_cast<int>(delt);
 	t   = delt - static_cast<double>(idx);
-	loglike += (1.0-t)*pd_[idx] + t*pd_[idx+1];
+	loglike += (1.0 - t) * pd_[idx] + t * pd_[idx+1];
       }
     }
   } else {
     //Not stored as log -- inefficient, but supported
-    //Note that it would be insane to do this multiplicatively,
+    //It would be insane to do this multiplicatively,
     // then take the log.  Also, it's better to interpolate
     // in log space than interpolate, then log
-    for (unsigned int i = 0; i < ndata; ++i) {
+    for (unsigned int i = 0; i < ndata; i += delta_idx) {
       cflux = flux[i]; 
-      if ( cflux <= minflux ) loglike += log2(pd_[0]);
-      else if ( cflux >= maxfluxval ) loglike += log2(pd_[n-1]);
+      if (cflux <= minflux) loglike += log2(pd_[0]);
+      else if (cflux >= maxfluxval) loglike += log2(pd_[n-1]);
       else {
-	delt = (cflux-minflux)*idflux;
-	idx = static_cast<int>( delt );
+	delt = (cflux - minflux) * idflux;
+	idx = static_cast<int>(delt);
 	t   = delt - static_cast<double>(idx);
-	loglike += (1.0-t)*log2(pd_[idx]) + t*log2(pd_[idx+1]);
+	loglike += (1.0 - t) * log2(pd_[idx]) + t * log2(pd_[idx+1]);
       }
     }
   }

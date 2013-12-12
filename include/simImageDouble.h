@@ -37,6 +37,7 @@ class simImageDouble {
 
   bool is_binned; //!< Has data been binned
   unsigned int nbins; //!< Number of bins along each dimension
+  unsigned int bin_sparcity; //!< Sampling rate of binning (1 means fully sampled)
   double bincent01, bincent02; //!< Center of bin 0 along dimension 1,2
   double bindelta1, bindelta2; //!< Delta in bins along each dimension
   unsigned int* binval; //!< Number of elements in each bin (row-major order)
@@ -105,12 +106,13 @@ class simImageDouble {
   
   /*! Generate realization of model */
   void realize(const numberCountsDouble&, double,
-	       bool=false,bool=false,bool=false);
+	       bool=false, bool=false, bool=false, unsigned int=1);
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 
   bool isBinned() const { return is_binned; } //!< Is data binned?
-  void applyBinning(); //!< Takes an unbinned image and bins it
+  void applyBinning(unsigned int=1); //!< Takes an unbinned image and bins it
+  unsigned int binSparcity() const { return bin_sparcity; } //!< Bin sampling rate
   unsigned int getNBins() const { return nbins; } //!< Get number of bins
   double getBinCent01() const { return bincent01; }
   double getBinDelta1() const { return bindelta1; }

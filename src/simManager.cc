@@ -26,12 +26,13 @@ static double minfunc(double x, void* params) {
   PDFactory *pdfac = static_cast<PDFactory*>(vptr[0]);
   PD *pd = static_cast<PD*>(vptr[1]);
   simImage *im = static_cast<simImage*>(vptr[2]);
+  unsigned int sparcity = *static_cast<unsigned int*>(vptr[3]);
 
   if (x > pdfac->getMaxN0())
-    throw pofdExcept("","minfunc","N0 out of prepared range",1);
+    throw pofdExcept("", "minfunc", "N0 out of prepared range", 1);
 
   pdfac->getPD(x, *pd, true, true);
-  double loglike = pd->getLogLike(*im);
+  double loglike = pd->getLogLike(*im, sparcity);
 
   return -loglike; //Remember -- we want to minimize this
  
@@ -60,6 +61,8 @@ static double minfunc(double x, void* params) {
   \param[in] OVERSAMPLE Amount of oversampling to use when simulating image
   \param[in] POWERSPECFILE File containing power spectrum for on-sky source
               distribution.  If not provided, uniform sampling is used.
+  \param[in] SPARCITY Sparcity of data sampling for likelihood computation.
+             0 or 1 means fully sample, using all data.
   \param[in] USEBIN Bin the data in the likelihood calculation
   \param[in] NBINS Number of bins in binned data
  */
@@ -72,10 +75,12 @@ simManager::simManager(const std::string& MODELFILE,
 		       double N0, double ESMOOTH,
 		       unsigned int OVERSAMPLE, 
 		       const std::string& POWERSPECFILE,
+		       unsigned int SPARCITY,
 		       bool USEBIN, unsigned int NBINS) :
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
-  nlike(NLIKE), n0rangefrac(N0RANGEFRAC), fftsize(FFTSIZE),
-  n0(N0), sig_i(SIGI), sig_i_sm(SIGI), fwhm(FWHM), pixsize(PIXSIZE),
+  nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
+  fftsize(FFTSIZE), n0(N0), sig_i(SIGI), sig_i_sm(SIGI), fwhm(FWHM), 
+  pixsize(PIXSIZE),
   simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, OVERSAMPLE, 
 	NBINS, POWERSPECFILE), 
   oversample(OVERSAMPLE), use_binning(USEBIN), model(MODELFILE), 
@@ -113,7 +118,7 @@ simManager::simManager(const std::string& MODELFILE,
     delta_n0 = NULL;
   }
 
-  varr = new void*[3];
+  varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
 
 }
@@ -154,6 +159,7 @@ void simManager::doSims(bool verbose=false) {
   varr[0] = static_cast<void*>(&pdfac);
   varr[1] = static_cast<void*>(&pd);
   varr[2] = static_cast<void*>(&simim);
+  varr[3] = static_cast<void*>(&like_sparcity);
 
   void *params;
   params = static_cast<void*>(varr);
@@ -190,7 +196,8 @@ void simManager::doSims(bool verbose=false) {
     }
 
     //Make simulated image (mean subtracted)
-    simim.realize(model, n0, do_extra_smooth, true, use_binning);
+    simim.realize(model, n0, do_extra_smooth, true, use_binning,
+		  like_sparcity);
 
     //Now set up the minimization; note this involves calling minfunc
     // so we can't do it until all the arguments are ready
@@ -295,7 +302,7 @@ void simManager::doSims(bool verbose=false) {
 #endif
       double curr_n0;
       for (unsigned int j = 0; j < nlike; ++j) {
-	curr_n0 = min_n0[i] + static_cast<double>(j)*delta_n0[i];
+	curr_n0 = min_n0[i] + static_cast<double>(j) * delta_n0[i];
 
 #ifdef TIMING
 	starttime = std::clock();
@@ -309,7 +316,7 @@ void simManager::doSims(bool verbose=false) {
 #ifdef TIMING
 	starttime = std::clock();
 #endif
-	likearr[i][j] =  pd.getLogLike(simim);
+	likearr[i][j] =  pd.getLogLike(simim, like_sparcity);
 #ifdef TIMING
 	getLikeTime += std::clock() - starttime;
 #endif
@@ -502,6 +509,13 @@ int simManager::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TUINT, const_cast<char*>("N2"), &utmp, 
 		 const_cast<char*>("Image extent, dimension 2"), 
 		 &status);
+
+  if (like_sparcity > 1) {
+    utmp = like_sparcity;
+    fits_write_key(fp, TUINT, const_cast<char*>("LIKESPAR"), &utmp, 
+		   const_cast<char*>("Like sampling sparcity"), 
+		   &status);
+  }
 
   if (do_map_like) {
     itmp = 1;

@@ -31,6 +31,7 @@ static struct option long_options[] = {
   {"sigma",required_argument,0,'s'},
   {"sigma1",required_argument,0,'#'},
   {"sigma2",required_argument,0,'$'},
+  {"sparcity", required_argument, 0, '%'},
   {"seed",required_argument,0,'S'},
   {"verbose",no_argument,0,'v'},
   {"version",no_argument,0,'V'},
@@ -38,7 +39,7 @@ static struct option long_options[] = {
   {0,0,0,0}
 };
 
-char optstring[] = "hbde:!:@:f:1:n:N2:3:4:o:p:s:#:$:S:vVw:";
+char optstring[] = "hbde:!:@:f:1:n:N2:3:4:o:p:s:#:$:%:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -46,7 +47,7 @@ int runSimSingle(int argc, char **argv) {
   double n0; //Model params
   double fwhm; //Calculation params (req)
   double esmooth; //Extra smoothing amount
-  unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample;
+  unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample, sparcity;
   double pixsize, n0rangefrac, n0initrange;
   double sigma; //Instrument noise, unsmoothed
   std::string outputfile; //Ouput pofd option
@@ -68,6 +69,7 @@ int runSimSingle(int argc, char **argv) {
   has_user_seed       = false;
   seed                = 1024;
   oversample          = 1;
+  sparcity            = 1;
   nbins               = 1000;
   use_binning         = false;
   map_like            = true;
@@ -76,8 +78,8 @@ int runSimSingle(int argc, char **argv) {
   int c;
   int option_index = 0;
   optind = 1; //Rewind 
-  while ( ( c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index ) ) != -1 ) 
+  while ((c = getopt_long(argc,argv,optstring,long_options,
+			  &option_index)) != -1) 
     switch(c) {
     case 'b' :
       use_binning = true;
@@ -114,6 +116,9 @@ int runSimSingle(int argc, char **argv) {
       break;
     case 's' :
       sigma = atof(optarg);
+      break;
+    case '%' :
+      sparcity = atoi(optarg);
       break;
     case 'S' :
       has_user_seed = true;
@@ -178,8 +183,12 @@ int runSimSingle(int argc, char **argv) {
     std::cout << "Invalid (non-positve) pixsize" << std::endl;
     return 1;
   }
-  if (n1*n2 == 0) {
-    std::cout << "Simulated image has zero size" << std::endl;
+  if (n1 * n2 == 0) {
+    std::cout << "Simulated map has zero size" << std::endl;
+    return 1;
+  }
+  if (sparcity > n1 * n2) {
+    std::cout << "Sampling sparcity less frequent than map size" << std::endl;
     return 1;
   }
   if (map_like && n0rangefrac <= 0.0) {
@@ -217,7 +226,9 @@ int runSimSingle(int argc, char **argv) {
       if (esmooth > 0) 
 	printf("   esmooth:            %0.2f\n",esmooth);
       if (oversample > 1)
-	printf("   oversampling:       %u\n",oversample);
+	printf("   oversampling:       %u\n", oversample);
+      if (sparcity > 1)
+	printf("   sparcity:           %u\n", sparcity);
       if (!powerspecfile.empty())
 	printf("   clustering P(k):    %s\n", powerspecfile.c_str());
       if (use_binning)
@@ -230,7 +241,8 @@ int runSimSingle(int argc, char **argv) {
 
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike, 
 		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, sigma, n0, 
-		   esmooth, oversample, powerspecfile, use_binning, nbins);
+		   esmooth, oversample, powerspecfile, sparcity,
+		   use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -261,7 +273,7 @@ int runSimDouble(int argc, char **argv) {
   double n0; //Model params
   double fwhm1, fwhm2; //Calculation params (req)
   double esmooth1, esmooth2; //Extra smoothing amount
-  unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample;
+  unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample, sparcity;
   double pixsize, n0rangefrac, n0initrange;
   double sigma1, sigma2; //Instrument noise, unsmoothed
   std::string outputfile; //Ouput pofd option
@@ -285,6 +297,7 @@ int runSimDouble(int argc, char **argv) {
   has_user_seed       = false;
   seed                = 1024;
   oversample          = 1;
+  sparcity            = 1;
   nbins               = 1000;
   use_binning         = false;
   map_like            = true;
@@ -293,8 +306,8 @@ int runSimDouble(int argc, char **argv) {
   int c;
   int option_index = 0;
   optind = 1; //Rewind 
-  while ( ( c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index ) ) != -1 ) 
+  while ((c = getopt_long(argc,argv,optstring,long_options,
+			    &option_index)) != -1) 
     switch(c) {
     case 'b' :
       use_binning = true;
@@ -337,6 +350,9 @@ int runSimDouble(int argc, char **argv) {
       break;
     case '$' :
       sigma2 = atof(optarg);
+      break;
+    case '%' :
+      sparcity = atoi(optarg);
       break;
     case 'S' :
       has_user_seed = true;
@@ -418,8 +434,12 @@ int runSimDouble(int argc, char **argv) {
     std::cout << "Invalid (non-positve) pixsize" << std::endl;
     return 1;
   }
-  if (n1*n2 == 0) {
+  if (n1 * n2 == 0) {
     std::cout << "Simulated image has zero size" << std::endl;
+    return 1;
+  }
+  if (sparcity > n1 * n2) {
+    std::cout << "Sampling sparcity less frequent than map size" << std::endl;
     return 1;
   }
   if (map_like && n0rangefrac <= 0.0) {
@@ -462,6 +482,8 @@ int runSimDouble(int argc, char **argv) {
 	printf("   esmooth2:           %0.2f\n",esmooth2);
       if (oversample > 1)
 	printf("   oversampling:       %u\n",oversample);
+      if (sparcity > 1)
+	printf("   sparcity:           %u\n", sparcity);
       if (!powerspecfile.empty())
 	printf("   clustering P(k):    %s\n", powerspecfile.c_str());
       if (use_binning)
@@ -475,7 +497,7 @@ int runSimDouble(int argc, char **argv) {
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
 			 sigma1, sigma2, n0, esmooth1, esmooth2, oversample, 
-			 powerspecfile, use_binning, nbins);
+			 powerspecfile, sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -651,6 +673,10 @@ int main(int argc, char **argv) {
 		<< " If" << std::endl;
       std::cout << "\t\tnot specified, the sources are uniformly distributed."
 		<< std::endl;
+      std::cout << "\t--sparcity SPARCITY" << std::endl;
+      std::cout << "\t\tOnly sample the simulated maps every this many pixels"
+		<< std::endl;
+      std::cout << "\t\twhen computing the likelihood." << std::endl;
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tSet user specified seed, otherwise taken from time."
 		<< std::endl;

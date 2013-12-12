@@ -34,6 +34,7 @@ class simManagerDouble {
   bool do_map_like; //!< Create the likelihood map?
   unsigned int nlike; //!< Number of likelihoods to compute
   double n0rangefrac; //!< Fractional range in n0 to cover
+  unsigned int like_sparcity; //!< Sparcity of likelihood computation
 
   unsigned int fftsize; //!< Size of FFT (in each dim)
 
@@ -87,7 +88,7 @@ class simManagerDouble {
 		   double SIGI1=0.004, double SIGI2=0.006, double N0=2.63e3, 
 		   double ESMOOTH1=0, double ESMOOTH2=0, 
 		   unsigned int OVERSAMPLE=1, 
-		   const std::string& powerspecfile="",
+		   const std::string& powerspecfile="", unsigned int SPARCITY=1,
 		   bool USEBIN=false, unsigned int NBINS=1000);
   ~simManagerDouble();
 

@@ -30,6 +30,7 @@ class simImage {
 
   bool is_binned; //!< Has data been binned
   unsigned int nbins; //!< Number of bins
+  unsigned int bin_sparcity; //!< Sampling rate of binning (1 means fully sampled)
   double bincent0; //!< Center of bin 0
   double bindelta; //!< Delta in bins
   unsigned int* binval; //!< Number of elements in each bin
@@ -87,12 +88,13 @@ class simImage {
   void setSeed(unsigned long long int seed) const { rangen.set_seed(seed); }
   
   void realize(const numberCounts&, double, bool=false,bool=false,
-	       bool=false); //!< Generate realization of model
+	       bool=false, unsigned int=1); //!< Generate realization of model
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 
   bool isBinned() const { return is_binned; } //!< Is data binned?
-  void applyBinning(); //!< Takes an unbinned image and bins it
+  void applyBinning(unsigned int=1); //!< Takes an unbinned image and bins it
+  unsigned int binSparcity() const { return bin_sparcity; } //!< Bin sampling rate
   unsigned int getNBins() const { return nbins; } //!< Get number of bins
   double getBinCent0() const { return bincent0; } //!< Get bin 0 center
   double getBinDelta() const { return bindelta; } //!< Get bin size

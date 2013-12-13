@@ -58,7 +58,8 @@ class PDFactory {
   
   //*! \brief Initializes R*/
   void initR(unsigned int n, double maxflux, const numberCounts& model,
-	     const beam& bm, double, double, unsigned int, unsigned int=1);
+	     const beam& bm, double, double, unsigned int, unsigned int=1,
+	     double=0.0);
 
 #ifdef TIMING
   std::clock_t RTime, p0Time, fftTime, posTime, copyTime, normTime, edgeTime;
@@ -82,7 +83,8 @@ class PDFactory {
   /*! \brief Initializes P(D) by computing R */
   void initPD(unsigned int, double, double, double,
 	      const numberCounts&, const beam&, 
-	      double, double, unsigned int, unsigned int=1);
+	      double, double, unsigned int, unsigned int=1,
+	      double=0.0);
 
   /*! \brief Gets P(D) of specified transform size */
   void getPD(double, PD&, bool setLog=true, 
@@ -94,8 +96,8 @@ class PDFactory {
   /*! \brief Get first n integrals of R*/
   void getRIntegrals(unsigned int, double, const numberCounts&,
 		     const beam&, double, double, unsigned int,
-		     std::vector<double>& vec, 
-		     unsigned int nmom=7, unsigned int oversamp=1);
+		     std::vector<double>& vec, unsigned int nmom=7, 
+		     unsigned int oversamp=1, double filterparam=0.0);
 
 #ifdef TIMING
   void resetTime();

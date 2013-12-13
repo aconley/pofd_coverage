@@ -50,9 +50,11 @@ class numberCounts {
   double base_fluxsq; //!< Flux squared per area for base model
 
   //Working variables for histogrammed beam
-  mutable unsigned int nbm; //!< Number of elements in inverse beam
-  mutable unsigned int* bm_wts; //!< Histogrammed inverse beam weights
-  mutable double* inv_bm; //!< Histogrammed inverse beam
+  mutable unsigned int nbm; //!< Number of elements in bm_wts, inv_bm
+  mutable unsigned int* bm_wts_pos; //!< Histogrammed inverse beam weights, pos beam
+  mutable double* inv_bm_pos; //!< Histogrammed inverse positive beam
+  mutable unsigned int* bm_wts_neg; //!< Histogrammed inverse beam weights, neg beam
+  mutable double* inv_bm_neg; //!< Histogrammed inverse negative beam
 
  public:
   explicit numberCounts(const std::string&, unsigned int=2000);  //!< Constructor with model file
@@ -74,17 +76,18 @@ class numberCounts {
 
   /*!\brief Get number of source responses for base model */
   double getR(double, const beam&, double, double,
-	      unsigned int) const;
+	      unsigned int, double=0.0) const;
   /*!\brief Get number of source responses for base model */
   double getR(double, const beam&, double, double,
-	      unsigned int, unsigned int) const;
+	      unsigned int, unsigned int, double=0.0) const;
 
   /*!\brief Get number of source responses for base model, general case, array*/
   void getR(unsigned int, double, double, const beam&, 
-	    double, double, unsigned int, double*) const;
+	    double, double, unsigned int, double*, double=0.0) const;
   /*!\brief Get number of source responses for base model, general case, array*/
   void getR(unsigned int, double, double, const beam&, 
-	    double, double, unsigned int, unsigned int, double*) const;
+	    double, double, unsigned int, unsigned int, double*, 
+	    double=0.0) const;
   
   /*! \brief Generate a source flux from model */
   double genSource(double val) const;

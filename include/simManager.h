@@ -14,6 +14,7 @@
 
 #include "../include/simImage.h"
 #include "../include/beam.h"
+#include "../include/hipassFilter.h"
 #include "../include/PD.h"
 #include "../include/PDFactory.h"
 #include "../include/numberCounts.h"
@@ -28,6 +29,9 @@
 class simManager {
 
  private:
+
+  static const unsigned int nbeambins; //!< Number of bins for beam histogram
+  static const double nfwhm; //!< How far out to go on Beam
 
   unsigned int nsims; //!< Number of simulations to do
   double n0initrange; //!< Initial range for likelihood peak finding step
@@ -59,6 +63,9 @@ class simManager {
   double fwhm; //!< FWHM of image beam
   double pixsize; //!< Pixel size of image and beam
   beam bm; //!< Beam
+  beamHist inv_bmhist; //!< Histogrammed inverse beam
+  double filtscale; //!< Filter scale, in arcsec
+  hipassFilter* filt; //!< Filter
   mutable simImage simim; //!< Simulated image
   unsigned int oversample; //!< Amount of oversampling when generating image
   bool use_binning; //!< Work on binned images in likelihood
@@ -86,7 +93,8 @@ class simManager {
 	     bool MAPLIKE=true, unsigned int NLIKE=2000, 
 	     double N0RANGEFRAC=0.1, unsigned int FFTSIZE=262144, 
 	     unsigned int N1=720, unsigned int N2=720,
-	     double PIXSIZE=5.0, double FWHM=15.0, double SIGI=0.005, 
+	     double PIXSIZE=5.0, double FWHM=15.0, 
+	     double FILTSCALE=0.0, double SIGI=0.005, 
 	     double N0=2.6e3, double ESMOOTH=0.0,
 	     unsigned int OVERSAMPLE=1, const std::string& POWERSPECFILE="",
 	     unsigned int SPARCITY=1, bool USEBIN=false, 

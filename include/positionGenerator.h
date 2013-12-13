@@ -56,7 +56,6 @@ class positionGeneratorClustered {
   unsigned int ny; //!< y dimension to generate over
   unsigned int nyhalf; //!< ny / 2 + 1
   double pixsize; //!< Pixel size in arcsec (square pixels assumed)
-
   //Internal storage -- only allocated when needed
   double *scl; //!< Power spectrum scaling array (row major 2D nx by ny)
   double *probarr; //!< Normalized probability array (row major 2D nx by ny)

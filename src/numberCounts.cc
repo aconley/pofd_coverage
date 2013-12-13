@@ -73,11 +73,6 @@ numberCounts::numberCounts(const std::string& modelfile,
   gsl_spline_init(splinelog, logknotpos, logknotvals, 
 		  static_cast<size_t>(nknots));
 
-  // Don't set histogrammed beam currently
-  nbm = 0;
-  bm_wts_pos = bm_wts_neg = NULL;
-  inv_bm_pos = inv_bm_neg = NULL;
-
   // Need to set base_n0, base_flux, etc.
   gsl_work = gsl_integration_workspace_alloc(1000);
   varr = new void*[5];
@@ -151,10 +146,6 @@ numberCounts::~numberCounts() {
   delete[] gen_interp_cumsum;
   delete[] gen_interp_flux;
   delete[] varr;
-  if (bm_wts_pos != NULL) delete[] bm_wts_pos;
-  if (inv_bm_pos != NULL) delete[] inv_bm_pos;
-  if (bm_wts_neg != NULL) delete[] bm_wts_neg;
-  if (inv_bm_neg != NULL) delete[] inv_bm_neg;
 }
 
 bool numberCounts::isValid() const {
@@ -238,229 +229,143 @@ double numberCounts::getdNdS(double flux) const {
 
 /*!
   \param[in] x The value R is desired for
-  \param[in] bm The beam
-  \param[in] pixsize The pixel size, in arcseconds
-  \param[in] nfwhm The number of beam fwhm to use in the computation
-  \param[in] nbins The number of bins in the beam histogramming
-  \param[in] filterparam The filtering param.
-
+  \param[in] bm The histogrammed beam
 
   \returns R(x) computed for the base input model.
 */
-double numberCounts::getR(double x, const beam& bm,
-			  double pixsize, double nfwhm,
-			  unsigned int nbins, double filterparam) const {
-  return getR(x, bm, pixsize, nfwhm, nbins, 1, filterparam);
-}
-
-/*!
-  \param[in] x The value R is desired for
-  \param[in] bm The beam
-  \param[in] pixsize The pixel size, in arcseconds
-  \param[in] nfwhm The number of beam fwhm to use in the computation
-  \param[in] nbins The number of bins in the beam histogramming
-  \param[in] oversamp Oversampling amount for beam
-  \param[in] filterparam The filtering param.
-
-  \returns R(x) computed for the base input model.
-*/
-double numberCounts::getR(double x, const beam& bm,
-			  double pixsize, double nfwhm,
-			  unsigned int nbins,
-			  unsigned int oversamp,
-			  double filterparam) const {
+double numberCounts::getR(double x, const beamHist& bm) const {
 
   //This can be done much more efficiently (see the old pofd_mcmc
   // code), but the idea here is to only really compute R once
   // and then reuse it again and again so we prize simplicity over
   // efficiency.
-
-  if (pixsize <= 0.0)
-    throw pofdExcept("numberCounts", "getR", "Invalid (non-positive) pixsize",
-		     1);
-  if (nfwhm <= 0.0)
-    throw pofdExcept("numberCounts", "getR", "Invalid (non-positive) nfwhm",
-		     2);
-  if (nbins == 0)
-    throw pofdExcept("numberCounts", "getR", "Invalid (zero) nbins",
-		     3);
   if (!isValid())
-    throw pofdExcept("numberCounts", "getR", "Invalid model",
-		     4);
+    throw pofdExcept("numberCounts", "getR", "Invalid model", 1);
+  if (!bm.hasData())
+    throw pofdExcept("numberCounts", "getR", "Beam histogram not filled", 2);
+  if (!bm.isInverse())
+    throw pofdExcept("numberCounts", "getR", "Beam histogram not inverse", 3);
 
+  unsigned int npos, nneg;
+  npos = bm.getNPos();
+  nneg = bm.getNNeg();
+  if (npos * nneg == 0)
+    throw pofdExcept("numberCounts", "getR", "No non-zero parts of beam", 4);
+  
   double s_min = knotpos[0];
   double s_max = knotpos[nknots-1];
-  if (x >= s_max) return 0.0;
-  if (x <= 0.0) return 0.0;
-
-  if (nbm < nbins) {
-    //Must expand
-    if (bm_wts_pos == NULL) delete[] bm_wts_pos;
-    if (inv_bm_pos == NULL) delete[] inv_bm_pos;
-    bm_wts_pos = new unsigned int[nbins];
-    inv_bm_pos = new double[nbins];
-    if (bm_wts_neg == NULL) delete[] bm_wts_neg;
-    if (inv_bm_neg == NULL) delete[] inv_bm_neg;
-    bm_wts_neg = new unsigned int[nbins];
-    inv_bm_neg = new double[nbins];
-    nbm = nbins;
-  }
-
-  //Get number of pixels out we will go
-  unsigned int npix = static_cast<unsigned int>(nfwhm * bm.getFWHM()/pixsize + 
-						0.9999999999);
-  npix = 2 * npix + 1;
-  unsigned int nnonzero_pos, nnonzero_neg;
-
-  //Load inverse histogrammed beam
-  bm.getBeamHist(npix, pixsize, nbins, oversamp, nnonzero_pos, 
-		 bm_wts_pos, inv_bm_pos, nnonzero_neg, bm_wts_neg, 
-		 inv_bm_neg, filterparam, true);
 
   //And now the actual computation
+  const unsigned int* wtptr;
+  const double* ibmptr;
   double cval, cR, R, ibm;
   R = 0.0;
-  for (unsigned int i = 0; i < nnonzero_pos; ++i) {
-    ibm = inv_bm_pos[i]; //1 / eta
-    cval = x * ibm;
-    if (cval < s_min) continue;
-    if (cval >= s_max) continue;
-    cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
-    R += bm_wts_pos[i] * cR * ibm;
+  if (npos > 0) {
+    wtptr = bm.getWtPos();
+    ibmptr = bm.getBmPos();
+    for (unsigned int i = 0; i < npos; ++i) {
+      ibm = ibmptr[i]; //1 / eta
+      cval = x * ibm;
+      if (cval < s_min) continue;
+      if (cval >= s_max) continue;
+      cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
+      R += wtptr[i] * cR * ibm;
+    }
   }
-  for (unsigned int i = 0; i < nnonzero_neg; ++i) {
-    ibm = inv_bm_neg[i];
-    cval = x * ibm;
-    if (cval < s_min) continue;
-    if (cval >= s_max) continue;
-    cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
-    R += bm_wts_neg[i] * cR * ibm;
+  if (nneg > 0) {
+    wtptr = bm.getWtNeg();
+    ibmptr = bm.getBmNeg();
+    for (unsigned int i = 0; i < npos; ++i) {
+      ibm = ibmptr[i]; //1 / eta
+      cval = x * ibm;
+      if (cval < s_min) continue;
+      if (cval >= s_max) continue;
+      cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
+      R += wtptr[i] * cR * ibm;
+    }
   }
 
-  double prefac = pixsize / 3600.0;
+  double prefac = bm.getPixsize() / 3600.0;
   return prefac * prefac * R;
 }
 
-
 /*!\brief Get number of source responses, vector version 
 
   \param[in] n The number of values to compute R for
   \param[in] minflux The minimum value to compute R for
   \param[in] maxflux The maximum value to compute R for
-  \param[in] bm The beam
-  \param[in] pixsize The pixel size, in arcseconds
-  \param[in] nfwhm The number of beam fwhm to use in the computation
-  \param[in] nbins The number of bins in the beam histogramming
+  \param[in] bm The histogrammed beam
   \param[out] R The returned values of R, of length n.  Must
                 be pre-allocated by the caller
-  \param[in] filterparam The filter model param.
 
   R is computed for the base model		 
 */
 void numberCounts::getR(unsigned int n, double minflux,
-			double maxflux, const beam& bm, 
-			double pixsize, double nfwhm,
-			unsigned int nbins, 
-			double* R, double filterparam) const {
-  getR(n, minflux, maxflux, bm, pixsize, nfwhm, nbins, 1, R, filterparam);
-}
-
-/*!\brief Get number of source responses, vector version 
-
-  \param[in] n The number of values to compute R for
-  \param[in] minflux The minimum value to compute R for
-  \param[in] maxflux The maximum value to compute R for
-  \param[in] bm The beam
-  \param[in] pixsize The pixel size, in arcseconds
-  \param[in] nfwhm The number of beam fwhm to use in the computation
-  \param[in] nbins The number of bins in the beam histogramming
-  \param[in] oversamp The oversampling in the beam
-  \param[out] R The returned values of R, of length n.  Must
-                be pre-allocated by the caller
-  \param[in] filterparam The filter model param.		
-
-  R is computed for the base model		 
-*/
-
-void numberCounts::getR(unsigned int n, double minflux,
-			double maxflux, const beam& bm, 
-			double pixsize, double nfwhm,
-			unsigned int nbins, unsigned int oversamp,
-			double* R, double filterparam) const {
+			double maxflux, const beamHist& bm, 
+			double* const R) const {
 
   //As for the scalar version of getR above, this could be done much more
   // efficiently but we aim for simplicity rather than efficiency
   // in this implementation.
-  
-  if (n == 0) return;
-  if (pixsize <= 0.0)
-    throw pofdExcept("numberCounts", "getR", "Invalid (non-positive) pixsize",
-		     1);
-  if (nfwhm <= 0.0)
-    throw pofdExcept("numberCounts", "getR", "Invalid (non-positive) nfwhm",
-		     2);
-  if (nbins == 0)
-    throw pofdExcept("numberCounts", "getR", "Invalid (zero) nbins",
-		     3);
-  
+  if (!isValid())
+    throw pofdExcept("numberCounts", "getR", "Invalid model", 1);
+  if (!bm.hasData())
+    throw pofdExcept("numberCounts", "getR", "Beam histogram not filled", 2);
+  if (!bm.isInverse())
+    throw pofdExcept("numberCounts", "getR", "Beam histogram not inverse", 3);
 
+  unsigned int npos, nneg;
+  npos = bm.getNPos();
+  nneg = bm.getNNeg();
+  if (npos * nneg == 0)
+    throw pofdExcept("numberCounts", "getR", "No non-zero parts of beam", 4);
+  
   double s_min = knotpos[0];
   double s_max = knotpos[nknots-1]; 
   double dflux = (maxflux - minflux) / static_cast<int>(n - 1);
   if (n == 1) dflux = 0.0;
-
-  //Space for the inverse beam
-  if (nbm < nbins) {
-    //Must expand
-    if (bm_wts_pos == NULL) delete[] bm_wts_pos;
-    if (inv_bm_pos == NULL) delete[] inv_bm_pos;
-    bm_wts_pos = new unsigned int[nbins];
-    inv_bm_pos = new double[nbins];
-    if (bm_wts_neg == NULL) delete[] bm_wts_neg;
-    if (inv_bm_neg == NULL) delete[] inv_bm_neg;
-    bm_wts_neg = new unsigned int[nbins];
-    inv_bm_neg = new double[nbins];
-    nbm = nbins;
-  }
-  unsigned int npix = static_cast<unsigned int>(nfwhm * bm.getFWHM()/pixsize + 
-						0.9999999999);
-  npix = 2 * npix + 1;
-  unsigned int nnonzero_pos, nnonzero_neg;
-  bm.getBeamHist(npix, pixsize, nbins, oversamp, 
-		 nnonzero_pos, bm_wts_pos, inv_bm_pos, 
-		 nnonzero_neg, bm_wts_neg, inv_bm_neg,
-		 filterparam, true);
   
-  double prefac = pixsize / 3600.0;
+  double prefac = bm.getPixsize() / 3600.0;
   prefac = prefac * prefac;
 
   //And now the actual computation.  We loop over each flux
+  const unsigned int* wtptr_pos = NULL;
+  const unsigned int* wtptr_neg = NULL;
+  const double* ibmptr_pos = NULL;
+  const double* ibmptr_neg = NULL;
   double cflux, cval, cR, ibm, workR;
-  
+  npos = bm.getNPos();
+  if (npos > 0) {
+    wtptr_pos = bm.getWtPos();
+    ibmptr_pos = bm.getBmPos();
+  }
+  nneg = bm.getNNeg();
+  if (nneg > 0) {
+    wtptr_neg = bm.getWtNeg();
+    ibmptr_neg = bm.getBmNeg();
+  }
+
   for (unsigned int i = 0; i < n; ++i) {
     cflux = minflux + static_cast<double>(i) * dflux;
-    if (cflux <= 0.0 || cflux >= s_max) {
-      //R is zero for this x
-      R[i] = 0.0;
-      continue;
-    }
     workR = 0.0;
-    for (unsigned int j = 0; j < nnonzero_pos; ++j) {
-      ibm = inv_bm_pos[j]; //1 / eta
-      cval = cflux * ibm;
-      if (cval < s_min) continue;
-      if (cval >= s_max) continue;
-      cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
-      workR += bm_wts_pos[j] * cR * ibm;
-    }
-    for (unsigned int j = 0; j < nnonzero_neg; ++j) {
-      ibm = inv_bm_neg[j]; 
-      cval = cflux * ibm;
-      if (cval < s_min) continue;
-      if (cval >= s_max) continue;
-      cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
-      workR += bm_wts_neg[j] * cR * ibm;
-    }
+    if (npos > 0)
+      for (unsigned int j = 0; j < npos; ++j) {
+	ibm = ibmptr_pos[j]; //1 / eta
+	cval = cflux * ibm;
+	if (cval < s_min) continue;
+	if (cval >= s_max) continue;
+	cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
+	workR += wtptr_pos[j] * cR * ibm;
+      }
+    if (nneg > 0)
+      for (unsigned int j = 0; j < nneg; ++j) {
+	ibm = ibmptr_neg[j];
+	cval = cflux * ibm;
+	if (cval < s_min) continue;
+	if (cval >= s_max) continue;
+	cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
+	workR += wtptr_neg[j] * cR * ibm;
+      }
     R[i] = prefac * workR;
   }
 }

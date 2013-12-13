@@ -18,6 +18,7 @@ static struct option long_options[] = {
   {"extra_smooth", required_argument, 0, 'e'},
   {"extra_smooth1", required_argument, 0, '1'},
   {"extra_smooth2", required_argument, 0, '2'},
+  {"filtscale", required_argument, 0, 'F'},
   {"help", no_argument, 0, 'h'},
   {"oversample", required_argument, 0, 'o'},
   {"powerspec", required_argument, 0, 'p'},
@@ -29,13 +30,13 @@ static struct option long_options[] = {
   {"version", no_argument, 0, 'V'},
   {0,0,0,0}
 };
-char optstring[] = "de:1:2:ho:p:S:s:3:4:vV";
+char optstring[] = "de:1:2:F:ho:p:S:s:3:4:vV";
 
 
 int makeSimSingle(int argc, char **argv) {
 
   unsigned int n1, n2;
-  double n0, pixsize, sigma, fwhm;
+  double n0, pixsize, sigma, fwhm, filtscale;
   double extra_smooth; //Additional smoothing
   std::string modelfile, outputfile, powspecfile;
   unsigned long long int user_seed;
@@ -46,6 +47,7 @@ int makeSimSingle(int argc, char **argv) {
   do_extra_smooth     = false;
   extra_smooth        = 0.0;
   sigma               = 0.0;
+  filtscale           = 0.0;
   verbose             = false;
   user_seed           = 0;
   have_user_seed      = false;
@@ -61,6 +63,9 @@ int makeSimSingle(int argc, char **argv) {
     case 'e' :
       do_extra_smooth = true;
       extra_smooth = atof(optarg);
+      break;
+    case 'F':
+      filtscale = atof(optarg);
       break;
     case 'o':
       oversample = atoi(optarg);
@@ -110,6 +115,10 @@ int makeSimSingle(int argc, char **argv) {
     std::cout << "Invalid (non-positive) FWHM" << std::endl;
     return 1;
   }
+  if (filtscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
+    return 1;
+  }
   if (do_extra_smooth && extra_smooth < 0.0) {
     std::cout << "Invalid (non-positive) extra smoothing FWHM" << std::endl;
     return 1;
@@ -132,7 +141,16 @@ int makeSimSingle(int argc, char **argv) {
     simImage dim(n1, n2, pixsize, fwhm, sigma, extra_smooth,
 		 oversample, 1000, powspecfile);
     if (have_user_seed) dim.setSeed( user_seed );
-    dim.realize(model, n0, do_extra_smooth, true, false); //Do mean subtract
+
+    // Set up filtering if needed
+    hipassFilter* filt = NULL;
+    if (filtscale > 0.0)
+      filt = new hipassFilter(filtscale / pixsize);
+
+    // Generate with mean subtraction
+    dim.realize(model, n0, filt, do_extra_smooth, true, false); 
+
+    if (filt != NULL) delete filt;
 
     //Write it
     if (verbose) std::cout << "Writing simulated image to " << outputfile
@@ -423,6 +441,10 @@ int main( int argc, char** argv ) {
 		<< " FWHM" << std::endl;
       std::cout << "\t\t(in arcseconds); this is applied after noise is added."
 		<< std::endl;
+      std::cout << "\t-F, --filtscale VALUE" << std::endl;
+      std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
+		<< std::endl;
+      std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
       std::cout << "\t--sigma NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (def: 0)." << std::endl;
       std::cout << "\tTWO-D MODEL OPTIONS" << std::endl;

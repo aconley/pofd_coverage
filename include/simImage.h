@@ -8,6 +8,7 @@
 #include "../include/ran.h"
 #include "../include/numberCounts.h"
 #include "../include/positionGenerator.h"
+#include "../include/hipassFilter.h"
 
 /*!
   \brief Data class for creating and holding simulated
@@ -87,8 +88,9 @@ class simImage {
   /*! \brief Set random number generator seed */
   void setSeed(unsigned long long int seed) const { rangen.set_seed(seed); }
   
-  void realize(const numberCounts&, double, bool=false,bool=false,
-	       bool=false, unsigned int=1); //!< Generate realization of model
+  /*! \brief Generate realization of model */
+  void realize(const numberCounts&, double, hipassFilter* const=NULL,
+	       bool=false, bool=false, bool=false, unsigned int=1); 
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 

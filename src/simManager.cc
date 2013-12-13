@@ -11,6 +11,9 @@
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
+const unsigned int simManager::nbeambins = 80; 
+const double simManager::nfwhm = 3.0; 
+
 //This is the function we call to find the best fitting n0
 /*!
   \param[in] x Value of n0
@@ -55,6 +58,8 @@ static double minfunc(double x, void* params) {
   \param[in] N2 Number of pixels along second axis in simulated image
   \param[in] PIXSIZE Pixel size, in arcsec
   \param[in] FWHM Fwhm of beam, in arcsec
+  \param[in] FILTSCALE Filtering scale, in arcsec.  If 0, no filtering is
+              applied.
   \param[in] SIGI Instrument noise (without smoothing) in Jy
   \param[in] N0 Simulated number of sources per sq deg.
   \param[in] ESMOOTH Amount of extra smoothing to apply
@@ -71,8 +76,8 @@ simManager::simManager(const std::string& MODELFILE,
 		       bool MAPLIKE, unsigned int NLIKE, 
 		       double N0RANGEFRAC, unsigned int FFTSIZE,
 		       unsigned int N1, unsigned int N2, 
-		       double PIXSIZE, double FWHM, double SIGI, 
-		       double N0, double ESMOOTH,
+		       double PIXSIZE, double FWHM, double FILTSCALE,
+		       double SIGI, double N0, double ESMOOTH,
 		       unsigned int OVERSAMPLE, 
 		       const std::string& POWERSPECFILE,
 		       unsigned int SPARCITY,
@@ -80,7 +85,7 @@ simManager::simManager(const std::string& MODELFILE,
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
   fftsize(FFTSIZE), n0(N0), sig_i(SIGI), sig_i_sm(SIGI), fwhm(FWHM), 
-  pixsize(PIXSIZE),
+  pixsize(PIXSIZE), inv_bmhist(nbeambins), filtscale(FILTSCALE), filt(NULL),
   simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, OVERSAMPLE, 
 	NBINS, POWERSPECFILE), 
   oversample(OVERSAMPLE), use_binning(USEBIN), model(MODELFILE), 
@@ -118,6 +123,11 @@ simManager::simManager(const std::string& MODELFILE,
     delta_n0 = NULL;
   }
 
+  // Set up the histogrammed beam
+  if (filtscale > 0)
+    filt = new hipassFilter(filtscale / PIXSIZE);
+  inv_bmhist.fill(bm, nfwhm, PIXSIZE, filt, filtscale, true, oversample);
+
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
 
@@ -134,6 +144,7 @@ simManager::~simManager() {
   }
   if (min_n0 != NULL) delete[] min_n0;
   if (delta_n0 != NULL) delete[] delta_n0;
+  if (filt != NULL) delete filt;
 }
 
 /*!
@@ -143,8 +154,6 @@ simManager::~simManager() {
 void simManager::doSims(bool verbose=false) {
   //Two steps; first: find the best fit n0.  Then -- maybe --
   // map out the likelihood
-  const float nfwhm = 3.0; //!< How far out to go on beam
-  const unsigned int nbeambins = 80; // Number of beam histogram bins
   const unsigned int max_iter = 100; // Maximum number of iters for min
   const unsigned int max_expiter = 10; //!< Maximum number of bracket steps
   const double reltol = 0.001; // Relative tolerance in n0: 0.1%
@@ -179,7 +188,7 @@ void simManager::doSims(bool verbose=false) {
 #endif
   maxflux = max_n0ratio * model.getMaxKnotPosition();
   pdfac.initPD(fftsize, sigval, maxflux, init_b, model,
-	       bm, pixsize, nfwhm, nbeambins, oversample);
+	       inv_bmhist);
 #ifdef TIMING
   initTime += std::clock() - starttime;
 #endif 
@@ -195,8 +204,8 @@ void simManager::doSims(bool verbose=false) {
 		<< std::endl;
     }
 
-    //Make simulated image (mean subtracted)
-    simim.realize(model, n0, do_extra_smooth, true, use_binning,
+    //Make simulated image (mean subtracted, possibly with filtering)
+    simim.realize(model, n0, filt, do_extra_smooth, true, use_binning,
 		  like_sparcity);
 
     //Now set up the minimization; note this involves calling minfunc

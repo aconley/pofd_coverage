@@ -1,6 +1,7 @@
 //beam.cc
 
 #include<sstream>
+#include<limits>
 
 #include "../include/beam.h"
 #include "../include/global_settings.h"
@@ -9,7 +10,7 @@
 /*!
   \param[in] FWHM     FWHM of beam, in arcsec
 */
-beam::beam( double FWHM ) { setFWHM(FWHM); }
+beam::beam(double FWHM) { setFWHM(FWHM); }
 
 /*!
   \param[in] fwhm_    New FWHM of beam, in arcsec
@@ -24,7 +25,7 @@ double beam::getEffectiveArea() const {
 }
 
 double beam::getEffectiveAreaSq() const {
-  return 0.5*pofd_coverage::pi / rhosq;
+  return 0.5 * pofd_coverage::pi / rhosq;
 }
 
 /*!
@@ -232,21 +233,20 @@ void beam::getRawBeam(unsigned int n, double pixsize, unsigned int oversamp,
   \param[in] pixsize Size of pixels in arcsec
   \param[in] bmpos Beam. Must be pre-allocated by
                    caller and be of length n * n
-  \param[in] filterparam Filter parameter.  If 0, no filtering		   
+  \param[in] filter Hi-pass filter to apply.  If null, don't apply filter
 
   The beam is center normalized.  Note that all spatial information is
   lost by splitting into neg/pos parts
  */
 void beam::getBeam(unsigned int n, double pixsize, double* const bm, 
-		   double filterparam) const {
+		   hipassFilter* const filter) const {
 
   // pre-filtered beam
   getRawBeam(n, pixsize, bm);
 
   // Apply filtering
-  if (filterparam != 0)
-    throw pofdExcept("beam", "getBeamHist", 
-		     "Filtering not implemented", 2);
+  if (filter != NULL)
+    filter->filter(n, n, bm);
 }
 
 
@@ -256,113 +256,142 @@ void beam::getBeam(unsigned int n, double pixsize, double* const bm,
   \param[in] oversamp Oversampling.  Must be odd
   \param[in] bm Beam. Must be pre-allocated by
                    caller and be of length n * n
-  \param[in] filterparam Filter parameter.  If 0, no filtering is applied
+  \param[in] filter Hi-pass filter to apply.  If null, don't apply filter
 
   The beam is center normalized.  
 */
 void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
-		   double* const bm, double filterparam) const {
+		   double* const bm, hipassFilter* const filter) const {
 
   // Pre-filtered beam
   getRawBeam(n, pixsize, oversamp, bm);
 
   // Apply filtering
-  if (filterparam != 0)
-    throw pofdExcept("beam", "getBeam", 
-		     "Filtering not implemented", 1);
+  if (filter != NULL)
+    filter->filter(n, n, bm);
+}
+
+////////////////////////////////////////////////
+
+beamHist::beamHist(unsigned int NBINS) : has_data(false), inverse(false), 
+					 nbins(0), fwhm(0.0), pixsize(0.0),
+					 eff_area(0.0), n_pos(0), n_neg(0) {
+  if (NBINS == 0)
+    throw pofdExcept("beamHist", "beamHist", "Invalid (non-positive) NBINS", 1);
+  nbins = NBINS;
+  wt_pos = new unsigned int[nbins];
+  bm_pos = new double[nbins];
+  wt_neg = new unsigned int[nbins];
+  bm_neg = new double[nbins];
+}
+
+beamHist::~beamHist() {
+  delete[] wt_pos;
+  delete[] bm_pos;
+  delete[] wt_neg;
+  delete[] bm_neg;
 }
 
 /*!
-  \param[in] n  Number of pixels along each dimension.  Should be odd
-  \param[in] pixsize Size of pixels in arcsec
-  \param[in] nbins Number of bins of output
-  \param[in] npos Number of nonzero positive beam histogram elements.
-  \param[in] wtpos Weights for positive beam.
-  \param[in] bmpos Positive part of beam histogram. Must be pre-allocated by
-                   caller and be of length nbins
-  \param[in] nneg Number of nonzero negative beam histogram elements.
-                  Will be zero if no filtering.
-  \param[in] wtneg Weights for negative beam.
-  \param[in] bmneg Negative part of beam histogram. Must be pre-allocated by
-                   caller and be of length nbins
-  \param[in] filterparam Filter parameter.  No filtering if set to 0.
-  \param[in] inverse If set, return one over the beam (for non-zero entries)
-
-  The beam is center normalized.  The non-zero entries of the weights
-  and beams are shuffled to the front.  The additional entries are not
-  set to zero.
+  \returns Minimum/Maximum values of positive beam.  If this is the 
+  inverse beam, then the minimum/maximum of the inverse positive beam
+  are returned.
 */
-void beam::getBeamHist(unsigned int n, double pixsize,
-		       unsigned int nbins, unsigned int& npos, 
-		       unsigned int* const wtpos, double* const bmpos,
-		       unsigned int& nneg, unsigned int* const wtneg, 
-		       double* const bmneg, double filterparam,
-		       bool inverse) const {
-  getBeamHist(n, pixsize, nbins, 1, npos, wtpos, bmpos,
-	      nneg, wtneg, bmneg, filterparam, inverse);
+std::pair<double, double> beamHist::getMinMaxPos() const {
+  if (!has_data) 
+    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			  std::numeric_limits<double>::quiet_NaN());
+  if (n_pos == 0) 
+    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			  std::numeric_limits<double>::quiet_NaN());
+
+  double min, max, val;
+  min = max = bm_pos[0];
+  for (unsigned int i = 1; i < n_pos; ++i) {
+    val = bm_pos[i];
+    if (val > max) max = val; else if (val < min) min = val;
+  }
+  return std::make_pair(min, max);
 }
 
 /*!
-  \param[in] n  Number of pixels along each dimension.  Should be odd
-  \param[in] pixsize Size of pixels in arcsec
-  \param[in] nbins Number of bins of output
-  \param[in] oversamp Oversampling.  Must be odd
-  \param[in] npos Number of nonzero positive beam histogram elements.
-  \param[in] wtpos Weights for positive beam.
-  \param[in] bmpos Positive part of beam histogram. Must be pre-allocated by
-                   caller and be of length nbins
-  \param[in] nneg Number of nonzero negative beam histogram elements.
-                  Will be zero if no filtering.
-  \param[in] wtneg Weights for negative beam.
-  \param[in] bmneg Negative part of beam histogram. Must be pre-allocated by
-                   caller and be of length nbins
-  \param[in] filterparam Filter parameter.  No filtering if set to 0
-  \param[in] inverse If set, return one over the beam (for non-zero entries)
+  \returns Minimum/Maximum values of negative beam.  If this is the 
+  inverse beam, then the minimum/maximum of the inverse negative beam
+  are returned.
+*/
+std::pair<double, double> beamHist::getMinMaxNeg() const {
+  if (!has_data) 
+    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			  std::numeric_limits<double>::quiet_NaN());
+  if (n_neg == 0) 
+    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			  std::numeric_limits<double>::quiet_NaN());
 
-  The beam is center normalized.  The non-zero entries of the weights
-  and beams are shuffled to the front.  The additional entries are not
-  set to zero.
- */
-void beam::getBeamHist(unsigned int n, double pixsize, unsigned int nbins, 
-		       unsigned int oversamp, unsigned int& npos, 
-		       unsigned int* const wtpos, double* const bmpos,
-		       unsigned int& nneg, unsigned int* const wtneg, 
-		       double* const bmneg, double filterparam,
-		       bool inverse) const {
-  
+  double min, max, val;
+  min = max = bm_neg[0];
+  for (unsigned int i = 1; i < n_neg; ++i) {
+    val = bm_neg[i];
+    if (val > max) max = val; else if (val < min) min = val;
+  }
+  return std::make_pair(min, max);
+}
+
+/*!
+  \param[in] bm Beam we are getting the histogram for
+  \param[in] nfwhm Number of FWHM out we will go on beam
+  \param[in] pixsz Pixel size (arcseconds)
+  \param[in] filt High pass filter we will apply.  If NULL, don't filter
+  \param[in] filtscale Radius of filter region in same units as pixsz
+  \param[in] inv Histogram the inverse beam
+  \param[in] oversamp Oversampling of beam. Must be odd
+*/
+void beamHist::fill(const beam& bm, double nfwhm, double pixsz,
+		    hipassFilter* const filt, double filtscale, 
+		    bool inv, unsigned int oversamp) {
+
   const double minval = 1e-5; //Always ignore beam values below this
 
-  // We can't be as cute here as for the non-filtered beam, because
-  // filtering more or less needs access to the real beam.  So...
-  // just proceed via brute force.
-  if (n == 0) {
-    std::stringstream errstr;
-    errstr << "n (" << n << ") should be positive";
-    throw pofdExcept("beam", "getBeamHist", errstr.str(), 1);
+  inverse = inv;
+  pixsize = pixsz;
+  fwhm = bm.getFWHM();
+
+  // Get how many pixels we will go out
+  unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
+						0.9999999999);
+  npix = 2 * npix + 1;
+
+  // Get 2D beam
+  // Temporary beam storage.  Must use fftw_malloc since we may filter
+  double *bmtmp = (double*) fftw_malloc(sizeof(double) * npix * npix);
+  if (filt != NULL) // Set filter scale
+    filt->setFiltScale(filtscale / pixsz);
+  bm.getBeam(npix, pixsize, oversamp, bmtmp, filt); // Also filters
+
+  // Find effective area
+  double val;
+  val = bmtmp[0];
+  eff_area = val * val;
+  for (unsigned int i = 1; i < npix * npix; ++i) {
+    val = fabs(bmtmp[i]);
+    eff_area += val * val;
   }
-  double* bmtmp = new double[n * n];
-  getRawBeam(n, pixsize, oversamp, bmtmp);
-
-  // Apply filtering
-  if (filterparam != 0)
-    throw pofdExcept("beam", "getBeamHist", 
-		     "Filtering not implemented", 2);
-
+  eff_area *= (pixsize * pixsize) / (3600.0 * 3600.0);
+  
+  // Histogram
   // Find minimum and maximum non-zero parts for neg/pos histograms
   bool has_pos = false;
   bool has_neg = false;
   double minbinval_pos, maxbinval_pos, minbinval_neg, maxbinval_neg;
   minbinval_pos = minbinval_neg = 1e100; // Will definitely never be this large
   maxbinval_pos = maxbinval_neg = -1.0;
-  double val;
-  for (unsigned int i = 0; i < n * n; ++i) {
+  for (unsigned int i = 0; i < npix * npix; ++i) {
     val = bmtmp[i];
     // Ignore anything within [-minval, minval]
-    if (val > minval) {
+    if (val > minval) { // Positive part
       has_pos = true;
       if (val > maxbinval_pos) maxbinval_pos = val;
       if (val < minbinval_pos) minbinval_pos = val;
-    } else if (val < -minval) {
+    } else if (val < -minval) { //Negative part
       val = fabs(val);
       has_neg = true;
       if (val > maxbinval_neg) maxbinval_neg = val;
@@ -370,19 +399,20 @@ void beam::getBeamHist(unsigned int n, double pixsize, unsigned int nbins,
     }
   }
 
+  // Set bin size
   double histstep_pos, histstep_neg;
   if (has_pos) {
     minbinval_pos = log2(0.999 * minbinval_pos);
     maxbinval_pos = log2(1.001 * maxbinval_pos);
     histstep_pos = (maxbinval_pos - minbinval_pos) / static_cast<double>(nbins);
-  }
+  } else histstep_pos = 0.0;
   if (has_neg) {
     minbinval_neg = log2(0.999 * minbinval_neg);
     maxbinval_neg = log2(1.001 * maxbinval_neg);
     histstep_neg = (maxbinval_neg - minbinval_neg) / static_cast<double>(nbins);
-  }
+  } else histstep_neg = 0.0;
 
-  // Histogram
+  // Actually histogram
   unsigned int idx, utmp;
   unsigned int *tmpwt;
   tmpwt = new unsigned int[nbins];
@@ -390,14 +420,16 @@ void beam::getBeamHist(unsigned int n, double pixsize, unsigned int nbins,
   tmphist = new double[nbins];
 
   // Positive histogram
-  npos = 0;
+  n_pos = 0;
+  for (unsigned int i = 0; i < nbins; ++i) wt_pos[i] = 0;
+  for (unsigned int i = 0; i < nbins; ++i) bm_pos[i] = 0.0;
   double lval;
   if (has_pos) {
     for (unsigned int i = 0; i < nbins; ++i)
       tmpwt[i] = 0;
     for (unsigned int i = 0; i < nbins; ++i)
       tmphist[i] = 0.0;
-    for (unsigned int i = 0; i < n * n; ++i) {
+    for (unsigned int i = 0; i < npix * npix; ++i) {
       val = bmtmp[i];
       lval = log2(val);
       if (lval < minbinval_pos) {
@@ -408,30 +440,34 @@ void beam::getBeamHist(unsigned int n, double pixsize, unsigned int nbins,
       }
     }
     for (unsigned int i = 0; i < nbins; ++i)
-      if (tmpwt[i] > 0) ++npos;
-    // Shuffle all the filled bins to the front
+      if (tmpwt[i] > 0) ++n_pos;
+    // Shuffle all the filled bins to the front of bm_pos
     idx = 0;
     for (unsigned int i = 0; i < nbins; ++i) {
       utmp = tmpwt[i];
       if (utmp > 0) {
-	wtpos[idx] = utmp;
-	bmpos[idx] = tmphist[i] / static_cast<double>(utmp);
+	wt_pos[idx] = utmp;
+	bm_pos[idx] = tmphist[i] / static_cast<double>(utmp);
 	++idx;
       }
     }
+    // Note we histogram in beam space, then invert.  For whatever reason,
+    // this seems to work a lot better for P(D)
     if (inverse)
-      for (unsigned int i = 0; i < npos; ++i)
-	bmpos[i] = 1.0 / bmpos[i];
+      for (unsigned int i = 0; i < n_pos; ++i)
+	bm_pos[i] = 1.0 / bm_pos[i];
   }
 
   // Negative
-  nneg = 0;
+  n_neg = 0;
+  for (unsigned int i = 0; i < nbins; ++i) wt_neg[i] = 0;
+  for (unsigned int i = 0; i < nbins; ++i) bm_neg[i] = 0.0;
   if (has_neg) {
     for (unsigned int i = 0; i < nbins; ++i)
       tmpwt[i] = 0;
     for (unsigned int i = 0; i < nbins; ++i)
       tmphist[i] = 0.0;
-    for (unsigned int i = 0; i < n * n; ++i) {
+    for (unsigned int i = 0; i < npix * npix; ++i) {
       val = fabs(bmtmp[i]);
       lval = log2(val);
       if (lval < minbinval_neg) {
@@ -442,25 +478,23 @@ void beam::getBeamHist(unsigned int n, double pixsize, unsigned int nbins,
       }
     }
     for (unsigned int i = 0; i < nbins; ++i)
-      if (tmpwt[i] > 0) ++nneg;
-    // Shuffle all the filled bins to the front
+      if (tmpwt[i] > 0) ++n_neg;
     idx = 0;
     for (unsigned int i = 0; i < nbins; ++i) {
       utmp = tmpwt[i];
       if (utmp > 0) {
-	wtneg[idx] = utmp;
-	bmneg[idx] = tmphist[i] / static_cast<double>(utmp);
+	wt_neg[idx] = utmp;
+	bm_neg[idx] = tmphist[i] / static_cast<double>(utmp);
 	++idx;
       }
     }
     if (inverse)
-      for (unsigned int i = 0; i < nneg; ++i)
-	bmneg[i] = 1.0 / bmneg[i];
+      for (unsigned int i = 0; i < n_neg; ++i)
+	bm_neg[i] = 1.0 / bm_neg[i];
   }
+  has_data = true;
 
   // Clean up
-  delete[] tmpwt;
-  delete[] tmphist;
-  delete[] bmtmp;
+  fftw_free(bmtmp);
 }
 

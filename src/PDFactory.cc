@@ -2,7 +2,6 @@
 #include<cmath>
 #include<cstring>
 #include<fstream>
-#include<limits>
 
 #include "../include/global_settings.h"
 #include "../include/PDFactory.h"
@@ -175,21 +174,15 @@ bool PDFactory::addWisdom(const std::string& filename) {
   \param[in] n       Size of transform 
   \param[in] maxflux Maximum flux generated in R
   \param[in] model   number counts model to use for fill.  Params must be set
-  \param[in] beam    Beam fwhm
-  \param[in] pixsize Pixel size in arcseconds
-  \param[in] nfwhm   Number of FWHM out to go in beam
-  \param[in] nbins   Number of bins used in histogrammed beam
+  \param[in] bm      Histogrammed beam
   \param[out] vec    Returns moments
   \param[in] nmom    Number of moments.  Note we start with the 0th one,
                       so if you want the 2nd moment, nmom must be at least 3.
-  \param[in] oversamp Oversampling of beam
-  \param[in] filterparam Filtering parameter
 */
 void PDFactory::getRIntegrals(unsigned int n, double maxflux,
-			      const numberCounts& model, const beam& bm, 
-			      double pixsize, double nfwhm, unsigned int nbins,
-			      std::vector<double>& vec, unsigned int nmom,
-			      unsigned int oversamp, double filterparam) {
+			      const numberCounts& model, const beamHist& bm, 
+			      std::vector<double>& vec, unsigned int nmom) {
+
   //We are totally going to screw things up, so mark as unclean
   initialized = false;  
   if (n == 0)
@@ -200,8 +193,9 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
 		     "nmom must be positive", 2);
 
   vec.resize(nmom);
+
   //Set R and dflux
-  initR(n, maxflux, model, bm, pixsize, nfwhm, nbins, oversamp, filterparam); 
+  initR(n, maxflux, model, bm); 
 
   //We use the trap rule.  Note R already is multiplied by dflux
   //Do zeroth integral
@@ -233,12 +227,7 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
  
   \param[in] n       Size of transform 
   \param[in] model   number counts model to use for fill.  Params must be set
-  \param[in] beam    Beam fwhm
-  \param[in] pixsize Pixel size in arcseconds
-  \param[in] nfwhm   Number of FWHM out to go in beam
-  \param[in] nbins   Number of bins used in histogrammed beam
-  \param[in] oversamp Oversampling of beam
-  \param[in] filterparam Filtering parameter
+  \param[in] bm      Histogrammed beam
 
   The R value that is set is actually R * dflux for convenience.
   dflux is also set.
@@ -248,10 +237,7 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
   the maximum flux will often end up a bit off from the desired value.
 */
 void PDFactory::initR(unsigned int n, double maxflux, 
-		      const numberCounts& model, const beam& bm,
-		      double pixsize, double nfwhm, 
-		      unsigned int nbins, unsigned int oversamp,
-		      double filterparam) {
+		      const numberCounts& model, const beamHist& bm) {
 
   //Make sure we have enough room
   resize(n);
@@ -268,8 +254,7 @@ void PDFactory::initR(unsigned int n, double maxflux,
 #ifdef TIMING
   std::clock_t starttime = std::clock();
 #endif
-  model.getR(n, 0.0, maxflux, bm, pixsize, nfwhm, nbins, oversamp, 
-	     rvals, filterparam);
+  model.getR(n, 0.0, maxflux, bm, rvals);
   for (unsigned int i = 1; i < n; ++i) rvals[i] *= dflux;
 #ifdef TIMING
   RTime += std::clock() - starttime;
@@ -286,12 +271,7 @@ void PDFactory::initR(unsigned int n, double maxflux,
   \param[in] maxflux Desired maximum image flux in Jy
   \param[in] maxn0   Maximum n0 supported (number of sources per area)
   \param[in] model   number counts model to use for fill.  Params must be set
-  \param[in] beam    Beam fwhm
-  \param[in] pixsize Pixel size in arcseconds
-  \param[in] nfwhm   Number of FWHM out to go in beam
-  \param[in] nbins   Number of bins used in histogrammed beam
-  \param[in] oversamp Oversampling of beam
-  \param[in] filterparam Filtering parameter
+  \param[in] bm      Histogrammed beam
 
   Note that n is the transform size; the output array will generally
   be smaller because of padding.  Furthermore, because of mean shifting,
@@ -300,9 +280,7 @@ void PDFactory::initR(unsigned int n, double maxflux,
  */
 void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux, 
 		       double maxn0, const numberCounts& model,
-		       const beam& bm, double pixsize, double nfwhm,
-		       unsigned int nbins, unsigned int oversamp,
-		       double filterparam) {
+		       const beamHist& bm) {
 
   if (!model.isValid())
     throw pofdExcept("PDFactory", "initPD", "model not valid", 1);
@@ -387,8 +365,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
 
   //Compute R integrals to update estimates for shift
   std::vector<double> mom(3); //0th, 1st, 2nd moment
-  getRIntegrals(n, maxflux_R, model, bm, pixsize, nfwhm, nbins, 
-		mom, 3, oversamp, filterparam);
+  getRIntegrals(n, maxflux_R, model, bm, mom, 3);
 
   mn = n0ratio * mom[1];
   //Note the variance goes up as n0ratio, not the sigma
@@ -399,16 +376,14 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   //Now prepare final R.  Note this uses the base model, even
   // though we computed the maximum R value based on the maximum n0 value
   // The returned value is R * dflux, and dflux is set
-  initR(n, maxflux_R, model, bm, pixsize, nfwhm, nbins, oversamp,
-	filterparam);
+  initR(n, maxflux_R, model, bm);
 
   //Decide if we will shift and pad, and if so by how much
   //Only do shift if the noise is larger than one actual step size
   // Otherwise we can't represent it well.
   bool dopad = (inst_sigma > dflux);
-  doshift = ( dopad && ( mn < pofd_coverage::n_sigma_shift * sg) );
-  if ( doshift ) shift = pofd_coverage::n_sigma_shift*sg - mn; else
-    shift=0.0;
+  doshift = (dopad && ( mn < pofd_coverage::n_sigma_shift * sg));
+  if (doshift) shift = pofd_coverage::n_sigma_shift*sg - mn; else shift=0.0;
 
   if (verbose) {
     std::cout << " Initial mean estimate: " << mn << std::endl;

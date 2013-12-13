@@ -1,7 +1,7 @@
 noinst_LTLIBRARIES = libcover.la
 
 libcover_la_SOURCES = pofdExcept.cc utility.cc numberCounts.cc \
-	numberCountsDouble.cc beam.cc doublebeam.cc \
+	numberCountsDouble.cc beam.cc doublebeam.cc hipassFilter.cc \
 	PDFactory.cc PDFactoryDouble.cc PD.cc PDDouble.cc \
 	positionGenerator.cc simImage.cc simImageDouble.cc \
 	simManager.cc simManagerDouble.cc

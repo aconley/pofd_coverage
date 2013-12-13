@@ -6,6 +6,8 @@
 
 #include<fitsio.h>
 
+#include<fftw3.h> // For fftw_malloc
+
 #include "../include/global_settings.h"
 #include "../include/simImage.h"
 #include "../include/beam.h"
@@ -20,13 +22,13 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   oversample = OVERSAMPLE;
   ngen1 = n1 * oversample;
   ngen2 = n2 * oversample;
-  data = new double[n1*n2];
-  work = new double[ngen1 * ngen2];
+  data = (double*) fftw_malloc(sizeof(double) * n1 * n2);
+  work = (double*) fftw_malloc(sizeof(double) * ngen1 * ngen2);
   if (oversample == 0)
     throw pofdExcept("simImage", "simImage", 
 		     "Invalid (non-positive) oversample", 1);
   else if (oversample > 1)
-    gen_image = new double[ngen1 * ngen2];
+    gen_image = (double*) fftw_malloc(sizeof(double) * ngen1 * ngen2);
   else
     gen_image = NULL;
   pixsize = PIXSIZE;
@@ -84,9 +86,9 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 }
 
 simImage::~simImage() {
-  delete[] data;
-  delete[] work;
-  if (gen_image != NULL) delete[] gen_image;
+  fftw_free(data);
+  fftw_free(work);
+  if (gen_image != NULL) fftw_free(gen_image);
   if (posgen != NULL) delete posgen;
   delete[] gauss;
   if (gauss_add != NULL) delete[] gauss_add;
@@ -328,15 +330,17 @@ double simImage::getArea() const {
 
 /*!
   Generates a simulated image
-  \params[in] model Base number counts model
-  \params[in] n0 Number of sources per area to generate
-  \params[in] extra_smooth Apply additional Gaussian smoothing
-  \params[in] meansub Do mean subtraction
-  \params[in] bin Create binned image data
-  \params[in] sparsebin Only take every this many pixels in binned image.
+  \param[in] model Base number counts model
+  \param[in] n0 Number of sources per area to generate
+  \param[in] filt Filter to apply.  If NULL, don't filter.
+  \param[in] extra_smooth Apply additional Gaussian smoothing
+  \param[in] meansub Do mean subtraction
+  \param[in] bin Create binned image data
+  \param[in] sparsebin Only take every this many pixels in binned image.
                          Does nothing if no binning.
 */
 void simImage::realize(const numberCounts& model, double n0,
+		       hipassFilter* const filt,
 		       bool extra_smooth, bool meansub, bool bin,
 		       unsigned int sparsebin) {
 
@@ -423,7 +427,10 @@ void simImage::realize(const numberCounts& model, double n0,
     convolveWithAdd();
   }
 
-  if (meansub) meanSubtract();
+  if (filt != NULL)
+    filt->filter(n1, n2, data);
+
+  if (meansub) meanSubtract();  
 
   is_binned = false;
   if (bin) applyBinning(sparsebin);
@@ -697,7 +704,7 @@ int simImage::writeToFits(const std::string& outputfile) const {
 
   //Do data writing.  We have to make a transposed copy of the
   // data to do this, which is irritating as hell
-  double *tmpdata = new double[ n1 ];
+  double *tmpdata = new double[n1];
   long fpixel[2] = { 1, 1 };
   for ( unsigned int j = 0; j < n2; ++j ) {
     for (unsigned int i = 0; i < n1; ++i) tmpdata[i] = data[i * n2 + j];

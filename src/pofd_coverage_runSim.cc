@@ -20,6 +20,7 @@ static struct option long_options[] = {
   {"extra_smooth1",required_argument,0,'!'},
   {"extra_smooth2",required_argument,0,'@'},
   {"fftsize",required_argument,0,'f'},
+  {"filtscale", required_argument, 0, 'F'},
   {"nbins",required_argument,0,'1'},
   {"nsims",required_argument,0,'n'},
   {"nolike",no_argument,0,'N'},
@@ -39,7 +40,7 @@ static struct option long_options[] = {
   {0,0,0,0}
 };
 
-char optstring[] = "hbde:!:@:f:1:n:N2:3:4:o:p:s:#:$:%:S:vVw:";
+char optstring[] = "hbde:!:@:f:F:1:n:N2:3:4:o:p:s:#:$:%:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -48,7 +49,7 @@ int runSimSingle(int argc, char **argv) {
   double fwhm; //Calculation params (req)
   double esmooth; //Extra smoothing amount
   unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample, sparcity;
-  double pixsize, n0rangefrac, n0initrange;
+  double pixsize, filtscale, n0rangefrac, n0initrange;
   double sigma; //Instrument noise, unsmoothed
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; //Power spectrum file
@@ -69,6 +70,7 @@ int runSimSingle(int argc, char **argv) {
   has_user_seed       = false;
   seed                = 1024;
   oversample          = 1;
+  filtscale           = 0.0;
   sparcity            = 1;
   nbins               = 1000;
   use_binning         = false;
@@ -89,6 +91,9 @@ int runSimSingle(int argc, char **argv) {
       break;
     case 'f' :
       fftsize = atoi(optarg);
+      break;
+    case 'F' :
+      filtscale = atof(optarg);
       break;
     case '1' :
       nbins = atoi(optarg);
@@ -175,6 +180,10 @@ int runSimSingle(int argc, char **argv) {
     std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
+  if (filtscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
+    return 1;
+  }
   if (n0 < 0.0) {
     std::cout << "Invalid (negative) n0" << std::endl;
     return 1;
@@ -227,6 +236,8 @@ int runSimSingle(int argc, char **argv) {
 	printf("   esmooth:            %0.2f\n",esmooth);
       if (oversample > 1)
 	printf("   oversampling:       %u\n", oversample);
+      if (filtscale > 0)
+	printf("   Filtering Scale:    %0.2f\n", filtscale);
       if (sparcity > 1)
 	printf("   sparcity:           %u\n", sparcity);
       if (!powerspecfile.empty())
@@ -240,8 +251,8 @@ int runSimSingle(int argc, char **argv) {
     }
 
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike, 
-		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, sigma, n0, 
-		   esmooth, oversample, powerspecfile, sparcity,
+		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, filtscale,
+		   sigma, n0, esmooth, oversample, powerspecfile, sparcity,
 		   use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
@@ -691,6 +702,10 @@ int main(int argc, char **argv) {
       std::cout << "ONE-DIMENSIONAL OPTIONS" << std::endl;
       std::cout << "\t-e, --esmooth ESMOOTH" << std::endl;
       std::cout << "\t\tExtra smoothing FWHM (in arcsec)" << std::endl;
+      std::cout << "\t-F, --filtscale VALUE" << std::endl;
+      std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
+		<< std::endl;
+      std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount of oversampling to use (integral) when " 
 		<< "generating" << std::endl;

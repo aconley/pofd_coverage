@@ -16,12 +16,14 @@
 #include "../include/doublebeam.h"
 #include "../include/numberCountsDouble.h"
 #include "../include/pofdExcept.h"
+#include "../include/hipassFilter.h"
 
 static struct option long_options[] = {
   {"double", no_argument, 0, 'd'},
   {"edgeinterp",required_argument,0,'e'},
   {"help", no_argument, 0, 'h'},
   {"fits", no_argument, 0, 'f'},
+  {"filterscale", required_argument, 0, 'F'},
   {"log", no_argument, 0, 'l'},
   {"nflux", required_argument, 0, 'n'},
   {"nfwhm", required_argument, 0, 'N'},
@@ -37,7 +39,7 @@ static struct option long_options[] = {
   {"wisdom", required_argument, 0, 'w'},
   {0,0,0,0}
 };
-char optstring[] = "dhe:fln:N:0:o:p:r:s:3:4:vVw:";
+char optstring[] = "dhe:fF:ln:N:0:o:p:r:s:3:4:vVw:";
 
 ///////////////////////////////
 
@@ -45,7 +47,7 @@ int getPDSingle(int argc, char **argv) {
 
   std::string modelfile; //Knot parameters
   double n0; //Number of sources
-  double maxflux, fwhm, nfwhm, pixsize; //Calculation params (req)
+  double maxflux, fwhm, nfwhm, pixsize, filterscale; //Calculation params (req)
   double sigma; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins;
@@ -66,6 +68,7 @@ int getPDSingle(int argc, char **argv) {
   pixsize             = 3.0;
   write_r             = false;
   oversample          = 1;
+  filterscale         = 0.0;
 
   int c;
   int option_index = 0;
@@ -75,6 +78,9 @@ int getPDSingle(int argc, char **argv) {
     switch(c) {
     case 'f' :
       write_fits = true;
+      break;
+    case 'F' :
+      filterscale = atof(optarg);
       break;
     case 'l' :
       return_log = true;
@@ -167,13 +173,18 @@ int getPDSingle(int argc, char **argv) {
     return 1;
   }
   if (oversample % 2 == 0) {
-    std::cout << "Invalid (non-odd) oversampling" << oversample << std::endl;
+    std::cout << "Invalid (non-odd) oversampling " << oversample << std::endl;
+    return 1;
+  }
+  if (filterscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
     return 1;
   }
 
   try {
     numberCounts model(modelfile);
     beam bm(fwhm);
+    hipassFilter *filt = NULL;
     PDFactory pfactory;
     PD pd;
 
@@ -199,11 +210,24 @@ int getPDSingle(int argc, char **argv) {
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
       printf("   N0:                 %0.4e\n", n0);
       printf("   sigma:              %0.4f\n", sigma);
+      if (filterscale > 0.0)
+	printf("   filter scale:       %0.4f\n", filterscale);
       if (return_log) 
 	printf("  Returning log( P(D) ) rather than P(D)\n");
       if (oversample != 1)
 	printf("oversamp:              %u\n", oversample);
     }
+
+    // Set up filter if necessary
+    if (filterscale > 0) 
+      filt = new hipassFilter(filterscale);
+
+    // Get histogrammed inverse beam
+    if (verbose) std::cout << "Getting beam" << std::endl;
+    beamHist inv_bmhist(nbins);
+    inv_bmhist.fill(bm, nfwhm, pixsize, filt, true, oversample);
+
+    if (filt != NULL) delete filt; // Don't need this any more
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 
@@ -211,7 +235,7 @@ int getPDSingle(int argc, char **argv) {
 			   << maxflux << std::endl;
     double base_n0 = model.getBaseN0();
     pfactory.initPD(nflux, sigma, maxflux, base_n0 > n0 ? base_n0 : n0, 
-		    model, bm, pixsize, nfwhm, nbins, oversample);
+		    model, inv_bmhist);
 
    if (write_r) {
       if (verbose) std::cout << "Writing R to " << r_file << std::endl;
@@ -601,6 +625,10 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tName of wisdom file (prepared with fftw-wisdom)." 
 		<< std::endl;
       std::cout << "\tONE-D MODEL OPTIONS" << std::endl;
+      std::cout << "\t-F, --filtscale VALUE" << std::endl;
+      std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
+		<< std::endl;
+      std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount to oversample the beam; must be odd integer."
 		<< " (def: 1)" << std::endl;

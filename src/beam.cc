@@ -501,7 +501,7 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
       has_pos = true;
       if (val > maxbinval_pos) maxbinval_pos = val;
       if (val < minbinval_pos) minbinval_pos = val;
-    } else if (val < -minval) { //Negative part
+    } else if (val < (-minval)) { //Negative part
       val = fabs(val);
       has_neg = true;
       if (val > maxbinval_neg) maxbinval_neg = val;
@@ -511,7 +511,7 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
 
   // Set bin size
   double histstep_pos, histstep_neg;
-  const double log2outscale = 0.0014419741739063218; // log2 1.001
+  const double log2outscale = 0.0014419741739063218; // log2(1.001)
   if (has_pos) {
     minbinval_pos = log2(minbinval_pos) - log2outscale;
     maxbinval_pos = log2(maxbinval_pos) + log2outscale;
@@ -530,7 +530,7 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   double *tmphist;
   tmphist = new double[nbins];
 
-  // Positive histogram
+  // Do positive beam
   n_pos = 0;
   for (unsigned int i = 0; i < nbins; ++i) wt_pos[i] = 0;
   for (unsigned int i = 0; i < nbins; ++i) bm_pos[i] = 0.0;
@@ -542,13 +542,12 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
       tmphist[i] = 0.0;
     for (unsigned int i = 0; i < npix * npix; ++i) {
       val = bmtmp[i];
+      if (val <= minval) continue;  //skip: too close to zero or negative
       lval = log2(val);
-      if (lval >= minbinval_pos) {
-	idx = static_cast<unsigned int>((lval - minbinval_pos) / 
-					histstep_pos);
-	tmphist[idx] += val;
-	tmpwt[idx] += 1;
-      }
+      idx = static_cast<unsigned int>((lval - minbinval_pos) / 
+				      histstep_pos);
+      tmphist[idx] += val;
+      tmpwt[idx] += 1;
     }
     for (unsigned int i = 0; i < nbins; ++i)
       if (tmpwt[i] > 0) ++n_pos;
@@ -578,15 +577,16 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
       tmpwt[i] = 0;
     for (unsigned int i = 0; i < nbins; ++i)
       tmphist[i] = 0.0;
+    double testval = -minval;
     for (unsigned int i = 0; i < npix * npix; ++i) {
-      val = fabs(bmtmp[i]);
+      val = bmtmp[i];
+      if (val > testval) continue;  //skip; too close to 0 or positive
+      val = fabs(val); // Work with abs value
       lval = log2(val);
-      if (lval >= minbinval_neg) {
-	idx = static_cast<unsigned int>((lval - minbinval_neg) / 
-					histstep_neg);
-	tmphist[idx] += val;
-	tmpwt[idx] += 1;
-      }
+      idx = static_cast<unsigned int>((lval - minbinval_neg) / 
+				      histstep_neg);
+      tmphist[idx] += val;
+      tmpwt[idx] += 1;
     }
     for (unsigned int i = 0; i < nbins; ++i)
       if (tmpwt[i] > 0) ++n_neg;

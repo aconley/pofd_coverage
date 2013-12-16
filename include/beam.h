@@ -59,6 +59,8 @@ class beam {
 /*!
   \brief Holds histogrammed beam
 
+  Note that the absolute value of the negative beam is held.
+
   \ingroup beams
 */
 

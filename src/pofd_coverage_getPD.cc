@@ -239,7 +239,7 @@ int getPDSingle(int argc, char **argv) {
     pfactory.initPD(nflux, sigma, maxflux, base_n0 > n0 ? base_n0 : n0, 
 		    model, inv_bmhist);
 
-   if (write_r) {
+    if (write_r) {
       if (verbose) std::cout << "Writing R to " << r_file << std::endl;
       pfactory.writeRToFile(r_file);
     }

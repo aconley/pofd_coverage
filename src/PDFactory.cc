@@ -116,18 +116,39 @@ void PDFactory::strict_resize(unsigned int NSIZE) {
   if (NSIZE == currsize) return;
 
   if (RFlux != NULL) fftw_free(RFlux);
+  RFlux = NULL;
   if (rvals != NULL) fftw_free(rvals);
+  rvals = NULL;
   if (rtrans != NULL) fftw_free(rtrans);
   rtrans = NULL;
   isRTransAllocated = false;
   if (pval != NULL) fftw_free(pval);
+  pval = NULL;
   if (pofd != NULL) fftw_free(pofd);
+  pofd = NULL;
 
-  RFlux = (double*) fftw_malloc(sizeof(double)*NSIZE);
-  rvals = (double*) fftw_malloc(sizeof(double)*NSIZE);
-  pofd = (double*) fftw_malloc(sizeof(double)*NSIZE);
-  unsigned int fsize = NSIZE/2+1;
-  pval = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);
+  void *alc;
+  alc = fftw_malloc(sizeof(double) * NSIZE);
+  if (alc == NULL)
+    throw pofdExcept("PDFactory", "strict_resize", 
+		     "Failed to alloc RFlux", 1);
+  RFlux = (double*) alc;
+  alc = fftw_malloc(sizeof(double) * NSIZE);
+  if (alc == NULL)
+    throw pofdExcept("PDFactory", "strict_resize", 
+		     "Failed to alloc rvals", 2);
+  rvals = (double*) alc;
+  alc = fftw_malloc(sizeof(double)*NSIZE);
+  if (alc == NULL)
+    throw pofdExcept("PDFactory", "strict_resize", 
+		     "Failed to alloc pofd", 3);
+  pofd = (double*) alc;
+  unsigned int fsize = NSIZE / 2 + 1;
+  alc = fftw_malloc(sizeof(fftw_complex)*fsize);
+  if (alc == NULL)
+    throw pofdExcept("PDFactory", "strict_resize", 
+		     "Failed to alloc pval", 4);
+  pval = (fftw_complex*) alc;
   plans_valid = false;
 
   currsize = NSIZE;
@@ -302,7 +323,11 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
     //This has to be done before we plan if we have wisdom
     if (rtrans != NULL) fftw_free(rtrans);
     unsigned int fsize = n / 2 + 1;
-    rtrans = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*fsize);
+    void* alc;
+    alc = fftw_malloc(sizeof(fftw_complex) * fsize);
+    if (alc == NULL)
+      throw pofdExcept("PDFactory", "initPD", "Failed to alloc rtrans", 4);
+    rtrans = (fftw_complex*) alc;
     isRTransAllocated = true;
   }
   
@@ -330,14 +355,14 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
       str << "Plan creation failed for forward transform of size: " << n;
       if (has_wisdom) str << std::endl << "Your wisdom file may not have"
 			  << " that size";
-      throw pofdExcept("PDFactory", "initPD", str.str(), 4);
+      throw pofdExcept("PDFactory", "initPD", str.str(), 5);
     }
     if (plan_inv == NULL) {
       std::stringstream str;
       str << "Plan creation failed for inverse transform of size: " << n;
       if (has_wisdom) str << std::endl << "Your wisdom file may not have"
 			  << " that size";
-      throw pofdExcept("PDFactory", "initPD", str.str(), 5);
+      throw pofdExcept("PDFactory", "initPD", str.str(), 6);
     }
     plans_valid = true;
   }
@@ -413,10 +438,10 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
     if (contam < 0) maxidx = n; else {
       double topflux = maxflux_R - contam;
       if (topflux < 0)
-	throw pofdExcept("PDFactory", "initPD", "Padding problem", 6);
+	throw pofdExcept("PDFactory", "initPD", "Padding problem", 7);
       maxidx = static_cast< unsigned int>(topflux/dflux);
       if (maxidx > n)
-	throw pofdExcept("PDFactory","initPD", "Padding problem", 7);
+	throw pofdExcept("PDFactory","initPD", "Padding problem", 8);
       //Actual padding
       for (unsigned int i = maxidx; i < n; ++i)
 	rvals[i] = 0.0;

@@ -275,7 +275,7 @@ double numberCounts::getR(double x, const beamHist& bm) const {
   if (nneg > 0) {
     wtptr = bm.getWtNeg();
     ibmptr = bm.getBmNeg();
-    for (unsigned int i = 0; i < npos; ++i) {
+    for (unsigned int i = 0; i < nneg; ++i) {
       ibm = ibmptr[i]; //1 / eta
       cval = x * ibm;
       if (cval < s_min) continue;

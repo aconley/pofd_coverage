@@ -23,8 +23,10 @@ class hipassFilter {
   fftw_plan plan; //!< Forward transform plan from input data to transdata
   fftw_plan plan_inv; //!< Backwards transform from transdata back to input data
 
+  double meanSub(unsigned int, double* const) const; //!< Subtracts mean from input
+
  public:
-  hipassFilter(double f, double q=0.3); //!< Constructor
+  hipassFilter(double f, double q=0.1); //!< Constructor
   ~hipassFilter();
   
   double getFiltScale() const { return filtscale; }

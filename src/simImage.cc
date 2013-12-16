@@ -334,7 +334,8 @@ double simImage::getArea() const {
   \param[in] n0 Number of sources per area to generate
   \param[in] filt Filter to apply.  If NULL, don't filter.
   \param[in] extra_smooth Apply additional Gaussian smoothing
-  \param[in] meansub Do mean subtraction
+  \param[in] meansub Do mean subtraction.  Note that filtering
+             automatically results in mean subtraction.
   \param[in] bin Create binned image data
   \param[in] sparsebin Only take every this many pixels in binned image.
                          Does nothing if no binning.
@@ -427,10 +428,14 @@ void simImage::realize(const numberCounts& model, double n0,
     convolveWithAdd();
   }
 
+  // Apply filtering.  Note this is done after adding noise and
+  // downsampling to the final resolution (if oversampling is used).
+  // Note that filtering will always result in mean subtraction since
+  // it is a hipass filter.
   if (filt != NULL)
     filt->filter(n1, n2, data);
-
-  if (meansub) meanSubtract();  
+  else
+    if (meansub) meanSubtract();
 
   is_binned = false;
   if (bin) applyBinning(sparsebin);

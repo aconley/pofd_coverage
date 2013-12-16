@@ -249,7 +249,7 @@ double numberCounts::getR(double x, const beamHist& bm) const {
   unsigned int npos, nneg;
   npos = bm.getNPos();
   nneg = bm.getNNeg();
-  if (npos * nneg == 0)
+  if ((npos == 0) && (nneg == 0))
     throw pofdExcept("numberCounts", "getR", "No non-zero parts of beam", 4);
   
   double s_min = knotpos[0];
@@ -317,7 +317,7 @@ void numberCounts::getR(unsigned int n, double minflux,
   unsigned int npos, nneg;
   npos = bm.getNPos();
   nneg = bm.getNNeg();
-  if (npos * nneg == 0)
+  if ((npos == 0) && (nneg == 0))
     throw pofdExcept("numberCounts", "getR", "No non-zero parts of beam", 4);
   
   double s_min = knotpos[0];

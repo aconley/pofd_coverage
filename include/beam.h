@@ -68,11 +68,11 @@ class beamHist {
   double pixsize; //!< Pixsize of beam sampling
   double eff_area; //!< Effective area of beam in deg^2
 
-  bool n_pos; //!< Number of positive beam histogram elements filled
+  unsigned int n_pos; //!< Number of positive beam histogram elements filled
   unsigned int* wt_pos; //!< Positive weights
   double *bm_pos; //!< Beam elements in each bin.
 
-  bool n_neg; //!< Number of negative beam histogram elements filled
+  unsigned int n_neg; //!< Number of negative beam histogram elements filled
   unsigned int* wt_neg; //!< Negative weights
   double *bm_neg; //!< Beam elements in each bin.
  public:

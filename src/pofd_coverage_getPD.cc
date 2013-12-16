@@ -148,8 +148,8 @@ int getPDSingle(int argc, char **argv) {
     std::cout << "Invalid noise level: must be >= 0.0" << std::endl;
     return 1;
   }
-  if (n0 <= 0.0) {
-    std::cout << "Invalid (non-positive) number of sources per area"
+  if (n0 < 0.0) {
+    std::cout << "Invalid (negative) number of sources per area"
 	      << std::endl;
     return 1;
   }
@@ -200,6 +200,9 @@ int getPDSingle(int argc, char **argv) {
 	return 4;
       }
     }
+
+    if (n0 == 0)
+      n0 = model.getBaseN0();
     
     if (verbose) {
       printf("   Beam fwhm:          %0.2f\n", bm.getFWHM());
@@ -213,7 +216,7 @@ int getPDSingle(int argc, char **argv) {
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.4f\n", filterscale);
       if (return_log) 
-	printf("  Returning log( P(D) ) rather than P(D)\n");
+	printf("  Returning log(P(D)) rather than P(D)\n");
       if (oversample != 1)
 	printf("oversamp:              %u\n", oversample);
     }
@@ -223,7 +226,6 @@ int getPDSingle(int argc, char **argv) {
       filt = new hipassFilter(filterscale);
 
     // Get histogrammed inverse beam
-    if (verbose) std::cout << "Getting beam" << std::endl;
     beamHist inv_bmhist(nbins);
     inv_bmhist.fill(bm, nfwhm, pixsize, filt, true, oversample);
 
@@ -385,8 +387,8 @@ int getPDDouble(int argc, char **argv) {
     std::cout << "Invalid noise level (band2): must be >= 0.0" << std::endl;
     return 1;
   }
-  if (n0 <= 0.0) {
-    std::cout << "Invalid (non-positive) number of sources per area"
+  if (n0 < 0.0) {
+    std::cout << "Invalid (negative) number of sources per area"
 	      << std::endl;
     return 1;
   }
@@ -433,6 +435,9 @@ int getPDDouble(int argc, char **argv) {
       }
     }
     
+    if (n0 == 0)
+      n0 = model.getBaseN0();
+
     if (verbose) {
       printf("   Beam fwhm1:         %0.2f\n", bm.getFWHM1());
       printf("   Beam fwhm2:         %0.2f\n", bm.getFWHM2());
@@ -448,7 +453,7 @@ int getPDDouble(int argc, char **argv) {
       printf("   sigma1:             %0.4f\n", sigma1);
       printf("   sigma2:             %0.4f\n", sigma2);
       if (return_log) 
-	printf("  Returning log( P(D) ) rather than P(D)\n");
+	printf("  Returning log(P(D)) rather than P(D)\n");
     }
 
     //Get P(D)

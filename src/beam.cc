@@ -401,14 +401,15 @@ void beamHist::fill(const beam& bm, double nfwhm, double pixsz,
 
   // Set bin size
   double histstep_pos, histstep_neg;
+  const double log2outscale = 0.0014419741739063218; // log2 1.001
   if (has_pos) {
-    minbinval_pos = log2(0.999 * minbinval_pos);
-    maxbinval_pos = log2(1.001 * maxbinval_pos);
+    minbinval_pos = log2(minbinval_pos) - log2outscale;
+    maxbinval_pos = log2(maxbinval_pos) + log2outscale;
     histstep_pos = (maxbinval_pos - minbinval_pos) / static_cast<double>(nbins);
   } else histstep_pos = 0.0;
   if (has_neg) {
-    minbinval_neg = log2(0.999 * minbinval_neg);
-    maxbinval_neg = log2(1.001 * maxbinval_neg);
+    minbinval_neg = log2(minbinval_neg) - log2outscale;
+    maxbinval_neg = log2(maxbinval_neg) + log2outscale;
     histstep_neg = (maxbinval_neg - minbinval_neg) / static_cast<double>(nbins);
   } else histstep_neg = 0.0;
 
@@ -432,7 +433,7 @@ void beamHist::fill(const beam& bm, double nfwhm, double pixsz,
     for (unsigned int i = 0; i < npix * npix; ++i) {
       val = bmtmp[i];
       lval = log2(val);
-      if (lval < minbinval_pos) {
+      if (lval >= minbinval_pos) {
 	idx = static_cast<unsigned int>((lval - minbinval_pos) / 
 					histstep_pos);
 	tmphist[idx] += val;
@@ -470,7 +471,7 @@ void beamHist::fill(const beam& bm, double nfwhm, double pixsz,
     for (unsigned int i = 0; i < npix * npix; ++i) {
       val = fabs(bmtmp[i]);
       lval = log2(val);
-      if (lval < minbinval_neg) {
+      if (lval >= minbinval_neg) {
 	idx = static_cast<unsigned int>((lval - minbinval_neg) / 
 					histstep_neg);
 	tmphist[idx] += val;

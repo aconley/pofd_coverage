@@ -6,8 +6,11 @@ libcover_la_SOURCES = pofdExcept.cc utility.cc numberCounts.cc \
 	positionGenerator.cc simImage.cc simImageDouble.cc \
 	simManager.cc simManagerDouble.cc
 
-bin_PROGRAMS = pofd_coverage_makeCat pofd_coverage_makeSim \
-	pofd_coverage_getPD pofd_coverage_runSim
+bin_PROGRAMS = pofd_coverage_getBeam pofd_coverage_makeCat \
+	pofd_coverage_makeSim pofd_coverage_getPD pofd_coverage_runSim
+
+pofd_coverage_getBeam_SOURCES = pofd_coverage_getBeam.cc
+pofd_coverage_getBeam_LDADD = libcover.la
 
 pofd_coverage_makeCat_SOURCES = pofd_coverage_makeCat.cc
 pofd_coverage_makeCat_LDADD = libcover.la

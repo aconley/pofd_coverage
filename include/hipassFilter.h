@@ -10,7 +10,7 @@
 */
 class hipassFilter {
  private:
-  double filtscale; //!< Filter cutoff radius in pixels
+  double filtscale; //!< Filter cutoff radius in arcseconds
   double qfactor; //!< Gaussian sigma in terms of filtscale
 
   unsigned int nx; //!< Current maximum capacity data array
@@ -35,7 +35,8 @@ class hipassFilter {
   void setQFactor(double val) { qfactor = val; }
 
   /*! \brief Apply filtering*/
-  void filter(unsigned int NX, unsigned int NY, double* const data);
+  void filter(double pixscale, unsigned int NX, unsigned int NY, 
+	      double* const data);
 };
 
 #endif

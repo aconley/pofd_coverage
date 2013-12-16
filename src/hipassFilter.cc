@@ -6,8 +6,8 @@
 #include "../include/pofdExcept.h"
 
 /*!
-  \param[in] f Radius where filter is unity (in pixels)
-  \param[in] q Sigma as a fraction of filtscale
+  \param[in] f Radius outside which filter is unity (in pixels)
+  \param[in] q Sigma as a fraction of filtscale if apodizing with Gaussian
  */
 hipassFilter::hipassFilter(double f, double q) : filtscale(f), qfactor(q),
 						 nx(0), ny(0), nyhalf(0), 
@@ -33,6 +33,7 @@ double hipassFilter::meanSub(unsigned int N, double* const data) const {
 }
 
 /*!
+  \param[in] pixscale Pixel scale in arcseconds.
   \param[in] NX size of input data array along 1st dimension
   \param[in] NY size of input data array along 2nd dimension
   \param[inout] data Data to filter.  Modified on output.  This must be
@@ -42,7 +43,7 @@ double hipassFilter::meanSub(unsigned int N, double* const data) const {
   than the filterscale, followed by a Gaussian decay with 
   sigma=qfactor * filtscale.
  */
-void hipassFilter::filter(unsigned int NX, unsigned int NY, 
+void hipassFilter::filter(double pixscale, unsigned int NX, unsigned int NY, 
 			  double* const data) {
 			  
 
@@ -59,13 +60,15 @@ void hipassFilter::filter(unsigned int NX, unsigned int NY,
     return;
   }
 
+  double filtscale_pix = filtscale / pixscale;
+
   // More detailed check if we will be doing any filtering.
   // This follows from the fact that the filter is 1 (i.e., it does nothing)
-  // for all radius^2 (in pix) > nx * ny / filtscale^2.  So if the
+  // for all radius^2 (in pix) > nx * ny / filtscale_pix^2.  So if the
   // smallest non-zero value (1) is larger than this, all we are doing is
   // setting the filter at frequency 0 to 0.
   double nxny = static_cast<double>(NX * NY);
-  if (filtscale * filtscale > nxny) {
+  if (filtscale_pix * filtscale_pix > nxny) {
     // Just mean sub
     meanSub(NX * NY, data);
     return;
@@ -129,18 +132,17 @@ void hipassFilter::filter(unsigned int NX, unsigned int NY,
   // want to remove components below a certain wavenumber.
   // The filter is 1 outside a radius filtscale (in pixels),
   // and inside that there is a Gaussian lip down to
-  // of sigma qmult * filtscale out to nsig sigmas, then 0
+  // of sigma qmult * filtscale_pix out to nsig sigmas, then 0
   // The mean is always set to zero.
   // It is more convenient to work with the index rather than carrying
   // along all the scaling factors.  This works out such that the
-  // filter is 1 for all i^2 + j^2 > nx * ny / filtscale^2 
-  // if the filtscale is measured in pixels.
+  // filter is 1 for all i^2 + j^2 > nx * ny / filtscale_pix^2 
 
   unsigned int rowidx, iwrap;
   double kx2, set1dist2, dist2;
   
   // If i^2 + j^2 > than this, filter is unity
-  set1dist2 = nxny / (filtscale * filtscale);
+  set1dist2 = nxny / (filtscale_pix * filtscale_pix);
 
   if (qfactor > 0) {
     // Outside set1dist, the filter is 1

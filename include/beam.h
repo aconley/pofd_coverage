@@ -49,6 +49,11 @@ class beam {
   /*!\brief Get 2D beam with oversampling*/
   void getBeam(unsigned int n, double pixsize, unsigned int oversamp,
 	       double* const, hipassFilter* const=NULL) const;
+
+  /*!\brief Write the beam to a FITS file*/
+  void writeToFits(const std::string& outfile, double pixsize, 
+		   double nfwhm=3.5, unsigned int oversamp=0,
+		   hipassFilter* const=NULL, bool inverse=false) const;
 };
 
 /*!
@@ -65,8 +70,11 @@ class beamHist {
   unsigned nbins; //!< Number of bins
 
   double fwhm; //!< FWHM of beam we are storing
+  double nfwhm; //!< Number of FWHM out we go
   double pixsize; //!< Pixsize of beam sampling
   double eff_area; //!< Effective area of beam in deg^2
+  unsigned int oversamp; //!< Oversampling factor
+  double filtscale; //!< High-pass filter scale, if any applied
 
   unsigned int n_pos; //!< Number of positive beam histogram elements filled
   unsigned int* wt_pos; //!< Positive weights
@@ -83,7 +91,9 @@ class beamHist {
   bool isInverse() const { return inverse; }
   unsigned int getNbins() const { return nbins; }
   double getFWHM() const { return fwhm; }
+  double getNFWHM() const { return nfwhm; }
   double getPixsize() const { return pixsize; }
+  unsigned int getOversamp() const { return oversamp; }
   double getEffectiveArea() const { return eff_area; }
   unsigned int getNPos() const { return n_pos; }
   unsigned int getNNeg() const { return n_neg; }
@@ -95,13 +105,17 @@ class beamHist {
   const double* getBmNeg() const { return bm_neg; }
   
   // Min/max values
-  std::pair<double, double> getMinMaxPos() const;
-  std::pair<double, double> getMinMaxNeg() const;
+  std::pair<double, double> getMinMaxPos() const; //!< Get min/max pos beam
+  std::pair<double, double> getMinMaxNeg() const; //!< Get min/max neg beam
 
-  // Fill from beam
+  /*!\brief Fill from beam*/
   void fill(const beam& bm, double nfwhm, double pixsize,
-	    hipassFilter* const filt=NULL, double filtscale=360.0,
-	    bool inv=false, unsigned int oversamp=1);
+	    hipassFilter* const filt=NULL, bool inv=false, 
+	    unsigned int oversamp=1);
+
+  /*! \brief Write out as FITS file*/
+  void writeToFits(const std::string&) const;
+
 };
 
 #endif

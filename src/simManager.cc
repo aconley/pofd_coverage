@@ -125,8 +125,8 @@ simManager::simManager(const std::string& MODELFILE,
 
   // Set up the histogrammed beam
   if (filtscale > 0)
-    filt = new hipassFilter(filtscale / PIXSIZE);
-  inv_bmhist.fill(bm, nfwhm, PIXSIZE, filt, filtscale, true, oversample);
+    filt = new hipassFilter(filtscale);
+  inv_bmhist.fill(bm, nfwhm, PIXSIZE, filt, true, oversample);
 
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);

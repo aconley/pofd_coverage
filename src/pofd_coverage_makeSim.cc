@@ -144,8 +144,7 @@ int makeSimSingle(int argc, char **argv) {
 
     // Set up filtering if needed
     hipassFilter* filt = NULL;
-    if (filtscale > 0.0)
-      filt = new hipassFilter(filtscale / pixsize);
+    if (filtscale > 0.0) filt = new hipassFilter(filtscale);
 
     // Generate with mean subtraction
     dim.realize(model, n0, filt, do_extra_smooth, true, false); 

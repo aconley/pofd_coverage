@@ -433,7 +433,7 @@ void simImage::realize(const numberCounts& model, double n0,
   // Note that filtering will always result in mean subtraction since
   // it is a hipass filter.
   if (filt != NULL)
-    filt->filter(n1, n2, data);
+    filt->filter(pixsize, n1, n2, data);
   else
     if (meansub) meanSubtract();
 

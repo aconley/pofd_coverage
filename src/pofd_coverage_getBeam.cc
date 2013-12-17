@@ -119,7 +119,6 @@ int getBeamSingle(int argc, char **argv) {
 
   try {
     beam bm(fwhm);
-    hipassFilter *filt = NULL;
     
     if (verbose) {
       printf("   Beam fwhm:          %0.2f\n", bm.getFWHM());
@@ -133,21 +132,19 @@ int getBeamSingle(int argc, char **argv) {
       if (histogram) printf("Returning histogrammed beam\n");
     }
 
-    // Set up filter if necessary
-    if (filterscale > 0) filt = new hipassFilter(filterscale);
 
     if (histogram) {
       // Get histogrammed beam
-      beamHist bmhist(nbins);
-      bmhist.fill(bm, nfwhm, pixsize, filt, inverse, oversamp);
-
+      beamHist bmhist(nbins, filterscale);
+      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp);
       // Write
       bmhist.writeToFits(outputfile);
     } else {
+      hipassFilter *filt = NULL;
+      if (filterscale > 0) filt = new hipassFilter(filterscale);
       bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, inverse);
-    }
-    if (filt != NULL) delete filt; 
-    
+      if (filt != NULL) delete filt; 
+    }    
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;

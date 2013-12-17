@@ -60,7 +60,7 @@ static double minfunc(double x, void* params) {
   \param[in] FWHM Fwhm of beam, in arcsec
   \param[in] FILTSCALE Filtering scale, in arcsec.  If 0, no filtering is
               applied.
-  \param[in] SIGI Instrument noise (without smoothing) in Jy
+  \param[in] SIGI Instrument noise (without smoothing or filtering) in Jy
   \param[in] N0 Simulated number of sources per sq deg.
   \param[in] ESMOOTH Amount of extra smoothing to apply
   \param[in] OVERSAMPLE Amount of oversampling to use when simulating image
@@ -84,21 +84,19 @@ simManager::simManager(const std::string& MODELFILE,
 		       bool USEBIN, unsigned int NBINS) :
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
-  fftsize(FFTSIZE), n0(N0), sig_i(SIGI), sig_i_sm(SIGI), fwhm(FWHM), 
-  pixsize(PIXSIZE), inv_bmhist(nbeambins), filtscale(FILTSCALE), filt(NULL),
-  simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, OVERSAMPLE, 
+  fftsize(FFTSIZE), n0(N0), fwhm(FWHM), pixsize(PIXSIZE), 
+  inv_bmhist(nbeambins, FILTSCALE), 
+  simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, FILTSCALE, OVERSAMPLE, 
 	NBINS, POWERSPECFILE), 
-  oversample(OVERSAMPLE), use_binning(USEBIN), model(MODELFILE), 
-  esmooth(ESMOOTH) {
+  use_binning(USEBIN), model(MODELFILE) {
 
 #ifdef TIMING
   initTime = getTime = getLikeTime = 0;
 #endif
 
-  if (ESMOOTH > 0.0) {
+  if (simim.isSmoothed()) {
     do_extra_smooth = true;
     bm.setFWHM(std::sqrt(fwhm*fwhm+esmooth*esmooth));
-    sig_i_sm = simim.getSmoothedNoiseEstimate();
   } else {
     do_extra_smooth = false;
     bm.setFWHM(fwhm);
@@ -124,9 +122,7 @@ simManager::simManager(const std::string& MODELFILE,
   }
 
   // Set up the histogrammed beam
-  if (filtscale > 0)
-    filt = new hipassFilter(filtscale);
-  inv_bmhist.fill(bm, nfwhm, PIXSIZE, filt, true, oversample);
+  inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE);
 
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
@@ -144,7 +140,6 @@ simManager::~simManager() {
   }
   if (min_n0 != NULL) delete[] min_n0;
   if (delta_n0 != NULL) delete[] delta_n0;
-  if (filt != NULL) delete filt;
 }
 
 /*!
@@ -162,7 +157,7 @@ void simManager::doSims(bool verbose=false) {
   //Turn off gsl error handler during call
   gsl_error_handler_t *old_handler = gsl_set_error_handler_off();
 
-  if (do_extra_smooth) sigval = sig_i_sm; else sigval = sig_i;    
+  sigval = simim.getFinalNoise();
 
   //Now, set up the parameters to pass to the minimizer.  Ugly!
   varr[0] = static_cast<void*>(&pdfac);
@@ -205,8 +200,7 @@ void simManager::doSims(bool verbose=false) {
     }
 
     //Make simulated image (mean subtracted, possibly with filtering)
-    simim.realize(model, n0, filt, do_extra_smooth, true, use_binning,
-		  like_sparcity);
+    simim.realize(model, n0, true, use_binning, like_sparcity);
 
     //Now set up the minimization; note this involves calling minfunc
     // so we can't do it until all the arguments are ready
@@ -235,7 +229,8 @@ void simManager::doSims(bool verbose=false) {
       //Now, update current init range.  We step a quarter way in log
       // space between here and 1.0. 
       next_initrange = exp2(0.75 * log2(curr_initrange)); 
-    } while ( (exp_iter < max_expiter) && ( (fa <= fm) || (fb <= fm) ) );
+
+    } while ((exp_iter < max_expiter) && ((fa <= fm) || (fb <= fm)));
     
     if ((fa <= fm) || (fb <= fm)) {
       std::stringstream errstr;
@@ -435,12 +430,12 @@ int simManager::writeToFits(const std::string& outputfile) const {
 		 &status);
 
 
-  if (do_extra_smooth) {
+  if (simim.isSmoothed()) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
-    dtmp = esmooth;
+    dtmp = simim.getEsmooth();
     fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH"), &dtmp, 
 		   const_cast<char*>("Extra smoothing fwhm [arcsec]"), 
 		   &status);
@@ -450,19 +445,16 @@ int simManager::writeToFits(const std::string& outputfile) const {
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
   }
-  dtmp = sig_i;
+  dtmp = simim.getInstNoise();
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI"), &dtmp, 
 		 const_cast<char*>("Instrument noise"), 
 		 &status);
-  if (do_extra_smooth) {
-    dtmp = sig_i_sm;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGISM"), &dtmp, 
-		   const_cast<char*>("Smoothed instrument noise"), 
-		   &status);
-  }
-
-  if (oversample > 1) {
-    utmp = oversample;
+  dtmp = simim.getFinalNoise();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL"), &dtmp, 
+		 const_cast<char*>("Instrument noise with smoothing/filtering"), 
+		 &status);
+  if (simim.isOversampled()) {
+    utmp = simim.getOversampling();
     fits_write_key(fp, TUINT, const_cast<char*>("OVERSMPL"), &utmp, 
 		   const_cast<char*>("Oversampling factor"), 
 		   &status);
@@ -510,6 +502,18 @@ int simManager::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TDOUBLE, const_cast<char*>("N0INIRNG"), &dtmp, 
 		 const_cast<char*>("N0 range fraction for minimization"), 
 		 &status);
+
+  itmp = simim.isFiltered();
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp, 
+		 const_cast<char*>("Has hipass filtering been applied?"), 
+		 &status);
+  if (simim.isFiltered()) {
+    dtmp = simim.getFiltScale();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp, 
+		 const_cast<char*>("Hipass filtering scale [arcsec]"), 
+		 &status);
+  } 
+
   utmp = getN1();
   fits_write_key(fp, TUINT, const_cast<char*>("N1"), &utmp, 
 		 const_cast<char*>("Image extent, dimension 1"), 

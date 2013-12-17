@@ -13,10 +13,29 @@
 #include "../include/beam.h"
 #include "../include/pofdExcept.h"
 
+/*!
+  \param[in] N1 Dimension of simulated image along 1st axis
+  \param[in] N2 Dimension of simulated image along 2nd axis
+  \param[in] PIXSIZE Pixel size in arcseconds.
+  \param[in] FWHM The FWHM of the simulated image in arcsec, before
+              filtering or smoothing
+  \param[in] SIGI Gaussian instrumental noise in the units the model is in.
+              This is the noise before additional smoothing or filtering.
+  \param[in] ESMOOTH Additional Gaussian smoothing FWHM.  If non-zero,
+              additional smoothing is applied.
+  \param[in] FILTERSCALE High-pass filtering scale, in arcseconds.
+              Zero means no filtering.
+  \param[in] OVERSAMPLE Oversampling of simulated image.  Must be odd.
+              1 means no additional oversampling.
+  \param[in] NBINS Number of bins, if binning is applied.
+  \param[in] powerspecfile File containing power spectrum.  If set, the
+              source positions are generated using this P(k).  If not set, they
+	      are uniformly distributed across the image.
+*/
 simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 		   double FWHM, double SIGI, double ESMOOTH, 
-		   unsigned int OVERSAMPLE, unsigned int NBINS,
-		   const std::string& powerspecfile) {
+		   double FILTERSCALE, unsigned int OVERSAMPLE, 
+		   unsigned int NBINS, const std::string& powerspecfile) {
   n1 = N1;
   n2 = N2;
   oversample = OVERSAMPLE;
@@ -37,7 +56,6 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   sigi = SIGI;
   is_full = false;
   esmooth = ESMOOTH;
-  smooth_applied = false;
   is_binned = false;
   nbins = NBINS;
   bin_sparcity = 1;
@@ -45,12 +63,20 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   bindelta = 0.0;
   binval = NULL;
 
+  sigi_final_computed = false;
+  sigi_final = 0.0;
+
   //Set RNG seed
   unsigned long long int seed;
   seed = static_cast<unsigned long long int>(time(NULL));
   seed += static_cast<unsigned long long int>(clock());
   rangen.set_seed(seed);
   
+  // Filtering
+  if (FILTERSCALE > 0.0)
+    filt = new hipassFilter(FILTERSCALE);
+  else filt = NULL;
+
   // Position generator if needed
   if (powerspecfile.empty()) {
     use_clustered_pos = false;
@@ -90,6 +116,7 @@ simImage::~simImage() {
   fftw_free(work);
   if (gen_image != NULL) fftw_free(gen_image);
   if (posgen != NULL) delete posgen;
+  if (filt != NULL) delete filt;
   delete[] gauss;
   if (gauss_add != NULL) delete[] gauss_add;
   if (binval != NULL) delete[] binval;
@@ -152,7 +179,7 @@ void simImage::downSample(unsigned int ni1, unsigned int ni2,
 void simImage::convolveInner(unsigned int n, const double* const arr,
 			     unsigned int ni1, unsigned int ni2,
 			     double* const inarr,
-			     double* const outarr) {
+			     double* const outarr) const {
   //inarr, outarr must be same size (ni1 by ni2)
   //This makes use of the work array to hold the intermediate product
   //In use, the input array may be data (if we aren't oversampling) or 
@@ -263,7 +290,6 @@ void simImage::convolveInner(unsigned int n, const double* const arr,
 void simImage::convolveWithBeamInPlace(unsigned int n1, unsigned int n2,
 				       double* const inout) {
   convolveInner(ngauss, gauss, n1, n2, inout, inout);
-  smooth_applied = false;
 }
 
 void simImage::convolveWithBeam(unsigned int ni1, unsigned int ni2,
@@ -279,7 +305,6 @@ void simImage::convolveWithBeam(unsigned int ni1, unsigned int ni2,
     //Simpler case -- from input to output via work
     convolveInner(ngauss, gauss, ni1, ni2, input, output);
   }
-  smooth_applied = false;
 }
 
 void simImage::convolveWithAdd() {
@@ -303,23 +328,79 @@ void simImage::convolveWithAdd() {
     (fwhm2 + esmooth2);
   for (unsigned int i = 0; i < n1 * n2; ++i)
     data[i] *= normval;
-  smooth_applied = true;
 }
 
-double simImage::getNoise() const {
-  if (sigi == 0.0) return 0.0;
-  if (! smooth_applied) return sigi;
-  return getSmoothedNoiseEstimate();
-}
+/*
+  This can include both filtering and additional Gaussian smoothing.
+  Note that it is not necessary for the data array to be filled
+  for this function to work, but it can take additional storage
+  equal to the size of the image.  
 
-//Will return estimated smoothed noise, even if current image is not smoothed
-double simImage::getSmoothedNoiseEstimate() const {
-  const double prefac = sqrt(2 * std::log(2) / pofd_coverage::pi);
-  if (sigi == 0) return 0.0;
-  if (esmooth <= 0.0) return sigi;
-  double fwhm2 = fwhm * fwhm;
-  return prefac * sigi * pixsize * (fwhm2 + esmooth * esmooth) / 
-    (esmooth * fwhm2);
+  This is not particularly cheap the first time it is called.
+  After that it uses the previously computed value.
+*/
+double simImage::getFinalNoise() const {
+  if (sigi_final_computed) return sigi_final;
+  if (sigi == 0) {
+    sigi_final_computed = true;
+    sigi_final = 0.0;
+    return sigi_final;
+  }
+  if (filt == NULL && esmooth <= 0.0) {
+    sigi_final_computed = true;
+    sigi_final = sigi;
+    return sigi_final;
+  }
+  if (filt == NULL) {
+    // Only extra Gaussian smoothing.  Can be done analytically
+    const double prefac = sqrt(2 * std::log(2) / pofd_coverage::pi);
+    double fwhm2 = fwhm * fwhm;
+    sigi_final_computed = true;
+    sigi_final = prefac * sigi * pixsize * (fwhm2 + esmooth * esmooth) / 
+      (esmooth * fwhm2);
+  } else {
+    // Filtering.  We have to do this by making a simulated image,
+    // filling it with noise, etc.  This is why this function may not
+    // be cheap
+    double* tmpdata = new double[n1 * n2];
+    for (unsigned int i = 0; i < n1 * n2; ++i)
+      tmpdata[i] = sigi * rangen.gauss();
+
+    // Apply additional Gaussian smoothing if needed
+    if (esmooth > 0) {
+      // See convolveWithAdd above
+      convolveInner(ngauss_add, gauss_add, n1, n2, tmpdata, tmpdata);
+      const double prefac = 4 * std::log(2) / pofd_coverage::pi;
+      double fwhm2 = fwhm * fwhm;
+      double esmooth2 = esmooth * esmooth;
+      double normval = prefac * (fwhm2 + esmooth2) * pixsize * pixsize / 
+	(fwhm2 + esmooth2);
+      for (unsigned int i = 0; i < n1 * n2; ++i)
+	tmpdata[i] *= normval;
+    }
+    
+    // Now filtering
+    filt->filter(pixsize, n1, n2, tmpdata);
+
+    // Now estimate the variance using the usual two pass algorithm
+    double mn = tmpdata[0];
+    for (unsigned int i = 1; i < n1 * n2; ++i)
+      mn += tmpdata[i];
+    mn /= static_cast<double>(n1 * n2);
+    double var, var2, dtmp;
+    var = var2 = 0.0;
+    for (unsigned int i = 0; i < n1 * n2; ++i) {
+      dtmp = tmpdata[i] - mn;
+      var += dtmp * dtmp;
+      var2 += dtmp;
+    }
+    var = var - var2 * var2 / static_cast<double>(n1 * n2);
+    var /= static_cast<double>(n1 * n2 - 1);
+    delete[] tmpdata;
+    sigi_final_computed = true;
+    sigi_final = sqrt(var);
+  }
+  return sigi_final;
 }
 
 
@@ -332,8 +413,6 @@ double simImage::getArea() const {
   Generates a simulated image
   \param[in] model Base number counts model
   \param[in] n0 Number of sources per area to generate
-  \param[in] filt Filter to apply.  If NULL, don't filter.
-  \param[in] extra_smooth Apply additional Gaussian smoothing
   \param[in] meansub Do mean subtraction.  Note that filtering
              automatically results in mean subtraction.
   \param[in] bin Create binned image data
@@ -341,8 +420,7 @@ double simImage::getArea() const {
                          Does nothing if no binning.
 */
 void simImage::realize(const numberCounts& model, double n0,
-		       hipassFilter* const filt,
-		       bool extra_smooth, bool meansub, bool bin,
+		       bool meansub, bool bin,
 		       unsigned int sparsebin) {
 
   if (!isValid())
@@ -421,12 +499,8 @@ void simImage::realize(const numberCounts& model, double n0,
       data[i] += sigi * rangen.gauss();
 
   //Extra smoothing, if set
-  if ( extra_smooth && ( (nsrcs > 0) || (sigi > 0.0) ) ) {
-    if (ngauss_add == 0)
-       throw pofdExcept("simImage","realize",
-			"Trying to apply extra smoothing without setting esmooth",4);
+  if (esmooth > 0.0 && ((nsrcs > 0) || (sigi > 0.0)))
     convolveWithAdd();
-  }
 
   // Apply filtering.  Note this is done after adding noise and
   // downsampling to the final resolution (if oversampling is used).
@@ -441,9 +515,60 @@ void simImage::realize(const numberCounts& model, double n0,
   if (bin) applyBinning(sparsebin);
 }
 
+
+
+/*!
+  \param[in] sparsebin Only take every this many pixels when binning. 1 means
+                        fully sampled (0 is also interpreted to mean the same
+			thing)
+
+  Keeps the original, unbinned image around as well
+*/
+void simImage::applyBinning(unsigned int sparsebin) {
+  if (!is_full)
+    throw pofdExcept("simImage", "applyBinning",
+		     "Trying to bin empty image", 1);
+
+  if (nbins == 0) throw pofdExcept("simImage", "applyBinning",
+				   "Trying to bin with no bins", 2);
+
+  if (sparsebin >= n1 * n2) 
+    throw pofdExcept("simImage", "applyBinning",
+		     "Sparse binning factor larger than simulated image", 3);
+
+  //Only allocated the first time we bin
+  //There is no way to change nbins after initialization
+  if (binval == NULL)
+    binval = new unsigned int[nbins];
+  for (unsigned int i = 0; i < nbins; ++i)
+    binval[i] = 0;
+
+  //First, we need the minimum and maximum
+  double minval, maxval;
+  getMinMax(minval, maxval);
+  
+  //We want to put the max and min in the center of the top and
+  // bottom bin
+  bincent0 = minval;
+  if (nbins == 1)
+    bindelta = 2 * (maxval - minval);
+  else
+    bindelta = (maxval - minval) / static_cast<double>(nbins - 1);
+
+  //And... bin
+  double ibindelta = 1.0 / bindelta;
+  unsigned int idx;
+  if (sparsebin > 1) bin_sparcity = sparsebin; else bin_sparcity = 1;
+  for (unsigned int i = 0; i < n1*n2; i += bin_sparcity) {
+    idx = static_cast<unsigned int>((data[i] - bincent0) * ibindelta + 0.5);
+    binval[idx] += 1;
+  } 
+  is_binned = true;
+}
+
 double simImage::meanSubtract() {
   if (!is_full)
-    throw pofdExcept("simImage","meanSubtract","No data",1);
+    throw pofdExcept("simImage", "meanSubtract", "No data", 1);
   double mn = getMean();
   for (unsigned int i = 0; i < n1*n2; ++i)
     data[i] -= mn;
@@ -529,53 +654,14 @@ double simImage::getBeamSumSq() const {
   return sum1D*sum1D;
 }
 
-/*!
-  \param[in] sparsebin Only take every this many pixels when binning. 1 means
-                        fully sampled (0 is also interpreted to mean the same
-			thing)
+double simImage::getFiltScale() const {
+  if (filt == NULL) return std::numeric_limits<double>::quiet_NaN();
+  return filt->getFiltScale();
+}
 
-  Keeps the original, unbinned image around as well
-*/
-void simImage::applyBinning(unsigned int sparsebin) {
-  if (!is_full)
-    throw pofdExcept("simImage", "applyBinning",
-		     "Trying to bin empty image", 1);
-
-  if (nbins == 0) throw pofdExcept("simImage", "applyBinning",
-				   "Trying to bin with no bins", 2);
-
-  if (sparsebin >= n1 * n2) 
-    throw pofdExcept("simImage", "applyBinning",
-		     "Sparse binning factor larger than simulated image", 3);
-
-  //Only allocated the first time we bin
-  //There is no way to change nbins after initialization
-  if (binval == NULL)
-    binval = new unsigned int[nbins];
-  for (unsigned int i = 0; i < nbins; ++i)
-    binval[i] = 0;
-
-  //First, we need the minimum and maximum
-  double minval, maxval;
-  getMinMax(minval, maxval);
-  
-  //We want to put the max and min in the center of the top and
-  // bottom bin
-  bincent0 = minval;
-  if (nbins == 1)
-    bindelta = 2 * (maxval - minval);
-  else
-    bindelta = (maxval - minval) / static_cast<double>(nbins - 1);
-
-  //And... bin
-  double ibindelta = 1.0 / bindelta;
-  unsigned int idx;
-  if (sparsebin > 1) bin_sparcity = sparsebin; else bin_sparcity = 1;
-  for (unsigned int i = 0; i < n1*n2; i += bin_sparcity) {
-    idx = static_cast<unsigned int>((data[i] - bincent0) * ibindelta + 0.5);
-    binval[idx] += 1;
-  } 
-  is_binned = true;
+double simImage::getEsmooth() const {
+  if (esmooth <= 0.0) return std::numeric_limits<double>::quiet_NaN();
+  else return esmooth;
 }
 
 /*!
@@ -614,37 +700,37 @@ int simImage::writeToFits(const std::string& outputfile) const {
 		 &status);
 
   //Sim params
-  double tmpval = fwhm;
-  int tmpi = 0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &tmpval, 
+  int itmp = 0;
+  double dtmp = fwhm;
+
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &dtmp, 
 		 const_cast<char*>("Beam fwhm [arcsec]"), 
 		 &status);
-  if (smooth_applied) {
-    tmpi = 1;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+  if (esmooth > 0) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
-    tmpval = esmooth;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH"), &tmpval, 
+    dtmp = esmooth;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH"), &dtmp, 
 		   const_cast<char*>("Extra smoothing fwhm [arcsec]"), 
 		   &status);
   } else {
-    tmpi = 0;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
   }
 
-  tmpval = sigi;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI"), &tmpval, 
-		 const_cast<char*>("Instrument noise"), 
+  dtmp = sigi;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI"), &dtmp, 
+		 const_cast<char*>("Raw instrument noise"), 
 		 &status);
-  if (smooth_applied) {
-    tmpval = getSmoothedNoiseEstimate();
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGISM"), &tmpval, 
-		   const_cast<char*>("Smoothed instrument noise"), 
-		   &status);
-  }
+
+  dtmp = getFinalNoise();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFINL"), &dtmp, 
+		 const_cast<char*>("Final instrument noise"), 
+		 &status);
 
   if (oversample > 1) {
     unsigned int utmp = oversample;
@@ -653,9 +739,20 @@ int simImage::writeToFits(const std::string& outputfile) const {
 		    &status);
   }
 
-  if (use_clustered_pos) tmpi = 1; else tmpi = 0;
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &tmpi,
+  if (use_clustered_pos) itmp = 1; else itmp = 0;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &itmp,
 		 const_cast<char*>("Use clustered positions"), &status);
+
+
+  if (filt != NULL) itmp = 1; else itmp = 0;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
+		 const_cast<char*>("Use clustered positions"), &status);
+  if (filt != NULL) {
+    dtmp = filt->getFiltScale();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp, 
+		   const_cast<char*>("Hipass filtering scale [arcsec]"), 
+		   &status);
+  }
 
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
 		 const_cast<char*>(pofd_coverage::version), 
@@ -675,35 +772,35 @@ int simImage::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE2"),
 		 const_cast<char*>("DEC--TAN"),
 		 const_cast<char*>("WCS: Projection type axis 2"),&status);
-  tmpval = n1/2;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX1"), &tmpval, 
+  dtmp = n1/2;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX1"), &dtmp, 
 		 const_cast<char*>("Ref pix of axis 1"), &status);
-  tmpval = n2/2;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX2"), &tmpval, 
+  dtmp = n2/2;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX2"), &dtmp, 
 		 const_cast<char*>("Ref pix of axis 2"), &status);
-  tmpval = 90.0; //Arbitrary
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
+  dtmp = 90.0; //Arbitrary
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &dtmp, 
 		 const_cast<char*>("val at ref pix axis 1"), &status);
-  tmpval = 10.0; //Arbitrary
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL2"), &tmpval, 
+  dtmp = 10.0; //Arbitrary
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL2"), &dtmp, 
 		 const_cast<char*>("val at ref pix axis 2"), &status);
-  tmpval = - pixsize/3600.0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_1"), &tmpval, 
+  dtmp = - pixsize/3600.0;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_1"), &dtmp, 
 		 const_cast<char*>("Pixel scale axis 1,1"), &status);
-  tmpval = 0.0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_2"), &tmpval, 
+  dtmp = 0.0;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_2"), &dtmp, 
 		 const_cast<char*>("Pixel scale axis 1,2"), &status);
-  tmpval = 0.0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_1"), &tmpval, 
+  dtmp = 0.0;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_1"), &dtmp, 
 		 const_cast<char*>("Pixel scale axis 2,1"), &status);
-  tmpval = pixsize/3600.0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_2"), &tmpval, 
+  dtmp = pixsize/3600.0;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_2"), &dtmp, 
 		 const_cast<char*>("Pixel scale axis 2,2"), &status);
-  tmpval = 2000.0;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("EPOCH"), &tmpval, 
+  dtmp = 2000.0;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("EPOCH"), &dtmp, 
 		 const_cast<char*>("WCS: Epoch of celestial pointing"), 
 		 &status);
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("EQUINOX"), &tmpval, 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("EQUINOX"), &dtmp, 
 		 const_cast<char*>("WCS: Equinox of celestial pointing"), 
 		 &status);
 

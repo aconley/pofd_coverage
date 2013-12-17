@@ -378,11 +378,15 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
 
 ////////////////////////////////////////////////
 
-beamHist::beamHist(unsigned int NBINS) : has_data(false), inverse(false), 
-					 nbins(0), fwhm(0.0), nfwhm(3.5),
-					 pixsize(0.0), eff_area(0.0), 
-					 oversamp(1), filtscale(0.0),
-					 n_pos(0), n_neg(0) {
+/*!
+  \param[in] NBINS Number of bins in histogram
+  \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If zero, no 
+             filtering is applied.
+*/
+beamHist::beamHist(unsigned int NBINS, double FILTSCALE) : 
+  has_data(false), inverse(false), nbins(0), fwhm(0.0), nfwhm(3.5),
+  pixsize(0.0), eff_area(0.0), oversamp(1), n_pos(0), n_neg(0) {
+
   if (NBINS == 0)
     throw pofdExcept("beamHist", "beamHist", "Invalid (non-positive) NBINS", 1);
   nbins = NBINS;
@@ -390,6 +394,10 @@ beamHist::beamHist(unsigned int NBINS) : has_data(false), inverse(false),
   bm_pos = new double[nbins];
   wt_neg = new unsigned int[nbins];
   bm_neg = new double[nbins];
+  if (FILTSCALE > 0.0)
+    filt = new hipassFilter(FILTSCALE);
+  else
+    filt = NULL;
 }
 
 beamHist::~beamHist() {
@@ -397,6 +405,12 @@ beamHist::~beamHist() {
   delete[] bm_pos;
   delete[] wt_neg;
   delete[] bm_neg;
+  if (filt != NULL) delete filt;
+}
+
+double beamHist::getFiltScale() const {
+  if (filt == NULL) return std::numeric_limits<double>::quiet_NaN();
+  return filt->getFiltScale();
 }
 
 /*!
@@ -447,13 +461,11 @@ std::pair<double, double> beamHist::getMinMaxNeg() const {
   \param[in] bm Beam we are getting the histogram for
   \param[in] num_fwhm Number of FWHM out we will go on beam
   \param[in] pixsz Pixel size (arcseconds)
-  \param[in] filt High pass filter we will apply.  If NULL, don't filter.
   \param[in] inv Histogram the inverse beam
   \param[in] oversampling Oversampling of beam. Must be odd
 */
 void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
-		    hipassFilter* const filt, bool inv, 
-		    unsigned int oversampling) {
+		    bool inv, unsigned int oversampling) {
 
   const double minval = 1e-5; //Always ignore beam values below this
 
@@ -462,10 +474,6 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   fwhm = bm.getFWHM();
   oversamp = oversampling;
   nfwhm = num_fwhm;
-  if (filt != NULL)
-    filtscale = filt->getFiltScale();
-  else
-    filtscale = 0.0;
 
   // Get how many pixels we will go out
   unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
@@ -627,47 +635,59 @@ void beamHist::writeToFits(const std::string& outputfile) const {
     return;
   }
 
+
+  // Primary header
+  int itmp;
+  double dtmp;
+  itmp = inverse;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &itmp,
+		 const_cast<char*>("Inverse beam?"), &status);
+  dtmp = fwhm;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &dtmp,
+		 const_cast<char*>("FWHM [arcsec]"), &status);
+  dtmp = pixsize;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp,
+		 const_cast<char*>("Pixel scale [arcsec]"), &status);
+  dtmp = nfwhm;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
+		 const_cast<char*>("Number of FWHM out"), &status);
+  
+  if (filt != NULL) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
+		   const_cast<char*>("Is beam filtered?"), &status);
+    dtmp = filt->getFiltScale();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
+		   const_cast<char*>("Filtering scale [arcsec]"), &status);
+  } else {
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
+		   const_cast<char*>("Is beam filtered?"), &status);
+  }
+  
+  if (oversamp > 1) {
+    unsigned int utmp;
+    utmp = oversamp;
+    fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
+		   const_cast<char*>("Oversampling"), &status);
+  }
+
+  fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
+		 const_cast<char*>(pofd_coverage::version), 
+		 const_cast<char*>("pofd_coverage version"),
+		 &status);
+  fits_write_history(fp, const_cast<char*>("Beam from pofd_coverage"),
+		     &status);
+  fits_write_date(fp, &status);
+  
+
   char* ttype[]= {"WEIGHT", "BEAM"};
   char* tform[] = {"1I", "1D"};
   
-  int itmp;
-  double dtmp;
+  // Pos beam
   if (n_pos > 0) {
     fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, "POSBEAM", 
 		    &status );
-    // Header
-    itmp = inverse;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &itmp,
-		   const_cast<char*>("Inverse beam?"), &status);
-    dtmp = fwhm;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &dtmp,
-		   const_cast<char*>("FWHM [arcsec]"), &status);
-    dtmp = pixsize;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp,
-		   const_cast<char*>("Pixel scale [arcsec]"), &status);
-    dtmp = nfwhm;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
-		   const_cast<char*>("Number of FWHM out"), &status);
-    if (filtscale > 0) {
-      dtmp = filtscale;
-      fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
-		     const_cast<char*>("Filtering scale [arcsec]"), &status);
-    }
-    if (oversamp > 1) {
-      unsigned int utmp;
-      utmp = oversamp;
-      fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
-		     const_cast<char*>("Oversampling"), &status);
-    }
-    fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
-		   const_cast<char*>(pofd_coverage::version), 
-		   const_cast<char*>("pofd_coverage version"),
-		   &status);
-    fits_write_history(fp,const_cast<char*>("Beam from pofd_coverage"),
-		       &status);
-    fits_write_date(fp, &status);
-  
-    // Now do the data
     fits_insert_rows(fp, 0, n_pos, &status);
     for (unsigned int i = 0; i < n_pos; ++i) {
       itmp = static_cast<int>(wt_pos[i]);
@@ -678,41 +698,8 @@ void beamHist::writeToFits(const std::string& outputfile) const {
 
   }
   if (n_neg > 0) {
-    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, "POSBEAM", 
+    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, "NEGBEAM", 
 		    &status );
-    // Header
-    itmp = inverse;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &itmp,
-		   const_cast<char*>("Inverse beam?"), &status);
-    dtmp = fwhm;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &dtmp,
-		   const_cast<char*>("FWHM [arcsec]"), &status);
-    dtmp = pixsize;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp,
-		   const_cast<char*>("Pixel scale [arcsec]"), &status);
-    dtmp = nfwhm;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
-		   const_cast<char*>("Number of FWHM out"), &status);
-    if (filtscale > 0) {
-      dtmp = filtscale;
-      fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
-		     const_cast<char*>("Filtering scale [arcsec]"), &status);
-    }
-    if (oversamp > 1) {
-      unsigned int utmp;
-      utmp = oversamp;
-      fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
-		     const_cast<char*>("Oversampling"), &status);
-    }
-    fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
-		   const_cast<char*>(pofd_coverage::version), 
-		   const_cast<char*>("pofd_coverage version"),
-		   &status);
-    fits_write_history(fp,const_cast<char*>("Beam from pofd_coverage"),
-		       &status);
-    fits_write_date(fp, &status);
-  
-    // Now do the data
     fits_insert_rows(fp, 0, n_neg, &status);
     for (unsigned int i = 0; i < n_neg; ++i) {
       itmp = static_cast<int>(wt_neg[i]);

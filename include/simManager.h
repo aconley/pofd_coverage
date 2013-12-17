@@ -56,18 +56,13 @@ class simManager {
   //Model params
   double n0; //!< Number of sources per sq deg in input model
   std::string modelfile; //!< File we got model from
-  double sig_i; //!< Instrument noise
-  double sig_i_sm; //!< Smoothed instrument noise; is sig_i if no smoothing
 
   //Stuff for doing individual sims
   double fwhm; //!< FWHM of image beam
   double pixsize; //!< Pixel size of image and beam
   beam bm; //!< Beam
   beamHist inv_bmhist; //!< Histogrammed inverse beam
-  double filtscale; //!< Filter scale, in arcsec
-  hipassFilter* filt; //!< Filter
   mutable simImage simim; //!< Simulated image
-  unsigned int oversample; //!< Amount of oversampling when generating image
   bool use_binning; //!< Work on binned images in likelihood
   mutable PD pd; //!< Holds computed P(D)
   mutable PDFactory pdfac; //!< Computes P(D)

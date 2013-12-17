@@ -24,10 +24,16 @@ class simImage {
   unsigned int ngen1; //!< Number of generated pixels in dimension 1
   unsigned int ngen2; //!< Number of generated pixels in dimension 2
   double pixsize_gen; //!< Size of pixels in internal mode
-
+  
   double fwhm; //!< Beam FWHM in arcsec
-  double sigi; //!< Instrumental noise
+  double sigi; //!< Raw instrumental noise, before any smoothing/filtering
   double esmooth; //!< Additional Gaussian smoothing FWHM in arcsec
+  mutable hipassFilter* filt; //!< High pass filter
+
+  // sigi_final is only computed when needed, since it isn't 
+  // totally free to do.
+  mutable bool sigi_final_computed; //!< Has sig_final been computed
+  mutable double sigi_final; //!< Instrumental noise after smoothing/filtering. 
 
   bool is_binned; //!< Has data been binned
   unsigned int nbins; //!< Number of bins
@@ -47,8 +53,8 @@ class simImage {
   double *data; //!< Data
   
   //Working variables
-  double *work; //!< Holds temporary array during convolution
-  double *gen_image; //!< Used to generate raw image if oversampling
+  mutable double *work; //!< Holds temporary array during convolution
+  mutable double *gen_image; //!< Used to generate raw image if oversampling
 
   //Working arrays for holding beam
   unsigned int ngauss; //!< Number of elements in gauss
@@ -57,7 +63,6 @@ class simImage {
   //Additional smoothing arrays
   unsigned int ngauss_add; //!< Number of additional smoothing elements
   double *gauss_add; //!< Additional smoothing array
-  bool smooth_applied; //!< Was esmooth applied to this fill
 
   /*! \brief Downsample array */
   void downSample(unsigned int, unsigned int, double* const,
@@ -68,7 +73,7 @@ class simImage {
 
   void convolveInner(unsigned int, const double* const,
 		     unsigned int, unsigned int, double* const,
-		     double* const); //!< Inner convolution function
+		     double* const) const; //!< Inner convolution function
 
   /*! \brief Do convolution with beams in place*/
   void convolveWithBeamInPlace(unsigned int, unsigned int, double* const);
@@ -79,18 +84,19 @@ class simImage {
   void convolveWithAdd();
 
  public:
-
-  simImage(unsigned int, unsigned int, double,
-	   double, double, double=0.0, unsigned int=1, 
-	   unsigned int=1000, const std::string& powerfile=""); //!< Constructor with parameters
+  /*!\brief Constructor */
+  simImage(unsigned int N1, unsigned int N2, double pixsize,
+	   double FWHM, double SIGI, double ESMOOTH=0.0, 
+	   double FILTERSCALE=0.0, unsigned int OVERSAMPLE=1, 
+	   unsigned int NBINS=1000, const std::string& powerfile=""); 
   ~simImage(); //!< Destructor
 
   /*! \brief Set random number generator seed */
   void setSeed(unsigned long long int seed) const { rangen.set_seed(seed); }
   
   /*! \brief Generate realization of model */
-  void realize(const numberCounts&, double, hipassFilter* const=NULL,
-	       bool=false, bool=false, bool=false, unsigned int=1); 
+  void realize(const numberCounts& model, double n0, 
+	       bool meansub=false, bool bin=false, unsigned int sparsebin=1); 
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 
@@ -101,10 +107,16 @@ class simImage {
   double getBinCent0() const { return bincent0; } //!< Get bin 0 center
   double getBinDelta() const { return bindelta; } //!< Get bin size
 
-  /*! \brief Noise in current simulated image */
-  double getNoise() const;
+  bool isFiltered() const { return filt != NULL; } //!< Is the image filtered
+  double getFiltScale() const; //!< Get image filter scale
 
-  double getSmoothedNoiseEstimate() const; //!< Returns noise level estimate for smoothed image
+  unsigned int isSmoothed() const { return esmooth > 0.0; }
+  double getEsmooth() const;
+
+  /*! \brief Get Raw instrument noise */
+  double getInstNoise() const { return sigi; }
+
+  double getFinalNoise() const; //!< Returns noise level estimate for image after smoothing or filtering
 
   double meanSubtract(); //!< Subtract mean from image
   void getMinMax(double& min, double& max) const; //!< Get minima and maxima of data
@@ -116,6 +128,7 @@ class simImage {
 
   unsigned int getN1() const { return n1; } //!< Gets number of pixels in band1
   unsigned int getN2() const { return n2; } //!< Gets number of pixels in band2
+  bool isOversampled() const { return oversample > 1; } 
   double getOversampling() const { return oversample; } //!< Gets amount of oversampling
   double getPixSize() const { return pixsize; } //!< Gets pixel size (arcsec)
   const double* const getData() const { return data; } //!< Gets data pointer

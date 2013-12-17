@@ -16,7 +16,6 @@
 #include "../include/doublebeam.h"
 #include "../include/numberCountsDouble.h"
 #include "../include/pofdExcept.h"
-#include "../include/hipassFilter.h"
 
 static struct option long_options[] = {
   {"double", no_argument, 0, 'd'},
@@ -184,7 +183,6 @@ int getPDSingle(int argc, char **argv) {
   try {
     numberCounts model(modelfile);
     beam bm(fwhm);
-    hipassFilter *filt = NULL;
     PDFactory pfactory;
     PD pd;
 
@@ -221,15 +219,9 @@ int getPDSingle(int argc, char **argv) {
 	printf("oversamp:              %u\n", oversample);
     }
 
-    // Set up filter if necessary
-    if (filterscale > 0) 
-      filt = new hipassFilter(filterscale);
-
     // Get histogrammed inverse beam
-    beamHist inv_bmhist(nbins);
-    inv_bmhist.fill(bm, nfwhm, pixsize, filt, true, oversample);
-
-    if (filt != NULL) delete filt; // Don't need this any more
+    beamHist inv_bmhist(nbins, filterscale);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample);
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 

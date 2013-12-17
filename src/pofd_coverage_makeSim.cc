@@ -139,17 +139,12 @@ int makeSimSingle(int argc, char **argv) {
 		<< " Your value: " << n0 << std::endl;
 
     simImage dim(n1, n2, pixsize, fwhm, sigma, extra_smooth,
-		 oversample, 1000, powspecfile);
-    if (have_user_seed) dim.setSeed( user_seed );
+		 filtscale, oversample, 1000, powspecfile);
+    if (have_user_seed) dim.setSeed(user_seed);
 
-    // Set up filtering if needed
-    hipassFilter* filt = NULL;
-    if (filtscale > 0.0) filt = new hipassFilter(filtscale);
 
     // Generate with mean subtraction
-    dim.realize(model, n0, filt, do_extra_smooth, true, false); 
-
-    if (filt != NULL) delete filt;
+    dim.realize(model, n0, true, false); 
 
     //Write it
     if (verbose) std::cout << "Writing simulated image to " << outputfile

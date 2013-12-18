@@ -11,8 +11,8 @@
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
-const unsigned int simManager::nbeambins = 80; 
-const double simManager::nfwhm = 3.0; 
+const unsigned int simManager::nbeambins = 120; 
+const double simManager::nfwhm_nofilt = 3.5;
 
 //This is the function we call to find the best fitting n0
 /*!
@@ -122,6 +122,13 @@ simManager::simManager(const std::string& MODELFILE,
   }
 
   // Set up the histogrammed beam
+  double nfwhm;
+  if (FILTSCALE > 0) {
+    // Go all the way out to the image size so the filtering is
+    // accurate.  Expensive, but we only do this once after all.
+    unsigned int maxextent = N1 > N2 ? N1 : N2;
+    nfwhm = static_cast<double>(maxextent) * PIXSIZE / (2 * fwhm);
+  } else nfwhm = nfwhm_nofilt; // Can be smaller if not filtering
   inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE);
 
   varr = new void*[4];

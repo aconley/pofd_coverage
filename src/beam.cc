@@ -635,7 +635,15 @@ void beamHist::writeToFits(const std::string& outputfile) const {
     return;
   }
 
-
+  // Empty primary HDU
+  long axissize[2];
+  axissize[0] = axissize[1] = 0;
+  fits_create_img(fp, FLOAT_IMG, 2, axissize, &status);
+  if (status) {
+    fits_report_error(stderr, status);
+    return;
+  }
+  
   // Primary header
   int itmp;
   double dtmp;

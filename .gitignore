@@ -17,6 +17,7 @@ pofd_coverage*tar.gz
 pofd_coverage_getBeam
 pofd_coverage_makeCat
 pofd_coverage_makeSim
+pofd_coverage_getR
 pofd_coverage_getPD
 pofd_coverage_runSim
 model_test

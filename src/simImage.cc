@@ -728,7 +728,7 @@ int simImage::writeToFits(const std::string& outputfile) const {
 		 &status);
 
   dtmp = getFinalNoise();
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFINL"), &dtmp, 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL"), &dtmp, 
 		 const_cast<char*>("Final instrument noise"), 
 		 &status);
 
@@ -746,7 +746,7 @@ int simImage::writeToFits(const std::string& outputfile) const {
 
   if (filt != NULL) itmp = 1; else itmp = 0;
   fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
-		 const_cast<char*>("Use clustered positions"), &status);
+		 const_cast<char*>("Hipass filtering applied"), &status);
   if (filt != NULL) {
     dtmp = filt->getFiltScale();
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp, 

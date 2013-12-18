@@ -439,7 +439,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
 		<< std::endl;
       std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
-      std::cout << "\t--sigma NOISE" << std::endl;
+      std::cout << "\t-s, --sigma NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (def: 0)." << std::endl;
       std::cout << "\tTWO-D MODEL OPTIONS" << std::endl;
       std::cout << "\t--extra_smooth1 FWHM" << std::endl;

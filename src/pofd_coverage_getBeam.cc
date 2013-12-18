@@ -322,6 +322,9 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tPrint this message and exit." << std::endl;
       std::cout << "\t-H --histogram" << std::endl;
       std::cout << "\t\tWrite out the histogrammed beam." << std::endl;
+      std::cerr << "\t-i, --inverse" << std::endl;
+      std::cout << "\t\tReturn the inverse beam rather than the beam."
+		<< std::endl;
       std::cout << "\t-N, --nfwhm value" << std::endl;
       std::cout << "\t\tNumber of beam FWHM out to go when computing beam."
 		<< "(def: 3.5)" << std::endl;

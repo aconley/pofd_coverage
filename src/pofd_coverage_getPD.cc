@@ -58,7 +58,7 @@ int getPDSingle(int argc, char **argv) {
   sigma               = 2e-3;
   has_wisdom          = false;
   nflux               = 131072;
-  nbins               = 80;
+  nbins               = 120;
   nfwhm               = 3.5;
   verbose             = false;
   return_log          = false;

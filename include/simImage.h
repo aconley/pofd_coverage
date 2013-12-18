@@ -33,6 +33,7 @@ class simImage {
   // sigi_final is only computed when needed, since it isn't 
   // totally free to do.
   mutable bool sigi_final_computed; //!< Has sig_final been computed
+  mutable unsigned int sigi_final_ntrials; //!< Number of trials we did to determine sigi_final
   mutable double sigi_final; //!< Instrumental noise after smoothing/filtering. 
 
   bool is_binned; //!< Has data been binned
@@ -116,7 +117,7 @@ class simImage {
   /*! \brief Get Raw instrument noise */
   double getInstNoise() const { return sigi; }
 
-  double getFinalNoise() const; //!< Returns noise level estimate for image after smoothing or filtering
+  double getFinalNoise(unsigned int ntrials=3) const; //!< Returns noise level estimate for image after smoothing or filtering
 
   double meanSubtract(); //!< Subtract mean from image
   void getMinMax(double& min, double& max) const; //!< Get minima and maxima of data

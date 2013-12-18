@@ -64,6 +64,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   binval = NULL;
 
   sigi_final_computed = false;
+  sigi_final_ntrials = 0;
   sigi_final = 0.0;
 
   //Set RNG seed
@@ -331,75 +332,110 @@ void simImage::convolveWithAdd() {
 }
 
 /*
+  \param[in] ntrials Number of trials to do if measuring filtered noise.
+  \returns Instrument noise including effects of filtering, etc.
+  
   This can include both filtering and additional Gaussian smoothing.
   Note that it is not necessary for the data array to be filled
   for this function to work, but it can take additional storage
   equal to the size of the image.  
 
   This is not particularly cheap the first time it is called.
-  After that it uses the previously computed value.
+  After that it uses the previously computed value if possible.  
 */
-double simImage::getFinalNoise() const {
-  if (sigi_final_computed) return sigi_final;
-  if (sigi == 0) {
-    sigi_final_computed = true;
-    sigi_final = 0.0;
-    return sigi_final;
-  }
-  if (filt == NULL && esmooth <= 0.0) {
-    sigi_final_computed = true;
-    sigi_final = sigi;
-    return sigi_final;
-  }
-  if (filt == NULL) {
-    // Only extra Gaussian smoothing.  Can be done analytically
-    const double prefac = sqrt(2 * std::log(2) / pofd_coverage::pi);
-    double fwhm2 = fwhm * fwhm;
-    sigi_final_computed = true;
-    sigi_final = prefac * sigi * pixsize * (fwhm2 + esmooth * esmooth) / 
-      (esmooth * fwhm2);
-  } else {
-    // Filtering.  We have to do this by making a simulated image,
-    // filling it with noise, etc.  This is why this function may not
-    // be cheap
-    double* tmpdata = new double[n1 * n2];
-    for (unsigned int i = 0; i < n1 * n2; ++i)
-      tmpdata[i] = sigi * rangen.gauss();
+double simImage::getFinalNoise(unsigned int ntrials) const {
 
-    // Apply additional Gaussian smoothing if needed
-    if (esmooth > 0) {
-      // See convolveWithAdd above
-      convolveInner(ngauss_add, gauss_add, n1, n2, tmpdata, tmpdata);
-      const double prefac = 4 * std::log(2) / pofd_coverage::pi;
-      double fwhm2 = fwhm * fwhm;
-      double esmooth2 = esmooth * esmooth;
-      double normval = prefac * (fwhm2 + esmooth2) * pixsize * pixsize / 
-	(fwhm2 + esmooth2);
-      for (unsigned int i = 0; i < n1 * n2; ++i)
-	tmpdata[i] *= normval;
-    }
-    
-    // Now filtering
-    filt->filter(pixsize, n1, n2, tmpdata);
+  // esmooth normalization factor input
+  const double prefac = 4 * std::log(2) / pofd_coverage::pi;
 
-    // Now estimate the variance using the usual two pass algorithm
-    double mn = tmpdata[0];
-    for (unsigned int i = 1; i < n1 * n2; ++i)
-      mn += tmpdata[i];
-    mn /= static_cast<double>(n1 * n2);
-    double var, var2, dtmp;
-    var = var2 = 0.0;
-    for (unsigned int i = 0; i < n1 * n2; ++i) {
-      dtmp = tmpdata[i] - mn;
-      var += dtmp * dtmp;
-      var2 += dtmp;
-    }
-    var = var - var2 * var2 / static_cast<double>(n1 * n2);
-    var /= static_cast<double>(n1 * n2 - 1);
-    delete[] tmpdata;
-    sigi_final_computed = true;
-    sigi_final = sqrt(var);
+  // First decide if we can re-use the previous value
+  bool recompute = true;
+  if (sigi_final_computed) {
+    if (filt == NULL) recompute = false; // Ignore ntrials -- not needed
+    else if (ntrials <= sigi_final_ntrials) recompute = false;
   }
+  if (ntrials == 0)
+    throw pofdExcept("simImage", "getFinalNoise",
+		     "Invalid (non-positive) ntrials", 1);
+
+  // If necessary, do the computation
+  if (recompute) {
+    if (sigi == 0) {
+      sigi_final_computed = true;
+      sigi_final_ntrials = ntrials; // Well, not really...
+      sigi_final = 0.0;
+    } else if (filt == NULL) {
+      if (esmooth <= 0.0) {
+	sigi_final_computed = true;
+	sigi_final_ntrials = ntrials;
+	sigi_final = sigi;
+      } else {
+	// Only extra Gaussian smoothing.  Can be done analytically
+	const double prefac = sqrt(2 * std::log(2) / pofd_coverage::pi);
+	double fwhm2 = fwhm * fwhm;
+	sigi_final_computed = true;
+	sigi_final_ntrials = ntrials;
+	sigi_final = prefac * sigi * pixsize * (fwhm2 + esmooth * esmooth) / 
+	  (esmooth * fwhm2);
+      }
+    } else {
+      // Filtering, and maybe smoothing.  
+      // We have to do this by making a simulated image, filling it with 
+      // noise, etc.  This is why this function may not be cheap,
+      // and why we support multiple trials
+      double* tmpdata = new double[n1 * n2];
+
+      // Compute esmooth prefactor if needed
+      double normval = 1.0;
+      if (esmooth > 0) {
+	double fwhm2 = fwhm * fwhm;
+	double esmooth2 = esmooth * esmooth;
+	normval = prefac * (fwhm2 + esmooth2) * pixsize * pixsize / 
+	  (fwhm2 + esmooth2);
+      }
+
+      double var, var1, var2, mn, dtmp;
+      var = 0.0;
+      for (unsigned int idx = 0; idx < ntrials; ++idx) {
+	// Fill with random noise
+	for (unsigned int i = 0; i < n1 * n2; ++i)
+	  tmpdata[i] = sigi * rangen.gauss();
+
+	// Apply additional Gaussian smoothing if needed
+	if (esmooth > 0) {
+	  convolveInner(ngauss_add, gauss_add, n1, n2, tmpdata, tmpdata);
+	  // Then renormalize
+	  for (unsigned int i = 0; i < n1 * n2; ++i)
+	    tmpdata[i] *= normval;
+	}
+
+	// Now filtering
+	filt->filter(pixsize, n1, n2, tmpdata);
+
+	// Measure using two pass algorithm
+	mn = tmpdata[0];
+	for (unsigned int i = 1; i < n1 * n2; ++i)
+	  mn += tmpdata[i];
+	mn /= static_cast<double>(n1 * n2);
+	var1 = var2 = 0.0;
+	for (unsigned int i = 0; i < n1 * n2; ++i) {
+	  dtmp = tmpdata[i] - mn;
+	  var1 += dtmp * dtmp;
+	  var2 += dtmp;
+	}
+	var1 -= var2 * var2 / static_cast<double>(n1 * n2);
+	var += var1 / static_cast<double>(n1 * n2 - 1);
+      }
+      if (ntrials > 1)
+	var /= static_cast<double>(ntrials);
+
+      delete[] tmpdata;
+      sigi_final_computed = true;
+      sigi_final_ntrials = ntrials;
+      sigi_final = sqrt(var);
+    }
+  }
+
   return sigi_final;
 }
 

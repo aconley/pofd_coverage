@@ -150,7 +150,7 @@ void beam::getRawBeam(unsigned int n, double pixsize,
   repixelating.
 
   Filtering is not supported
- */
+*/
 void beam::getRawBeam(unsigned int n, double pixsize, unsigned int oversamp,
 		      double* const bm) const {
 
@@ -239,7 +239,7 @@ void beam::getRawBeam(unsigned int n, double pixsize, unsigned int oversamp,
 
   The beam is center normalized.  Note that all spatial information is
   lost by splitting into neg/pos parts
- */
+*/
 void beam::getBeam(unsigned int n, double pixsize, double* const bm, 
 		   hipassFilter* const filter) const {
 
@@ -382,9 +382,16 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   \param[in] NBINS Number of bins in histogram
   \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If zero, no 
              filtering is applied.
+  \param[in] KEEP_FILT_INMEM If true (and FILTSCALE is not zero), keep
+             hipassFilter allocated.  Otherwise it is allocated/deallocated
+	     as called.  
+
+  If you are only planning on calling fill once, setting KEEP_FILT_INMEM
+  to false is more memory efficient.
 */
-beamHist::beamHist(unsigned int NBINS, double FILTSCALE) : 
-  has_data(false), inverse(false), nbins(0), fwhm(0.0), nfwhm(3.5),
+beamHist::beamHist(unsigned int NBINS, double FILTSCALE,
+		   bool KEEP_FILT_INMEM) : 
+  has_data(false), inverse(false), nbins(0), fwhm(0.0), nfwhm(4.0),
   pixsize(0.0), eff_area(0.0), oversamp(1), n_pos(0), n_neg(0) {
 
   if (NBINS == 0)
@@ -394,7 +401,10 @@ beamHist::beamHist(unsigned int NBINS, double FILTSCALE) :
   bm_pos = new double[nbins];
   wt_neg = new unsigned int[nbins];
   bm_neg = new double[nbins];
-  if (FILTSCALE > 0.0)
+
+  keep_filt = KEEP_FILT_INMEM;
+  filtscale = FILTSCALE;
+  if (filtscale > 0.0 && KEEP_FILT_INMEM)
     filt = new hipassFilter(FILTSCALE);
   else
     filt = NULL;
@@ -406,11 +416,6 @@ beamHist::~beamHist() {
   delete[] wt_neg;
   delete[] bm_neg;
   if (filt != NULL) delete filt;
-}
-
-double beamHist::getFiltScale() const {
-  if (filt == NULL) return std::numeric_limits<double>::quiet_NaN();
-  return filt->getFiltScale();
 }
 
 /*!
@@ -483,7 +488,16 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   // Get 2D beam
   // Temporary beam storage.  Must use fftw_malloc since we may filter
   double *bmtmp = (double*) fftw_malloc(sizeof(double) * npix * npix);
+  // Setup filter if needed
+  if ((filtscale > 0.0) && !(keep_filt))
+    filt = new hipassFilter(filtscale);
+  // Get the beam
   bm.getBeam(npix, pixsize, oversamp, bmtmp, filt); // Also filters
+  // Clean up filter if not permanent
+  if ((filtscale > 0.0) && !(keep_filt)) {
+    delete filt;
+    filt = NULL;
+  }
 
   // Find effective area
   double val;
@@ -660,11 +674,11 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
 		 const_cast<char*>("Number of FWHM out"), &status);
   
-  if (filt != NULL) {
+  if (filtscale > 0.0) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
 		   const_cast<char*>("Is beam filtered?"), &status);
-    dtmp = filt->getFiltScale();
+    dtmp = filtscale;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
 		   const_cast<char*>("Filtering scale [arcsec]"), &status);
   } else {

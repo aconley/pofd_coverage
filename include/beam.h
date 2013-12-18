@@ -77,6 +77,8 @@ class beamHist {
   double eff_area; //!< Effective area of beam in deg^2
   unsigned int oversamp; //!< Oversampling factor
 
+  bool keep_filt; //!< Keep filt allocated, or dealloc between calls
+  double filtscale; //!< Filtering scale, in arcsec
   hipassFilter* filt; //!< Hi pass filter, if any is being applied
 
   unsigned int n_pos; //!< Number of positive beam histogram elements filled
@@ -87,7 +89,8 @@ class beamHist {
   unsigned int* wt_neg; //!< Negative weights
   double *bm_neg; //!< Beam elements in each bin.
  public:
-  beamHist(unsigned int NBINS, double FILTSCALE=0.0); //!< Constructor
+  beamHist(unsigned int NBINS, double FILTSCALE=0.0,
+	   bool KEEP_FILT_INMEM=true); //!< Constructor
   ~beamHist(); //!< Destructor
   
   bool hasData() const { return has_data; }
@@ -108,7 +111,7 @@ class beamHist {
   const double* getBmNeg() const { return bm_neg; }
   
   bool isFiltered() const { return filt == NULL; } //!< Is the beam filtered
-  double getFiltScale() const; //!< Get filtering scale
+  double getFiltScale() const { return filtscale; } //!< Get filtering scale
 
   // Min/max values
   std::pair<double, double> getMinMaxPos() const; //!< Get min/max pos beam

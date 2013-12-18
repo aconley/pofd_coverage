@@ -32,6 +32,7 @@ class simManager {
 
   static const unsigned int nbeambins; //!< Number of bins for beam histogram
   static const double nfwhm_nofilt; //!< How far out to go on beam if no filtering for P(D) computation.
+  static const unsigned int nnoisetrials; //!< Number of trials to carry out when computing filtered noise level
 
   unsigned int nsims; //!< Number of simulations to do
   double n0initrange; //!< Initial range for likelihood peak finding step

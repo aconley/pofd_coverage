@@ -13,6 +13,7 @@
 
 const unsigned int simManager::nbeambins = 120; 
 const double simManager::nfwhm_nofilt = 3.5;
+const unsigned int simManager::nnoisetrials = 5;
 
 //This is the function we call to find the best fitting n0
 /*!
@@ -85,7 +86,7 @@ simManager::simManager(const std::string& MODELFILE,
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
   fftsize(FFTSIZE), n0(N0), fwhm(FWHM), pixsize(PIXSIZE), 
-  inv_bmhist(nbeambins, FILTSCALE), 
+  inv_bmhist(nbeambins, FILTSCALE, false), 
   simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, FILTSCALE, OVERSAMPLE, 
 	NBINS, POWERSPECFILE), 
   use_binning(USEBIN), model(MODELFILE) {
@@ -164,7 +165,8 @@ void simManager::doSims(bool verbose=false) {
   //Turn off gsl error handler during call
   gsl_error_handler_t *old_handler = gsl_set_error_handler_off();
 
-  sigval = simim.getFinalNoise();
+  // Should only be computed the first time
+  sigval = simim.getFinalNoise(nnoisetrials);
 
   //Now, set up the parameters to pass to the minimizer.  Ugly!
   varr[0] = static_cast<void*>(&pdfac);

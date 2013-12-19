@@ -461,6 +461,8 @@ int getPDDouble(int argc, char **argv) {
       printf("   N0:                 %0.4e\n", n0);
       printf("   sigma1:             %0.4f\n", sigma1);
       printf("   sigma2:             %0.4f\n", sigma2);
+      if (filterscale > 0.0)
+	printf("   filter scale:       %0.4f\n", filterscale);
       if (return_log) 
 	printf("  Returning log(P(D)) rather than P(D)\n");
       if (oversample != 1)
@@ -544,7 +546,7 @@ int main( int argc, char** argv ) {
 		<< " outfile" << std::endl; 
       std::cout << std::endl;
       std::cout << "\t Two-dimensional case:" << std::endl;
-      std::cout << "\t  pofd_coverage_getPD [options] -d modelfile n0 fwhm1 "
+      std::cout << "\t  pofd_coverage_getPD [options] -d modelfile n0 fwhm1"
 		<< " fwhm2" << std::endl;
       std::cout << "\t    maxflux1 maxflux2 outfile" << std::endl; 
       std::cout << std::endl;
@@ -616,6 +618,10 @@ int main( int argc, char** argv ) {
       std::cout << "\t-f, --fits" << std::endl;
       std::cout << "\t\tWrite output as a fits file rather than text."
 		<< std::endl;
+      std::cout << "\t-F, --filtscale VALUE" << std::endl;
+      std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
+		<< std::endl;
+      std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
       std::cout << "\t-l, --log" << std::endl;
       std::cout << "\t\tReturn the log P(D) rather than the P(D)."
 		<< std::endl;
@@ -631,6 +637,9 @@ int main( int argc, char** argv ) {
       std::cout << "\t--nbins value" << std::endl;
       std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 80)"
 		<< std::endl;
+      std::cout << "\t-o, --oversample VALUE" << std::endl;
+      std::cout << "\t\tAmount to oversample the beam; must be odd integer."
+		<< " (def: 1)" << std::endl;
       std::cout << "\t-p, --pixsize value" << std::endl;
       std::cout << "\t\tPixel size in arcsec. (def: FWHM/3.0)" << std::endl;
       std::cout << "\t-r, --rfile FILENAME" << std::endl;
@@ -644,13 +653,6 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tName of wisdom file (prepared with fftw-wisdom)." 
 		<< std::endl;
       std::cout << "\tONE-D MODEL OPTIONS" << std::endl;
-      std::cout << "\t-F, --filtscale VALUE" << std::endl;
-      std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
-		<< std::endl;
-      std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
-      std::cout << "\t-o, --oversample VALUE" << std::endl;
-      std::cout << "\t\tAmount to oversample the beam; must be odd integer."
-		<< " (def: 1)" << std::endl;
       std::cout << "\t-s, --sigma VALUE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (def: 0.002)" << std::endl;
       std::cout << "\tTWO-D MODEL OPTIONS" << std::endl;

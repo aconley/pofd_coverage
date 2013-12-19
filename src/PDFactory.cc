@@ -389,6 +389,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   maxflux_R = maxflux + est_shift;
 
   //Compute R integrals to update estimates for shift
+  // Note these are values for the base model
   std::vector<double> mom(3); //0th, 1st, 2nd moment
   getRIntegrals(n, maxflux_R, model, bm, mom, 3);
 
@@ -525,15 +526,15 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
   if (doshift) {
     //This should be the most common case,
     // and corresponds to having some noise
-    double sigfac = 0.5*sigma*sigma;
+    double sigfac = 0.5 * sigma * sigma;
 #pragma omp parallel
     {
       double w, expfac, rval, ival;
 #pragma omp for
       for (unsigned int idx = 1; idx < ncplx; ++idx) {
 	w = iflux * static_cast<double>(idx);
-	rval = n0ratio * rtrans[idx][0] - r0 - sigfac*w*w;
-	ival = n0ratio * rtrans[idx][1] - shift*w;
+	rval = n0ratio * rtrans[idx][0] - r0 - sigfac * w * w;
+	ival = n0ratio * rtrans[idx][1] - shift * w;
 	expfac = exp(rval);
 	pval[idx][0] = expfac * cos(ival);
 	pval[idx][1] = expfac * sin(ival);
@@ -618,14 +619,15 @@ edgeTime += std::clock() - starttime;
   starttime = std::clock();
 #endif
   double tmn; //True mean
-  pd.getMean(tmn,false);
+  pd.getMean(tmn, false);
   if ( std::isinf(tmn) || std::isnan(tmn) ) {
     std::stringstream str;
     str << "Un-shift amounts not finite: " << tmn << " " << std::endl;
     str << "At length: " << n << " with noise: " << sigma;
     throw pofdExcept("PDFactory","getPD",str.str(),8);
   }
-  if (verbose) std::cout << " Expected mean: " << shift+mn 
+  // Get mn corrected for n0 computation value
+  if (verbose) std::cout << " Expected mean: " << shift + mn * n0 / max_n0
 			 << " Realized mean: " << tmn << std::endl;
   pd.minflux = -tmn;
 #ifdef TIMING

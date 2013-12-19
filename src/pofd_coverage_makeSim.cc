@@ -168,7 +168,7 @@ int makeSimDouble(int argc, char **argv) {
   unsigned int n1, n2;
   double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2, filtscale;
   double extra_smooth1, extra_smooth2; //Additional smoothing
-  std::string modelfile, outputfile, powerspecfile; 
+  std::string modelfile, outputfile1, outputfile2, powerspecfile; 
   unsigned long long int user_seed;
   bool verbose, have_user_seed;
   unsigned int oversample;
@@ -221,7 +221,7 @@ int makeSimDouble(int argc, char **argv) {
       break;
     }
 
-  if (optind >= argc - 7) {
+  if (optind >= argc - 8) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
@@ -234,7 +234,8 @@ int makeSimDouble(int argc, char **argv) {
   pixsize    = atof(argv[optind + 4]);
   n1         = atoi(argv[optind + 5]);
   n2         = atoi(argv[optind + 6]);
-  outputfile = std::string(argv[optind + 7]);
+  outputfile1= std::string(argv[optind + 7]);
+  outputfile2= std::string(argv[optind + 8]);
 
   if (n0 < 0.0) {
     std::cout << "Invalid (negative) n0: " << n0 << std::endl;
@@ -287,7 +288,7 @@ int makeSimDouble(int argc, char **argv) {
 		<< " Your value: " << n0 << std::endl;
 
     simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, 
-		       filtscale, extra_smooth1, extra_smooth2, oversample, 
+		       extra_smooth1, extra_smooth2, filtscale, oversample, 
 		       1000, powerspecfile);
     if (have_user_seed) dim.setSeed( user_seed );
     
@@ -295,9 +296,9 @@ int makeSimDouble(int argc, char **argv) {
     dim.realize(model, n0, true, false);
 
     //Write it
-    if (verbose) std::cout << "Writing simulated image to " << outputfile
-			   << std::endl;
-    int status = dim.writeToFits(outputfile);
+    if (verbose) std::cout << "Writing simulated images to " << outputfile1
+			   << " and " << outputfile2 << std::endl;
+    int status = dim.writeToFits(outputfile1, outputfile2);
     if (status != 0) return status;
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
@@ -339,7 +340,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t One-dimensional case:" << std::endl;
       std::cout << "\t  pofd_coverage_makeSim [options] modelfile n0 fwhm "
 		<< "pixsize" << std::endl;
-      std::cout << "\t    n1 n2 outputfile" << std::endl;
+      std::cout << "\t    n1 n2 outputfile1 outputfile2" << std::endl;
       std::cout << std::endl;
       std::cout << "\t Two-dimensional case:" << std::endl;
       std::cout << "\t  pofd_coverage_makeSim [options] -d modelfile n0 fwhm1 "
@@ -402,6 +403,12 @@ int main( int argc, char** argv ) {
       std::cout << "\tPixsize gives the pixel size (in arcsec), while n1 and "
 		<< "n2 are the" << std::endl;
       std::cout << "\tnumber of pixels along each dimension." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tFor the 2D case, the simulated images in the two bands"
+		<< " are" << std::endl;
+      std::cout << "\twritten to different files so that they can be more"
+		<< " easily" << std::endl;
+      std::cout << "\tinput into other codes like pofd_affine." << std::endl;
       std::cout << std::endl;
       std::cout << "OPTIONS" << std::endl;
       std::cout << "\t-h --help" << std::endl;

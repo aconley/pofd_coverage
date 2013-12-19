@@ -682,7 +682,7 @@ void PDFactoryDouble::initPD(unsigned int n,
 
   //Now estimate the mean and standard deviation from that
   std::vector<double> mom(5);
-  getRIntegralsInternal(2, mom);
+  getRIntegralsInternal(2, mom); // for base model
   mn1 = mom[0] * n0ratio;
   mn2 = mom[1] * n0ratio;
   var_noi1 = mom[2] * n0ratio;
@@ -700,7 +700,7 @@ void PDFactoryDouble::initPD(unsigned int n,
   initR(n, maxflux_R1, maxflux_R2, model, bm, setEdge);
   
   //Update moments
-  getRIntegralsInternal(2, mom);
+  getRIntegralsInternal(2, mom); // Note: for base model
   mn1 = mom[0] * n0ratio;
   mn2 = mom[1] * n0ratio;
   var_noi1 = mom[2] * n0ratio;
@@ -737,12 +737,12 @@ void PDFactoryDouble::initPD(unsigned int n,
 
   //Make sure that maxflux is large enough that we don't get
   // bad aliasing wrap from the top around into the lower P(D) values.
-  if (maxflux1 <= pofd_coverage::n_sigma_pad*sg1)
+  if (maxflux1 <= pofd_coverage::n_sigma_pad * sg1)
     throw pofdExcept("PDFactoryDouble","initPD",
-		     "Top wrap problem, dimension 1",6);
-  if (maxflux2 <= pofd_coverage::n_sigma_pad*sg2)
+		     "Top wrap problem, dimension 1", 6);
+  if (maxflux2 <= pofd_coverage::n_sigma_pad * sg2)
     throw pofdExcept("PDFactoryDouble","initPD",
-		     "Top wrap problem, dimension 2",7);
+		     "Top wrap problem, dimension 2", 7);
 
   //The other side of the equation is that we want to zero-pad the
   // top, and later discard that stuff.  The idea is as follows:
@@ -1112,9 +1112,10 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog,
     throw pofdExcept("PDFactoryDouble","getPD",str.str(),4);
   }
   if (verbose) {
+    double n0compratio = n0 / max_n0; // Mean computed for max_n0
     std::cout << " Expected mean band1: " << std::fixed 
-	      << std::setprecision(6) << shift1+mn1 << " band2: "
-	      << shift2 + mn2 << std::endl;
+	      << std::setprecision(6) << shift1 + mn1 * n0compratio 
+	      << " band2: " << shift2 + mn2 * n0compratio << std::endl;
     std::cout << " Realized mean band1: " << std::fixed 
 	      << std::setprecision(6) << tmn1 << " band2: "
 	      << tmn2 << std::endl;

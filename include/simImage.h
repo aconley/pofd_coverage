@@ -31,7 +31,7 @@ class simImage {
   mutable hipassFilter* filt; //!< High pass filter
 
   // sigi_final is only computed when needed, since it isn't 
-  // totally free to do.
+  // totally free to do if there is filtering
   mutable bool sigi_final_computed; //!< Has sig_final been computed
   mutable unsigned int sigi_final_ntrials; //!< Number of trials we did to determine sigi_final
   mutable double sigi_final; //!< Instrumental noise after smoothing/filtering. 
@@ -86,7 +86,7 @@ class simImage {
 
  public:
   /*!\brief Constructor */
-  simImage(unsigned int N1, unsigned int N2, double pixsize,
+  simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 	   double FWHM, double SIGI, double ESMOOTH=0.0, 
 	   double FILTERSCALE=0.0, unsigned int OVERSAMPLE=1, 
 	   unsigned int NBINS=1000, const std::string& powerfile=""); 

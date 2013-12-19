@@ -6,8 +6,6 @@
 #include<string>
 #include<utility>
 
-#include<fitsio.h>
-
 #include "../include/numberCountsDouble.h"
 #include "../include/ran.h"
 #include "../include/positionGenerator.h"
@@ -106,7 +104,7 @@ class simImageDouble {
   bool isValid() const;
 
   /*! \brief Fits writer helper */
-  int writeFits(fitsfile*, unsigned int) const;
+  int writeFits(const std::string& outfile, unsigned int band) const;
 
  public:
 
@@ -179,7 +177,8 @@ class simImageDouble {
   /*! \brief Unchecked data access, band 2 (unbinned) */
   double getData2(unsigned int i, unsigned int j) const {return data2[i*n2+j];}
 
-  int writeToFits(const std::string& outfile) const; //!< Write as fits file
+  int writeToFits(const std::string& outfile1,
+		  const std::string& outfile2) const; //!< Write as fits files
 
 };
 

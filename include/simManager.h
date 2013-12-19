@@ -68,7 +68,6 @@ class simManager {
   mutable numberCounts model; //!< Model variable
 
   //Additional smoothing
-  bool do_extra_smooth; //!< Extra smoothing step
   double esmooth; //!< Additional smoothing
 
   //Stuff for GSL minimization call

@@ -9,6 +9,8 @@
 #include "../include/global_settings.h"
 #include "../include/pofdExcept.h"
 
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+
 /*!
   \param[in] FWHM     FWHM of beam, in arcsec
 */
@@ -313,6 +315,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   
   // Header
   double dtmp;
+  unsigned int utmp;
   fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &inverse,
 		 const_cast<char*>("Inverse beam?"), &status);
   dtmp = fwhm;
@@ -331,7 +334,6 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
 		     const_cast<char*>("Filtering scale [arcsec]"), &status);
   }
   if (oversamp > 1) {
-    unsigned int utmp;
     utmp = oversamp;
     fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
 		   const_cast<char*>("Oversampling"), &status);
@@ -645,6 +647,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   }
   
   // Primary header
+  unsigned int utmp;
   int itmp;
   double dtmp;
   itmp = inverse;
@@ -674,7 +677,6 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   }
   
   if (oversamp > 1) {
-    unsigned int utmp;
     utmp = oversamp;
     fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
 		   const_cast<char*>("Oversampling"), &status);

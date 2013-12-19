@@ -4,6 +4,7 @@
 
 #include<iostream> //For debuggin
 
+#include<fitsio.h>
 #include<fftw3.h> // For fftw_malloc
 
 #include "../include/global_settings.h"
@@ -860,55 +861,47 @@ void simImageDouble::applyBinning(unsigned int sparsebin) {
 /*!
   Writes a single band to a fits file
 
-  \param[in] fp Fitsfile pointer (assumed already open)
+  \param[in] outfile File to write to
   \param[in] idx Which band to write (1 or 2)
   \returns 0 on success, an error code (!=0) for anything else
 */
-int simImageDouble::writeFits(fitsfile *fp, unsigned int idx) const {
+int simImageDouble::writeFits(const std::string& outputfile, 
+			      unsigned int idx) const {
 
   if (idx < 1 || idx > 2)
     throw pofdExcept("simImageDouble","writeFits",
 		     "Invalid index", 1);
 
+  int status = 0;
+  fitsfile *fp;
+  fits_create_file(&fp, outputfile.c_str(), &status);
+  if (status) {
+    fits_report_error(stderr,status);
+    return status;
+  }
+
   //Make image array
-  int status;
   long axissize[2];
   axissize[0] = static_cast<long>(n1);
   axissize[1] = static_cast<long>(n2);
   fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
   
   // Write header
-  int tval = 1;
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("SIMPLE"),
-		 &tval, const_cast<char*>("Primary Header"),&status);
-  tval = 8;
-  fits_write_key(fp, TINT, const_cast<char*>("BITPIX"),
-		 &tval, NULL,&status);
-  tval = 0;
-  fits_write_key(fp, TINT, const_cast<char*>("NAXIS"),
-		 &tval, NULL,&status);
-  tval = 1;
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("Extend"),
-		 &tval, const_cast<char*>("Extensions may be present"),
-		 &status);
-  fits_write_history(fp, 
-		     const_cast<char*>("Simulated image from pofd_coverage"),
-		     &status);
-  fits_write_date(fp, &status);
+  int itmp = 0;
+  double tmpval;
 
-  //Model params
+  // Band
+  fits_write_key(fp, TUINT, const_cast<char*>("BAND"),
+		 &idx, const_cast<char*>("Which band is this image?"),
+		 &status);
+
+  // Model params
   fits_write_key(fp, TSTRING, const_cast<char*>("MODEL"),
 		 const_cast<char*>("Spline-Log Normal"), 
 		 const_cast<char*>("Model type"),
 		 &status);
-  tval = static_cast<int>(idx);
-  fits_write_key(fp, TINT, const_cast<char*>("BAND"), &tval,
-		 const_cast<char*>("Which band"),
-		 &status);
-  
+
   //Sim params
-  int itmp = 0;
-  double tmpval;
   tmpval = fwhm1;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &tmpval, 
 		 const_cast<char*>("Beam fwhm, band 1 [arcsec]"), 
@@ -952,7 +945,7 @@ int simImageDouble::writeFits(fitsfile *fp, unsigned int idx) const {
 		 const_cast<char*>("Final instrument noise, band 1"), 
 		 &status);
   tmpval = tmppair.second;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &tmpval, 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL2"), &tmpval, 
 		 const_cast<char*>("Final instrument noise, band 2"), 
 		 &status);
   
@@ -1025,6 +1018,13 @@ int simImageDouble::writeFits(fitsfile *fp, unsigned int idx) const {
 		 const_cast<char*>("WCS: Equinox of celestial pointing"), 
 		 &status);
 
+  // History, date
+  fits_write_history(fp, 
+		     const_cast<char*>("Simulated image from pofd_coverage"),
+		     &status);
+  fits_write_date(fp, &status);
+
+
   //Do data writing.  We have to make a transposed copy of the
   // data to do this, which is irritating as hell
   double *tmpdata = new double[n1];
@@ -1039,6 +1039,10 @@ int simImageDouble::writeFits(fitsfile *fp, unsigned int idx) const {
   }
   delete[] tmpdata;
 
+  // Close up
+  fits_close_file(fp, &status);
+  if (status)
+    fits_report_error(stderr, status);
   return status;
 }
 
@@ -1046,30 +1050,24 @@ int simImageDouble::writeFits(fitsfile *fp, unsigned int idx) const {
   \param[in] outputfile1 File to write to
   \param[in] outputfile2 File to write band 2 map to
   \returns 0 on success, an error code (!=0) for anything else
+
+  Write to two files rather than one with two extensions so that the files
+  produced by this code can be input to pofd_affine.
 */
-int simImageDouble::writeToFits(const std::string& outputfile) const {
+int simImageDouble::writeToFits(const std::string& outputfile1,
+				const std::string& outputfile2) const {
 
-  //Make the fits file
-  int status = 0;
-  fitsfile *fp;
-  fits_create_file(&fp, outputfile.c_str(), &status);
-  if (status) {
-    fits_report_error(stderr,status);
-    return status;
-  }
+  if (!is_full)
+    throw pofdExcept("simImageDouble", "writeToFits",
+		     "Trying to write image without realizing", 1);
 
-  status = writeFits(fp, 1);
+  int status = writeFits(outputfile1, 1);
   if (status)
     throw pofdExcept("simImageDouble", "writeToFits",
-		     "Failure writing band 1 map", 1);
-  status = writeFits(fp, 2);
+		     "Failure writing band 1 map", 2);
+  status = writeFits(outputfile2, 2);
   if (status)
     throw pofdExcept("simImageDouble", "writeToFits",
-		     "Failure writing band 2 map", 2);
-
-  // Close up
-  fits_close_file(fp, &status);
-  if (status)
-    fits_report_error(stderr, status);
+		     "Failure writing band 2 map", 3);
   return status;
 }

@@ -14,7 +14,6 @@
 
 #include "../include/simImage.h"
 #include "../include/beam.h"
-#include "../include/hipassFilter.h"
 #include "../include/PD.h"
 #include "../include/PDFactory.h"
 #include "../include/numberCounts.h"
@@ -56,7 +55,6 @@ class simManager {
 
   //Model params
   double n0; //!< Number of sources per sq deg in input model
-  std::string modelfile; //!< File we got model from
 
   //Stuff for doing individual sims
   double fwhm; //!< FWHM of image beam

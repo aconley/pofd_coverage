@@ -164,15 +164,10 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
     accoffset = gsl_interp_accel_alloc();
   }
 
-  nbm = 0;
-  bm_wts = NULL;
-  inv_bm1 = inv_bm2 = NULL;
-
   //Make sure what we read makes sense
   if (!isValidLoaded())
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
 		     "Invalid base model parameters",7);
-
 
   // Need to set base_n0, base_flux, etc.
   gsl_work = gsl_integration_workspace_alloc(1000);
@@ -251,10 +246,6 @@ numberCountsDouble::~numberCountsDouble() {
   delete[] logknotpos;
   delete[] knotvals;
   delete[] logknotvals;
-
-  if (bm_wts != NULL) delete[] bm_wts;
-  if (inv_bm1 != NULL) delete[] inv_bm1;
-  if (inv_bm2 != NULL) delete[] inv_bm2;
 }
 
 bool numberCountsDouble::isValidLoaded() const {
@@ -531,70 +522,44 @@ double numberCountsDouble::powerInt(double alpha, double beta) const {
 /*!
   \param[in] x1   Source response, band 1
   \param[in] x2   Source response, band 2
-  \param[in] bm   The beam
-  \param[in] pixsize The pixel size, in arcseconds, in both bands
-  \param[in] nfwhm The number of beam fwhm to use in the computation
-  \param[in] nbins The number of bins in the beam histogramming
-
+  \param[in] bm   The histogrammed inverse beam
   \returns R(x1, x2) computed for the base input model.
 */
-double numberCountsDouble::getR(double x1,double x2, const doublebeam& bm,
-				double pixsize, double nfwhm,
-				unsigned int nbins) const {
+double numberCountsDouble::getR(double x1, double x2, 
+				const doublebeamHist& bm) const {
 
-  if (pixsize <= 0.0)
-    throw pofdExcept("numberCountsDouble", 
-		     "getR", "Invalid (non-positive) pixsize", 1);
-  if (nfwhm <= 0.0)
-    throw pofdExcept("numberCountsDouble", "getR", 
-		     "Invalid (non-positive) nfwhm", 2);
-  if (nbins == 0)
-    throw pofdExcept("numberCountsDouble", "getR", 
-		     "Invalid (zero) nbins", 3);
   if (!isValid())
     throw pofdExcept("numberCountsDouble", "getR", 
-		     "Invalid model", 4);
-
-  double s1_max = knotpos[nknots-1];
-  if (x1 >= s1_max) return 0.0;
-  if (x1 <= 0.0 || x2 <= 0.0) return 0.0;
-
-  //Storage for beam pixels
-  unsigned int nbm_needed = nbins * nbins;
-  if (nbm < nbm_needed) {
-    //Must expand
-    if (bm_wts == NULL) delete[] bm_wts;
-    if (inv_bm1 == NULL) delete[] inv_bm1;
-    if (inv_bm2 == NULL) delete[] inv_bm2;
-    nbm = nbm_needed;
-    bm_wts = new unsigned int[nbm];
-    inv_bm1 = new double[nbm];
-    inv_bm2 = new double[nbm];
-  }
-  //Get number of pixels out we will go.  This has to be the same
-  // in each beam
-  double maxfwhm = bm.getFWHM1();
-  if (bm.getFWHM2() > maxfwhm) maxfwhm = bm.getFWHM2();
-  unsigned int npix = static_cast<unsigned int>(nfwhm * maxfwhm/pixsize + 
-						0.9999999999);
-  npix = 2 * npix + 1;
-
-  //Load inverse histogrammed beams into bm_wts, inv_bm?
-  unsigned int nnonzero;
-  bm.getBeamHist(npix, pixsize, nbins, nnonzero, bm_wts, 
-		 inv_bm1, inv_bm2, true);
+		     "Invalid model", 1);
+  if (!bm.hasData())
+    throw pofdExcept("numberCountsDouble", "getR", 
+		     "Beam histogram not filled", 2);
+  if (!bm.isInverse())
+    throw pofdExcept("numberCountsDouble", "getR", 
+		     "Beam histogram not inverse", 3);
 
   //Do actual R computation
+  unsigned int curr_n;
   double ieta1, ieta2, retval;
+  const unsigned int* wtptr;
+  const double* ibmptr1;
+  const double* ibmptr2;
   retval = 0.0;
-  for (unsigned int i = 0; i < nnonzero; ++i) {
-      ieta1 = inv_bm1[i];
-      ieta2 = inv_bm2[i];
-      retval += bm_wts[i] * ieta1 * ieta2 * 
+  for (unsigned int sgn = 0; sgn < 4; ++sgn) {
+    curr_n = bm.getN(sgn);
+    if (curr_n == 0) continue;  // None of that sign component
+    wtptr = bm.getWt(sgn);
+    ibmptr1 = bm.getBm1(sgn);
+    ibmptr2 = bm.getBm2(sgn);
+    for (unsigned int i = 0; i < curr_n; ++i) {
+      ieta1 = ibmptr1[i];
+      ieta2 = ibmptr2[i];
+      retval += wtptr[i] * ieta1 * ieta2 * 
 	getNumberCountsInner(x1 * ieta1, x2 * ieta2);
     } 
+  }
 
-  double prefac = pixsize / 3600.0;
+  double prefac = bm.getPixsize() / 3600.0;
   return prefac * prefac * retval;
 }
 
@@ -603,57 +568,22 @@ double numberCountsDouble::getR(double x1,double x2, const doublebeam& bm,
   \param[in] x1   Source response band 1, length n1
   \param[in] n2   Number of source responses, band 2
   \param[in] x2   Source response band 2, length n2
-  \param[in] bm   The beam
-  \param[in] pixsize The pixel size, in arcseconds, in both bands
-  \param[in] nfwhm The number of beam fwhm to use in the computation
-  \param[in] nbins The number of bins in the beam histogramming
-  \param[out] R   R value dimension n1*n2.  
+  \param[in] bm   The histogrammed inverse beam
+  \param[out] R   R value, preallocated by caller of dimension n1*n2.  
 */
 void numberCountsDouble::getR(unsigned int n1, const double* const x1,
 			      unsigned int n2, const double* const x2,
-			      const doublebeam& bm, double pixsize,
-			      double nfwhm, unsigned int nbins,
-			      double* R) const {
+			      const doublebeamHist& bm, double* const R) const {
   
-  if (pixsize <= 0.0)
-    throw pofdExcept("numberCountsDouble", 
-		     "getR", "Invalid (non-positive) pixsize", 1);
-  if (nfwhm <= 0.0)
-    throw pofdExcept("numberCountsDouble", "getR", 
-		     "Invalid (non-positive) nfwhm", 2);
-  if (nbins == 0)
-    throw pofdExcept("numberCountsDouble", "getR", 
-		     "Invalid (zero) nbins", 3);
   if (!isValid())
     throw pofdExcept("numberCountsDouble", "getR", 
-		     "Invalid model", 4);
-
-  double s1_max = knotpos[nknots-1];
-
-  //Storage for beam pixels
-  unsigned int nbm_needed = nbins * nbins;
-  if (nbm < nbm_needed) {
-    //Must expand
-    if (bm_wts == NULL) delete[] bm_wts;
-    if (inv_bm1 == NULL) delete[] inv_bm1;
-    if (inv_bm2 == NULL) delete[] inv_bm2;
-    nbm = nbm_needed;
-    bm_wts = new unsigned int[nbm];
-    inv_bm1 = new double[nbm];
-    inv_bm2 = new double[nbm];
-  }
-  //Get number of pixels out we will go.  This has to be the same
-  // in each beam
-  double maxfwhm = bm.getFWHM1();
-  if (bm.getFWHM2() > maxfwhm) maxfwhm = bm.getFWHM2();
-  unsigned int npix = static_cast<unsigned int>(nfwhm * maxfwhm/pixsize + 
-						0.9999999999);
-  npix = 2 * npix + 1;
-
-  //Load inverse histogrammed beams into bm_wts, inv_bm?
-  unsigned int nnonzero;
-  bm.getBeamHist(npix, pixsize, nbins, nnonzero, bm_wts, 
-		 inv_bm1, inv_bm2, true);
+		     "Invalid model", 1);
+  if (!bm.hasData())
+    throw pofdExcept("numberCountsDouble", "getR", 
+		     "Beam histogram not filled", 2);
+  if (!bm.isInverse())
+    throw pofdExcept("numberCountsDouble", "getR", 
+		     "Beam histogram not inverse", 3);
 
   //Do R computation
   // It is possible to do this computation much more efficiently
@@ -661,32 +591,43 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
   // where this will likely be a very sub-dominant cost, we go
   // for brute simplicity
 
-  double prefac = pixsize / 3600.0;
-  prefac = prefac * prefac;
+  unsigned int curr_n;
   double ieta1, ieta2, cx1, cx2, Rsum;
-  double *rowptr;
-  for (unsigned int j = 0; j < n1; ++j) {
-    cx1 = x1[j];
-    rowptr = R + j * n2;
-    if (cx1 <= 0 || cx1 >= s1_max)
-      for (unsigned int k = 0; k < n2; ++k)
-	rowptr[k] = 0.0;
-    else 
+  const unsigned int* wtptr;
+  const double* ibmptr1;
+  const double* ibmptr2;
+  double *rowptr; // Points into rows of R
+  for (unsigned int i = 0; i < n1 * n2; ++i) R[i] = 0.0;
+  for (unsigned int sgn = 0; sgn < 4; ++sgn) {
+    curr_n = bm.getN(sgn);
+    if (curr_n == 0) continue;  // None of that sign component
+    wtptr = bm.getWt(sgn);
+    ibmptr1 = bm.getBm1(sgn);
+    ibmptr2 = bm.getBm2(sgn);
+    for (unsigned int j = 0; j < n1; ++j) {
+      cx1 = x1[j];
+      if (cx1 <= 0.0) continue; // Avoid comp out of model range
+      rowptr = R + j * n2;
       for (unsigned int k = 0; k < n2; ++k) {
 	cx2 = x2[k];
-	if (cx2 <= 0.0) rowptr[k] = 0.0; else {
+	if (cx2 > 0.0) {
 	  //x1, x2 are in bounds, must do full sum over beams
 	  Rsum = 0.0;
-	  for (unsigned int i = 0; i < nnonzero; ++i) {
-	    ieta1 = inv_bm1[i];
-	    ieta2 = inv_bm2[i];
-	    Rsum += bm_wts[i] * ieta1 * ieta2 * 
+	  for (unsigned int i = 0; i < curr_n; ++i) {
+	    ieta1 = ibmptr1[i];
+	    ieta2 = ibmptr2[i];
+	    Rsum += wtptr[i] * ieta1 * ieta2 * 
 	      getNumberCountsInner(cx1 * ieta1, cx2 * ieta2);
 	  }
-	  rowptr[k] = prefac * Rsum;
+	  rowptr[k] += Rsum;
 	}
       }
+    }
   }
+
+  double prefac = bm.getPixsize() / 3600.0;
+  prefac = prefac * prefac;
+  for (unsigned int i = 0; i < n1 * n2; ++i) R[i] *= prefac;
 }
 
 /*!

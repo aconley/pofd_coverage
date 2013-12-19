@@ -95,9 +95,9 @@ class PDFactoryDouble {
   void free(); //!< Frees memory
 
   //*! \brief Initializes R*/
-  bool initR(unsigned int, double, double, const numberCountsDouble&,
-	     const doublebeam&, double, double, unsigned int,
-	     bool=true);
+  bool initR(unsigned int n, double maxflux1, double maxflux2, 
+	     const numberCountsDouble& model, const doublebeamHist& bm,
+	     bool setEdge=true);
 
   //*! \brief Compute integrals of R */
   void getRIntegralsInternal(unsigned int, std::vector<double>&) const;
@@ -129,9 +129,10 @@ class PDFactoryDouble {
   bool addWisdom(const std::string& filename);
 
   /*! \brief Initializes P(D) by computing R and forward transforming it*/
-  void initPD(unsigned int, double, double, double, double, double,
-	      const numberCountsDouble&, const doublebeam&,
-	      double, double, unsigned int, bool setEdge=true);
+  void initPD(unsigned int n, double inst_sigma1, double inst_sigma2, 
+	      double maxflux1, double maxflux2, double maxn0,
+	      const numberCountsDouble& model, const doublebeamHist& bm,
+	      bool setEdge=true);
 
   /*! \brief Gets P(D) with specified noise levels */
   void getPD(double, PDDouble&, bool setLog=true, 

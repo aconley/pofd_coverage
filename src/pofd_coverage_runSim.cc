@@ -138,7 +138,7 @@ int runSimSingle(int argc, char **argv) {
       break;
     }
 
-  if (optind >= argc-6 ) {
+  if (optind >= argc-6) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
@@ -237,7 +237,7 @@ int runSimSingle(int argc, char **argv) {
       if (oversample > 1)
 	printf("   oversampling:       %u\n", oversample);
       if (filtscale > 0)
-	printf("   Filtering Scale:    %0.2f\n", filtscale);
+	printf("   filtering Scale:    %0.2f\n", filtscale);
       if (sparcity > 1)
 	printf("   sparcity:           %u\n", sparcity);
       if (!powerspecfile.empty())
@@ -285,7 +285,7 @@ int runSimDouble(int argc, char **argv) {
   double fwhm1, fwhm2; //Calculation params (req)
   double esmooth1, esmooth2; //Extra smoothing amount
   unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample, sparcity;
-  double pixsize, n0rangefrac, n0initrange;
+  double pixsize, n0rangefrac, n0initrange, filtscale;
   double sigma1, sigma2; //Instrument noise, unsmoothed
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; // Power spectrum file
@@ -308,6 +308,7 @@ int runSimDouble(int argc, char **argv) {
   has_user_seed       = false;
   seed                = 1024;
   oversample          = 1;
+  filtscale           = 0.0;
   sparcity            = 1;
   nbins               = 1000;
   use_binning         = false;
@@ -331,6 +332,9 @@ int runSimDouble(int argc, char **argv) {
       break;
     case 'f' :
       fftsize = atoi(optarg);
+      break;
+    case 'F' :
+      filtscale = atof(optarg);
       break;
     case '1' :
       nbins = atoi(optarg);
@@ -378,7 +382,7 @@ int runSimDouble(int argc, char **argv) {
       break;
     }
 
-  if (optind >= argc-7 ) {
+  if (optind >= argc-7) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
@@ -437,6 +441,10 @@ int runSimDouble(int argc, char **argv) {
     std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
+  if (filtscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
+    return 1;
+  }
   if (n0 < 0.0) {
     std::cout << "Invalid (negative) n0" << std::endl;
     return 1;
@@ -493,6 +501,8 @@ int runSimDouble(int argc, char **argv) {
 	printf("   esmooth2:           %0.2f\n",esmooth2);
       if (oversample > 1)
 	printf("   oversampling:       %u\n",oversample);
+      if (filtscale > 0)
+	printf("   filtering Scale:    %0.2f\n", filtscale);
       if (sparcity > 1)
 	printf("   sparcity:           %u\n", sparcity);
       if (!powerspecfile.empty())
@@ -507,8 +517,9 @@ int runSimDouble(int argc, char **argv) {
 
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
-			 sigma1, sigma2, n0, esmooth1, esmooth2, oversample, 
-			 powerspecfile, sparcity, use_binning, nbins);
+			 filtscale, sigma1, sigma2, n0, esmooth1, esmooth2, 
+			 oversample, powerspecfile, sparcity, use_binning, 
+			 nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -644,6 +655,10 @@ int main(int argc, char **argv) {
       std::cout << "\t-b, --bin" << std::endl;
       std::cout << "\t\tBin the simulated image for the likelihood calculation."
 		<< std::endl;
+      std::cout << "\t-F, --filtscale VALUE" << std::endl;
+      std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
+		<< std::endl;
+      std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
       std::cout << "\t-f, --fftsize FFTSIZE" << std::endl;
       std::cout << "\t\tSize of FFT to use when computing P(D) (def: 131072 in"
 		<< std::endl;
@@ -702,16 +717,6 @@ int main(int argc, char **argv) {
       std::cout << "ONE-DIMENSIONAL OPTIONS" << std::endl;
       std::cout << "\t-e, --esmooth ESMOOTH" << std::endl;
       std::cout << "\t\tExtra smoothing FWHM (in arcsec)" << std::endl;
-      std::cout << "\t-F, --filtscale VALUE" << std::endl;
-      std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
-		<< std::endl;
-      std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
-      std::cout << "\t-o, --oversample VALUE" << std::endl;
-      std::cout << "\t\tAmount of oversampling to use (integral) when " 
-		<< "generating" << std::endl;
-      std::cout << "\t\timage.  The data is then down-binned to the specified"
-		<< "size." << std::endl;
-      std::cout << "\t\tThe default is to apply no oversampling." << std::endl;
       std::cout << "\t-s, --sigma noise" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (assumed Gaussian).  This"
 		<< " is" << std::endl;

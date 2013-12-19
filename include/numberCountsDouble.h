@@ -96,12 +96,6 @@ class numberCountsDouble {
   double base_flux2; //!< Flux density per area for base model, band 2
   double base_fluxsq2; //!< Flux density squared per area for base model, b2
 
-  //Working variables for histogrammed beam
-  mutable unsigned int nbm; //!< Number of elements in beam working arrays 
-  mutable unsigned int* bm_wts; //!< Histogrammed beam weights
-  mutable double* inv_bm1; //!< Histogrammed inverse beam, band 1
-  mutable double* inv_bm2; //!< Histogrammed inverse beam, band 2
-
   //Workspace
   gsl_integration_workspace *gsl_work; //!< Integration workspace for QAG
 
@@ -173,13 +167,12 @@ class numberCountsDouble {
   double getOffsetKnotValue(unsigned int idx) const { return offsetvals[idx]; }
 
   /*! \brief Get number of source responses, single value version */
-  double getR(double, double, const doublebeam&, double, double,
-	      unsigned int) const;
+  double getR(double f1, double f2, const doublebeamHist&) const;
   
   /*! \brief Get number of source responses, array version*/
-  void getR(unsigned int, const double*, unsigned int, const double*, 
-	    const doublebeam&, double, double, unsigned int,
-	    double*) const;
+  void getR(unsigned int n1, const double* f1, 
+	    unsigned int n2, const double* f2, 
+	    const doublebeamHist& bm, double* const R) const;
 
   /*! \brief Generate a source flux from model */
   std::pair<double, double> genSource(double udev, double gdev) const;

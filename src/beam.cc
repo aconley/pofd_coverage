@@ -84,7 +84,7 @@ void beam::getBeamFac(unsigned int n, double pixsize,
                    caller and be of length n * n
 
   The beam is center normalized.  Filtering not supported	     
- */
+*/
 void beam::getRawBeam(unsigned int n, double pixsize,
 		      double* const bm) const {
 
@@ -233,12 +233,8 @@ void beam::getRawBeam(unsigned int n, double pixsize, unsigned int oversamp,
 /*!
   \param[in] n  Number of pixels along each dimension.  Should be odd
   \param[in] pixsize Size of pixels in arcsec
-  \param[in] bmpos Beam. Must be pre-allocated by
-                   caller and be of length n * n
+  \param[in] bm Beam. Must be pre-allocated by caller and be of length n * n
   \param[in] filter Hi-pass filter to apply.  If null, don't apply filter
-
-  The beam is center normalized.  Note that all spatial information is
-  lost by splitting into neg/pos parts
 */
 void beam::getBeam(unsigned int n, double pixsize, double* const bm, 
 		   hipassFilter* const filter) const {
@@ -259,8 +255,6 @@ void beam::getBeam(unsigned int n, double pixsize, double* const bm,
   \param[in] bm Beam. Must be pre-allocated by
                    caller and be of length n * n
   \param[in] filter Hi-pass filter to apply.  If null, don't apply filter
-
-  The beam is center normalized.  
 */
 void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
 		   double* const bm, hipassFilter* const filter) const {
@@ -319,7 +313,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   
   // Header
   double dtmp;
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("FWHM"), &inverse,
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &inverse,
 		 const_cast<char*>("Inverse beam?"), &status);
   dtmp = fwhm;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &dtmp,
@@ -356,10 +350,10 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   // in filtering, treat it as if it might not be symmetric
   double *tmpdata = new double[npix];
   long fpixel[2] = { 1, 1 };
-  for ( unsigned int j = 0; j < npix; ++j ) {
+  for (unsigned int j = 0; j < npix; ++j) {
     if (inverse)
-      for (unsigned int i = 0; i < npix; ++i) tmpdata[i] = 
-						1.0 / bmtmp[i * npix + j];
+      for (unsigned int i = 0; i < npix; ++i) 
+	tmpdata[i] = 1.0 / bmtmp[i * npix + j];
     else
       for (unsigned int i = 0; i < npix; ++i) tmpdata[i] = bmtmp[i * npix + j];
     fpixel[1] = static_cast<long>(j + 1);
@@ -479,6 +473,7 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   fwhm = bm.getFWHM();
   oversamp = oversampling;
   nfwhm = num_fwhm;
+  eff_area = bm.getEffectiveArea();
 
   // Get how many pixels we will go out
   unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
@@ -487,6 +482,7 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
 
   // Get 2D beam
   // Temporary beam storage.  Must use fftw_malloc since we may filter
+  double val;
   double *bmtmp = (double*) fftw_malloc(sizeof(double) * npix * npix);
   // Setup filter if needed
   if ((filtscale > 0.0) && !(keep_filt))
@@ -499,16 +495,6 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
     filt = NULL;
   }
 
-  // Find effective area
-  double val;
-  val = bmtmp[0];
-  eff_area = val * val;
-  for (unsigned int i = 1; i < npix * npix; ++i) {
-    val = fabs(bmtmp[i]);
-    eff_area += val * val;
-  }
-  eff_area *= (pixsize * pixsize) / (3600.0 * 3600.0);
-  
   // Histogram
   // Find minimum and maximum non-zero parts for neg/pos histograms
   bool has_pos = false;

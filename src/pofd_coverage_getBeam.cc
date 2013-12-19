@@ -41,7 +41,7 @@ int getBeamSingle(int argc, char **argv) {
   std::string outputfile; // Output FITS file
 
   //Defaults
-  nbins               = 80;
+  nbins               = 120;
   nfwhm               = 3.5;
   verbose             = false;
   histogram           = false;
@@ -132,7 +132,6 @@ int getBeamSingle(int argc, char **argv) {
       if (histogram) printf("Returning histogrammed beam\n");
     }
 
-
     if (histogram) {
       // Get histogrammed beam
       beamHist bmhist(nbins, filterscale);
@@ -167,7 +166,7 @@ int getBeamDouble(int argc, char **argv) {
   std::string outputfile; //Ouput pofd option
 
   //Defaults
-  nbins               = 80;
+  nbins               = 120;
   nfwhm               = 3.5;
   verbose             = false;
   histogram           = false;
@@ -242,13 +241,15 @@ int getBeamDouble(int argc, char **argv) {
 
   try {
     doublebeam bm(fwhm1, fwhm2);
-    hipassFilter *filt = NULL;
 
     if (verbose) {
-      printf("   Beam fwhm1:         %0.2f\n", bm.getFWHM1());
-      printf("   Beam fwhm2:         %0.2f\n", bm.getFWHM2());
-      printf("   Beam area1:         %0.3e\n", bm.getEffectiveArea1());
-      printf("   Beam area2:         %0.3e\n", bm.getEffectiveArea2());
+      std::pair<double, double> dpr;
+      dpr = bm.getFWHM();
+      printf("   Beam fwhm1:         %0.2f\n", dpr.first);
+      printf("   Beam fwhm2:         %0.2f\n", dpr.second);
+      dpr = bm.getEffectiveArea();
+      printf("   Beam area1:         %0.3e\n", dpr.first);
+      printf("   Beam area2:         %0.3e\n", dpr.second);
       printf("   Pixel size:         %0.2f\n", pixsize);
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.4f\n", filterscale);
@@ -258,13 +259,18 @@ int getBeamDouble(int argc, char **argv) {
       if (histogram) printf("Returning histogrammed beam\n");
     }
 
-    // Set up filter if necessary
-    if (filterscale > 0) filt = new hipassFilter(filterscale);
-
-    throw pofdExcept("pofd_coverage_getBeam", "getBeamDouble",
-		     "2D beam not implemented", 1);
-
-    if (filt != NULL) delete filt;
+    if (histogram) {
+      // Get histogrammed beam
+      doublebeamHist bmhist(nbins, filterscale);
+      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp);
+      // Write
+      bmhist.writeToFits(outputfile);
+    } else {
+      hipassFilter *filt = NULL;
+      if (filterscale > 0) filt = new hipassFilter(filterscale);
+      bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, inverse);
+      if (filt != NULL) delete filt; 
+    }    
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
@@ -329,7 +335,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tNumber of beam FWHM out to go when computing beam."
 		<< "(def: 3.5)" << std::endl;
       std::cout << "\t--nbins value" << std::endl;
-      std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 80)"
+      std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 120)"
 		<< std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount to oversample the beam; must be odd integer."

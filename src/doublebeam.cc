@@ -1,6 +1,8 @@
 //doublebeam.cc
 
 #include<sstream>
+#include<limits>
+#include<fitsio.h>
 
 #include "../include/doublebeam.h"
 #include "../include/global_settings.h"
@@ -25,30 +27,26 @@ void doublebeam::setFWHM(double FWHM1, double FWHM2) {
   rhosq2 = pofd_coverage::rhofac / (FWHM2 * FWHM2);
 }
 
-double doublebeam::getEffectiveArea1() const {
-  return pofd_coverage::pi/rhosq1;
-}
-double doublebeam::getEffectiveArea2() const {
-  return pofd_coverage::pi/rhosq2;
+std::pair<double, double> doublebeam::getEffectiveArea() const {
+  return std::make_pair(pofd_coverage::pi/rhosq1,
+			pofd_coverage::pi/rhosq2);
 }
 
-double doublebeam::getEffectiveAreaSq1() const {
-  return 0.5*pofd_coverage::pi/rhosq1;
-}
-double doublebeam::getEffectiveAreaSq2() const {
-  return 0.5*pofd_coverage::pi/rhosq2;
+std::pair<double, double> doublebeam::getEffectiveAreaSq() const {
+  return std::make_pair(0.5 * pofd_coverage::pi/rhosq1,
+			0.5 * pofd_coverage::pi/rhosq2);
 }
 
 /*!
-  \params[in] sel Which band to use (1 or 2)
-  \params[in] n  Number of pixels along each dimension.  Should be odd
-  \params[in] pixsize Size of pixels in arcsec
-  \params[out] fac Returns doublebeam factor.  Must be pre-allocated by
+  \param[in] band Which band to use (1 or 2)
+  \param[in] n  Number of pixels along each dimension.  Should be odd
+  \param[in] pixsize Size of pixels in arcsec
+  \param[out] fac Returns doublebeam factor.  Must be pre-allocated by
                    caller and be of length n
 
   The doublebeam is center normalized.	     
- */
-void doublebeam::getBeamFac(unsigned int sel, unsigned int n, double pixsize,
+*/
+void doublebeam::getBeamFac(unsigned int band, unsigned int n, double pixsize,
 			    double* const fac) const {
 
   //Input checks
@@ -76,13 +74,13 @@ void doublebeam::getBeamFac(unsigned int sel, unsigned int n, double pixsize,
   }
 
   double fwhm;
-  if (sel == 1) 
+  if (band == 1) 
     fwhm = fwhm1;
-  else if (sel == 2)
+  else if (band == 2)
     fwhm = fwhm2;
   else {
     std::stringstream errstr;
-    errstr << "Invalid band selection " << sel << "; should be 1 or 2";
+    errstr << "Invalid band selection " << band << "; should be 1 or 2";
     throw pofdExcept("doublebeam", "getBeamFac", errstr.str(), 5);
   }
 
@@ -97,62 +95,37 @@ void doublebeam::getBeamFac(unsigned int sel, unsigned int n, double pixsize,
   }
 }
 
-/*!
-  \params[in] n  Number of pixels along each dimension.  Should be odd
-  \params[in] pixsize Size of pixels in arcsec
-  \params[out] fac Returns beam factor.  Must be pre-allocated by
-                   caller and be of length n
-
-  The beam is center normalized.	     
- */
-void doublebeam::getBeamFac1(unsigned int n, double pixsize,
-			     double* const fac) const {
-  return getBeamFac(1, n, pixsize, fac);
-}
 
 /*!
-  \params[in] n  Number of pixels along each dimension.  Should be odd
-  \params[in] pixsize Size of pixels in arcsec
-  \params[out] fac Returns beam factor.  Must be pre-allocated by
-                   caller and be of length n
-
-  The beam is center normalized.	     
- */
-void doublebeam::getBeamFac2(unsigned int n, double pixsize,
-			     double* const fac) const {
-  return getBeamFac(2, n, pixsize, fac);
-}
-
-/*!
-  \params[in] sel Which band to use (1 or 2)
-  \params[in] n  Number of pixels along each dimension.  Should be odd
-  \params[in] pixsize Size of pixels in arcsec
-  \params[out] bm Returns beam in row-major order.  Must be pre-allocated by
+  \param[in] band Which band to use (1 or 2)
+  \param[in] n Number of pixels along each dimension.  Should be odd
+  \param[in] pixsize Size of pixels in arcsec
+  \param[out] bm Returns beam in row-major order.  Must be pre-allocated by
                    caller and be of length n * n
 
-  The beam is center normalized.	     
- */
-void doublebeam::getBeam(unsigned int sel, unsigned int n, double pixsize,
-			 double* const bm) const {
+  The beam is center normalized.  Filtering not supported	     
+*/
+void doublebeam::getRawBeam(unsigned int band, unsigned int n, double pixsize,
+			    double* const bm) const {
 
   //Input checks
   if (n == 0) {
     std::stringstream errstr;
     errstr << "n (" << n << ") should be positive";
-    throw pofdExcept("doublebeam", "getBeam", errstr.str(), 1);
+    throw pofdExcept("doublebeam", "getRawBeam", errstr.str(), 1);
   }
   if (n % 2 == 0) {
     std::stringstream errstr;
     errstr << "n (" << n << ") should be odd";
-    throw pofdExcept("doublebeam", "getBeam", errstr.str(), 2);
+    throw pofdExcept("doublebeam", "getRawBeam", errstr.str(), 2);
   }
   if (pixsize <= 0.0) {
     std::stringstream errstr;
     errstr << "pixsize (" << pixsize << ") should be positive";
-    throw pofdExcept("doublebeam", "getBeam", errstr.str(), 3);
+    throw pofdExcept("doublebeam", "getRawBeam", errstr.str(), 3);
   }
   if (bm == NULL)
-    throw pofdExcept("doublebeam", "getBeam", "bm is not allocated", 4);
+    throw pofdExcept("doublebeam", "getRawBeam", "bm is not allocated", 4);
 
   if (n == 1) {
     bm[0] = 1.0;
@@ -160,17 +133,17 @@ void doublebeam::getBeam(unsigned int sel, unsigned int n, double pixsize,
   }
 
   double fwhm;
-  if (sel == 1) 
+  if (band == 1) 
     fwhm = fwhm1;
-  else if (sel == 2)
+  else if (band == 2)
     fwhm = fwhm2;
   else {
     std::stringstream errstr;
-    errstr << "Invalid band selection " << sel << "; should be 1 or 2";
-    throw pofdExcept("doublebeam", "getBeam", errstr.str(), 5);
+    errstr << "Invalid band selection " << band << "; should be 1 or 2";
+    throw pofdExcept("doublebeam", "getBeamFac", errstr.str(), 5);
   }
 
-  //Make factorized doublebeam, then multiply
+  //Make factorized beam, then multiply
   double* fac = new double[n];
   double sig = fwhm * pofd_coverage::fwhmfac / pixsize; //Gaussian sigma in pix
   double expfac = - 0.5 / (sig * sig);
@@ -194,183 +167,698 @@ void doublebeam::getBeam(unsigned int sel, unsigned int n, double pixsize,
   delete[] fac;
 }
 
+
 /*!
-  \params[in] n  Number of pixels along each dimension.  Should be odd
-  \params[in] pixsize Size of pixels in arcsec
-  \params[out] bm Returns beam in row-major order.  Must be pre-allocated by
+  \param[in] band Which band to use (1 or 2)
+  \param[in] n  Number of pixels along each dimension.  Should be odd
+  \param[in] pixsize Size of pixels in arcsec
+  \param[in] oversamp Oversampling.  Must be odd
+  \param[out] bm Returns beam in row-major order.  Must be pre-allocated by
                    caller and be of length n * n
 
-  The beam is center normalized.	     
- */
-void doublebeam::getBeam1(unsigned int n, double pixsize,
-			  double* const bm) const {
-  return getBeam(1, n, pixsize, bm);
-}
+  The beam is center normalized.  Note that the returned beam is
+  always at the nominal sampling.  It's just that if oversampling is
+  used this is generated by making a more finely sampled one and then
+  repixelating.
 
+  Filtering is not supported
+*/
+void doublebeam::getRawBeam(unsigned int band, unsigned int n, double pixsize, 
+			    unsigned int oversamp, double* const bm) const {
 
-/*!
-  \params[in] n  Number of pixels along each dimension.  Should be odd
-  \params[in] pixsize Size of pixels in arcsec
-  \params[out] bm Returns beam in row-major order.  Must be pre-allocated by
-                   caller and be of length n * n
-
-  The beam is center normalized.	     
- */
-void doublebeam::getBeam2(unsigned int n, double pixsize,
-			  double* const bm) const {
-  return getBeam(2, n, pixsize, bm);
-}
-
-/*!
-  \params[in] n  Number of pixels along each dimension.  Should be odd
-  \params[in] pixsize Size of pixels in arcsec
-  \params[in] nbins Maximum number of bins of output along each dimension
-  \param[out] nnonzero The number of elements of wt/bm1/bm2 that actually
-     have content
-  \params[out] wt Returns histogrammed beam weights, must be
-     pre-allocated by caller to nbins*nbins
-  \params[out] bm1 Returns histogrammed beam values, band 1
-                   Must be pre-allocated by caller and be of length nbins^2
-  \params[out] bm2 Returns histogrammed beam values, band 2
-                   Must be pre-allocated by caller and be of length nbins^2
-  \params[in] inverse If set, return one over the beam (for non-zero entries)
-
-  The beams are center normalized, and binned in log sized bins.
-  The first nnonzero entries contain the actual data.
-  The joint histogram is returned because that is what is needed to
-  compute P(D) variables like R.
- */
-void doublebeam::getBeamHist(unsigned int n, double pixsize,
-			     unsigned int nbins, unsigned int& nnonzero,
-			     unsigned int* const wt, double* const bm1,
-			     double* const bm2, bool inverse) const {
-
-  //Always ignore any locations where -either- beam is below this
-  const double minval = 1e-6; 
+  //Quick return
+  if (oversamp == 1) {
+    getRawBeam(band, n, pixsize, bm);
+    return;
+  }
 
   //Input checks
   if (n == 0) {
     std::stringstream errstr;
     errstr << "n (" << n << ") should be positive";
-    throw pofdExcept("doublebeam", "getBeamHist", errstr.str(), 1);
+    throw pofdExcept("doublebeam", "getRawBeam", errstr.str(), 1);
   }
   if (n % 2 == 0) {
     std::stringstream errstr;
     errstr << "n (" << n << ") should be odd";
-    throw pofdExcept("doublebeam", "getBeamHist", errstr.str(), 2);
+    throw pofdExcept("doublebeam", "getRawBeam", errstr.str(), 2);
   }
   if (pixsize <= 0.0) {
     std::stringstream errstr;
     errstr << "pixsize (" << pixsize << ") should be positive";
-    throw pofdExcept("doublebeam", "getBeamHist", errstr.str(), 3);
+    throw pofdExcept("doublebeam", "getRawBeam", errstr.str(), 3);
+  }
+  if (oversamp == 0) {
+    std::stringstream errstr;
+    errstr << "oversampling (" << oversamp << ") should be positive";
+    throw pofdExcept("doublebeam", "getRawBeam", errstr.str(), 4);
+  }
+  if (oversamp % 2 == 0) {
+    std::stringstream errstr;
+    errstr << "oversampling (" << oversamp << ") should be odd";
+    throw pofdExcept("doublebeam", "getRawBeam", errstr.str(), 5);
+  }
+  if (bm == NULL)
+    throw pofdExcept("doublebeam", "getRawBeam", "bm is not allocated", 6);
+
+  double fwhm;
+  if (band == 1) 
+    fwhm = fwhm1;
+  else if (band == 2)
+    fwhm = fwhm2;
+  else {
+    std::stringstream errstr;
+    errstr << "Invalid band selection " << band << "; should be 1 or 2";
+    throw pofdExcept("doublebeam", "getBeamFac", errstr.str(), 5);
   }
 
-  if (nbins == 0)
-    throw pofdExcept("doublebeam", "getBeamHist", "nbins must be positive", 4);
-  if (wt == NULL)
-    throw pofdExcept("doublebeam", "getBeamHist", "wt is not allocated", 5);
-  if (bm1 == NULL)
-    throw pofdExcept("doublebeam", "getBeamHist", "bm1 is not allocated", 6);
-  if (bm2 == NULL)
-    throw pofdExcept("doublebeam", "getBeamHist", "bm1 is not allocated", 7);
+  //Make factorized beam, then multiply and sum
+  unsigned int ngen = oversamp * n;
+  double pixgen = pixsize / static_cast<double>(oversamp);
+  double* fac = new double[ngen];
+  double sig = fwhm * pofd_coverage::fwhmfac / pixgen; //Gaussian sigma in pix
+  double expfac = - 0.5 / (sig * sig);
+  int ni = static_cast<int>(ngen);
+  int no2 = ni / 2;
+  double dist;
+  double normfac = 1.0 / static_cast<double>(oversamp);
+  for (int i = 0; i < ni; ++i) {
+    dist = fabs(i - no2);
+    fac[i] = normfac * exp(expfac * dist * dist);
+  }
 
-  if (n == 1) {
-    wt[0] = 1;
-    bm1[0] = 1.0;
-    bm2[0] = 1.0;
-    nnonzero = 1;
+  // Zero out
+  for (unsigned int i = 0; i < n * n; ++i)
+    bm[i] = 0.0;
+
+  // Form the sum
+  double val;
+  double* rowptr;
+  unsigned int minip, maxip, minjp, maxjp;
+  for (unsigned int i = 0; i < n; ++i) {
+    rowptr = bm + i * n;
+    minip = i * oversamp;
+    maxip = minip + oversamp;
+    for (unsigned int i_p = minip; i_p < maxip; ++i_p) {
+      val = fac[i_p];
+      for (unsigned int j = 0; j < n; ++j) {
+	minjp = j * oversamp;
+	maxjp = minjp + oversamp;
+	for (unsigned int j_p = minjp; j_p < maxjp; ++j_p)
+	  rowptr[j] += val * fac[j_p];
+      }
+    }
+  }
+
+  delete[] fac;
+}
+
+
+/*!
+  \param[in] band Which band to use (1 or 2)
+  \param[in] n  Number of pixels along each dimension.  Should be odd
+  \param[in] pixsize Size of pixels in arcsec
+  \param[in] bm Beam. Must be pre-allocated by caller and be of length n * n
+  \param[in] filter Hi-pass filter to apply.  If null, don't apply filter
+*/
+void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize, 
+			 double* const bm, hipassFilter* const filter) const {
+
+  // pre-filtered beam
+  getRawBeam(band, n, pixsize, bm);
+
+  // Apply filtering
+  if (filter != NULL)
+    filter->filter(pixsize, n, n, bm);
+}
+
+
+/*!
+  \param[in] band Which band to use (1 or 2)
+  \param[in] n  Number of pixels along each dimension.  Should be odd
+  \param[in] pixsize Size of pixels in arcsec
+  \param[in] oversamp Oversampling.  Must be odd
+  \param[in] bm Beam. Must be pre-allocated by
+                   caller and be of length n * n
+  \param[in] filter Hi-pass filter to apply.  If null, don't apply filter
+*/
+void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize, 
+			 unsigned int oversamp, double* const bm, 
+			 hipassFilter* const filter) const {
+
+  // Pre-filtered beam
+  getRawBeam(band, n, pixsize, oversamp, bm);
+
+  // Apply filtering
+  if (filter != NULL)
+    filter->filter(pixsize, n, n, bm);
+}
+
+/*!
+  \param[in] outputfile Name of FITS file to write to
+  \param[in] pixsize Pixel size, in arcseconds
+  \param[in] nfwhm Number of FWHM out to go.
+  \param[in] oversamp Oversampling to use.  Must be odd.  
+  \param[in] filt High-pass filter to apply.  If NULL, no filtering is done.
+  \param[in] inverse Compute inverse beam rather than beam.
+*/
+void doublebeam::writeToFits(const std::string& outputfile, double pixsize, 
+			     double nfwhm, unsigned int oversamp,
+			     hipassFilter* const filt, bool inverse) const {
+  if (nfwhm <= 0.0)
+    throw pofdExcept("doublebeam", "writeToFits", 
+		     "Invalid (non-positive) nfwhm", 1);
+  if (pixsize <= 0.0)
+    throw pofdExcept("doublebeam", "writeToFits", 
+		     "Invalid (non-positive) pixel size", 3);
+  if (oversamp % 2 == 0)
+    throw pofdExcept("doublebeam", "writeToFits", 
+		     "Invalid (non-odd) oversampling", 4);
+
+  // Figure out how many pixels we are going to use
+  double fwhm = fwhm1 > fwhm2 ? fwhm1 : fwhm2;
+  unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
+						0.9999999999);
+  npix = 2 * npix + 1;
+  
+  // Write
+  int status = 0;
+  fitsfile *fp;
+  
+  fits_create_file(&fp, outputfile.c_str(), &status);
+  if (status) {
+    fits_report_error(stderr, status);
+    return;
+  }
+  long axissize[2];
+  axissize[0] = static_cast<long>(npix);
+  axissize[1] = static_cast<long>(npix);
+  fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
+  
+  // Header for first band
+  double dtmp;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &inverse,
+		 const_cast<char*>("Inverse beam?"), &status);
+  dtmp = fwhm1;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp,
+		 const_cast<char*>("FWHM band 1 [arcsec]"), &status);
+  dtmp = pixsize;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp,
+		 const_cast<char*>("Pixel scale [arcsec]"), &status);
+  dtmp = nfwhm;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
+		 const_cast<char*>("Number of FWHM out"), &status);
+  if (filt != NULL) {
+    dtmp = filt->getFiltScale();
+    if (dtmp > 0)
+      fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
+		     const_cast<char*>("Filtering scale [arcsec]"), &status);
+  }
+  if (oversamp > 1) {
+    unsigned int utmp;
+    utmp = oversamp;
+    fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
+		   const_cast<char*>("Oversampling"), &status);
+  }
+  fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
+		 const_cast<char*>(pofd_coverage::version), 
+		 const_cast<char*>("pofd_coverage version"),
+		 &status);
+  fits_write_history(fp,const_cast<char*>("Beam from pofd_coverage"),
+		     &status);
+  fits_write_date(fp, &status);
+  
+  // Get
+  double *bmtmp = (double*) fftw_malloc(sizeof(double) * npix * npix);
+  getBeam(1, npix, pixsize, oversamp, bmtmp, filt); // Also filters
+
+  // Data.  Must transpose.  Well -- the beam is symmetric,
+  // so actually we don't.  But to support possible future changes
+  // in filtering, treat it as if it might not be symmetric
+  double *tmpdata = new double[npix];
+  long fpixel[2] = { 1, 1 };
+  for (unsigned int j = 0; j < npix; ++j) {
+    if (inverse)
+      for (unsigned int i = 0; i < npix; ++i) 
+	tmpdata[i] = 1.0 / bmtmp[i * npix + j];
+    else
+      for (unsigned int i = 0; i < npix; ++i) tmpdata[i] = bmtmp[i * npix + j];
+    fpixel[1] = static_cast<long>(j + 1);
+    fits_write_pix(fp, TDOUBLE, fpixel, npix, tmpdata, &status);
+  }
+
+  // Band 2 beam
+  fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &inverse,
+		 const_cast<char*>("Inverse beam?"), &status);
+  dtmp = fwhm2;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp,
+		 const_cast<char*>("FWHM band 2 [arcsec]"), &status);
+  dtmp = pixsize;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp,
+		 const_cast<char*>("Pixel scale [arcsec]"), &status);
+  dtmp = nfwhm;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
+		 const_cast<char*>("Number of FWHM out"), &status);
+  if (filt != NULL) {
+    dtmp = filt->getFiltScale();
+    if (dtmp > 0)
+      fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
+		     const_cast<char*>("Filtering scale [arcsec]"), &status);
+  }
+  if (oversamp > 1) {
+    unsigned int utmp;
+    utmp = oversamp;
+    fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
+		   const_cast<char*>("Oversampling"), &status);
+  }
+  fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
+		 const_cast<char*>(pofd_coverage::version), 
+		 const_cast<char*>("pofd_coverage version"),
+		 &status);
+  fits_write_history(fp,const_cast<char*>("Beam from pofd_coverage"),
+		     &status);
+  fits_write_date(fp, &status);
+  getBeam(2, npix, pixsize, oversamp, bmtmp, filt); // Also filters
+  for ( unsigned int j = 0; j < npix; ++j ) {
+    if (inverse)
+      for (unsigned int i = 0; i < npix; ++i) 
+	tmpdata[i] = 1.0 / bmtmp[i * npix + j];
+    else
+      for (unsigned int i = 0; i < npix; ++i) tmpdata[i] = bmtmp[i * npix + j];
+    fpixel[1] = static_cast<long>(j + 1);
+    fits_write_pix(fp, TDOUBLE, fpixel, npix, tmpdata, &status);
+  }
+  delete[] tmpdata;
+  
+  //Close up and go home
+  fftw_free(bmtmp);
+  fits_close_file(fp, &status);
+  if (status) {
+    fits_report_error(stderr, status);
+    return;
+  }
+}
+
+/////////////////////////////////////////////////////
+
+
+/*!
+  \param[in] NBINS Number of bins in histogram along each dimension
+  \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If zero, no 
+             filtering is applied.
+  \param[in] KEEP_FILT_INMEM If true (and FILTSCALE is not zero), keep
+             hipassFilter allocated.  Otherwise it is allocated/deallocated
+	     as called.  
+
+  If you are only planning on calling fill once, setting KEEP_FILT_INMEM
+  to false is more memory efficient.
+*/
+doublebeamHist::doublebeamHist(unsigned int NBINS, double FILTSCALE,
+			       bool KEEP_FILT_INMEM) : 
+  has_data(false), inverse(false), nbins(0), fwhm1(0.0), fwhm2(0.0),
+  nfwhm(4.0), pixsize(0.0), eff_area1(0.0), eff_area2(0.0), oversamp(1) {
+
+  if (NBINS == 0)
+    throw pofdExcept("doublebeamHist", "doublebeamHist", 
+		     "Invalid (non-positive) NBINS", 1);
+  nbins = NBINS;
+  for (unsigned int i = 0; i < 4; ++i) n[i] = 0;
+  for (unsigned int i = 0; i < 4; ++i) wt[i] = NULL;
+  for (unsigned int i = 0; i < 4; ++i) bm1[i] = NULL;
+  for (unsigned int i = 0; i < 4; ++i) bm2[i] = NULL;
+
+  keep_filt = KEEP_FILT_INMEM;
+  filtscale = FILTSCALE;
+  if (filtscale > 0.0 && KEEP_FILT_INMEM)
+    filt = new hipassFilter(FILTSCALE);
+  else
+    filt = NULL;
+}
+
+doublebeamHist::~doublebeamHist() {
+  for (unsigned int i = 0; i < 4; ++i)
+    if (wt[i] != NULL) delete[] wt[i];
+  for (unsigned int i = 0; i < 4; ++i)
+    if (bm1[i] != NULL) delete[] bm1[i];
+  for (unsigned int i = 0; i < 4; ++i)
+    if (bm2[i] != NULL) delete[] bm2[i];
+  if (filt != NULL) delete filt;
+}
+
+/*!
+  \param[in] sgn Sign component index; pp=0, pn=1, np=2, nn=3
+  \returns Minimum/Maximum values of band1 beam of specified sign
+    component.  If this is the inverse beam, then the minimum/maximum 
+    of the inverse positive beam are returned.
+*/
+std::pair<double, double> doublebeamHist::getMinMax1(unsigned int sgn) const {
+  if (!has_data) 
+    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			  std::numeric_limits<double>::quiet_NaN());
+  if (sgn > 3)
+    throw pofdExcept("doublebeamHist", "getMinMax1",
+		     "Invalid component", 1);
+  unsigned int nelem = n[sgn];
+  if (nelem == 0) 
+    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			  std::numeric_limits<double>::quiet_NaN());
+
+  double min, max, val;
+  double *bmcomp = bm1[sgn];
+  min = max = bmcomp[0];
+  for (unsigned int i = 1; i < nelem; ++i) {
+    val = bmcomp[i];
+    if (val > max) max = val; else if (val < min) min = val;
+  }
+  return std::make_pair(min, max);
+}
+
+/*!
+  \param[in] sgn Sign component index; pp=0, pn=1, np=2, nn=3
+  \returns Minimum/Maximum values of band2 beam of specified sign
+    component.  If this is the inverse beam, then the minimum/maximum 
+    of the inverse positive beam are returned.
+*/
+std::pair<double, double> doublebeamHist::getMinMax2(unsigned int sgn) const {
+  if (!has_data) 
+    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			  std::numeric_limits<double>::quiet_NaN());
+  if (sgn > 3)
+    throw pofdExcept("doublebeamHist", "getMinMax1",
+			"Invalid component", 1);
+  unsigned int nelem = n[sgn];
+  if (nelem == 0) 
+    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			  std::numeric_limits<double>::quiet_NaN());
+
+  double min, max, val;
+  double *bmcomp = bm2[sgn];
+  min = max = bmcomp[0];
+  for (unsigned int i = 1; i < nelem; ++i) {
+    val = bmcomp[i];
+    if (val > max) max = val; else if (val < min) min = val;
+  }
+  return std::make_pair(min, max);
+}
+
+
+/*!
+  \param[in] bm Beam we are getting the histogram for
+  \param[in] num_fwhm Number of FWHM out we will go on beam
+  \param[in] pixsz Pixel size (arcseconds)
+  \param[in] inv Histogram the inverse beam
+  \param[in] oversampling Oversampling of beam. Must be odd
+*/
+void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
+		    bool inv, unsigned int oversampling) {
+
+  //Always ignore beam values below this
+  // Use a lower value than in the 1D version because either beam can
+  // fail this test
+  const double minval = 1e-7; 
+
+  // Clean out old arrays if present
+  for (unsigned int i = 0; i < 4; ++i) n[i] = 0;
+  for (unsigned int i = 0; i < 4; ++i)
+    if (wt[i] != NULL) { delete[] wt[i]; wt[i] = NULL; }
+  for (unsigned int i = 0; i < 4; ++i)
+    if (bm1[i] != NULL) { delete[] bm1[i]; bm1[i] = NULL; }
+  for (unsigned int i = 0; i < 4; ++i)
+    if (bm2[i] != NULL) { delete[] bm2[i]; bm2[i] = NULL; }
+
+  std::pair<double, double> tmp;
+  inverse = inv;
+  pixsize = pixsz;
+  tmp = bm.getFWHM();
+  fwhm1 = tmp.first;
+  fwhm2 = tmp.second;
+  oversamp = oversampling;
+  nfwhm = num_fwhm;
+  tmp = bm.getEffectiveArea();
+  eff_area1 = tmp.first;
+  eff_area2 = tmp.second;
+
+  // Get how many pixels we will go out
+  double fwhm = fwhm1 > fwhm2 ? fwhm1 : fwhm2;
+  unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
+						0.9999999999);
+  npix = 2 * npix + 1;
+
+  // Get 2D beams
+  // Temporary beam storage.  Must use fftw_malloc since we may filter
+  double *bmtmp1 = (double*) fftw_malloc(sizeof(double) * npix * npix);
+  double *bmtmp2 = (double*) fftw_malloc(sizeof(double) * npix * npix);
+  // Setup filter if needed
+  if ((filtscale > 0.0) && !(keep_filt))
+    filt = new hipassFilter(filtscale);
+  // Get the beams
+  bm.getBeam(1, npix, pixsize, oversamp, bmtmp1, filt); // Also filters
+  bm.getBeam(2, npix, pixsize, oversamp, bmtmp2, filt); // Also filters
+  // Clean up filter if not permanent
+  if ((filtscale > 0.0) && !(keep_filt)) {
+    delete filt;
+    filt = NULL;
+  }
+  
+  // Histogram
+
+  // Count up number of elements in each sign component, 
+  // and do min/max values in each sign component.
+  // The max beam value should certainly always be much smaller than 1e100
+  // Also make a temporary nbins by nbins array that says what sign
+  // component each thing will be.
+  double minbinval1[4], maxbinval1[4];
+  double minbinval2[4], maxbinval2[4];
+  unsigned int npix2 = npix * npix;
+  unsigned char* comparr;
+  comparr = new unsigned char[npix2];
+  for (unsigned int i = 0; i < 4; ++i) minbinval1[i] = 1e100;
+  for (unsigned int i = 0; i < 4; ++i) maxbinval1[i] = -1.0;
+  for (unsigned int i = 0; i < 4; ++i) minbinval2[i] = 1e100;
+  for (unsigned int i = 0; i < 4; ++i) maxbinval2[i] = -1.0;
+  unsigned int comp;
+  double val1, val2, fval1, fval2;
+  for (unsigned int i = 0; i < npix2; ++i) {
+    val1 = bmtmp1[i];
+    val2 = bmtmp2[i];
+    fval1 = fabs(val1);
+    fval2 = fabs(val2);
+    // Ignore anything within [-minval, minval]
+    if ((fval1 <= minval) || (fval2 <= minval)) {
+      comparr[i] = 4; //Invalid value -- will be skipped
+      continue;
+    }
+
+    // Determine the sign component
+    if (val1 > 0) {
+      if (val2 > 0) comp = 0; else comp = 1;
+    } else {
+      if (val2 > 0) comp = 2; else comp = 3;
+    }
+    ++n[comp];
+    comparr[i] = comp;
+
+    // Min/max bit
+    if (fval1 > maxbinval1[comp]) maxbinval1[comp] = fval1;
+    else if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
+    if (fval2 > maxbinval2[comp]) maxbinval2[comp] = fval2;
+    else if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
+  }
+
+  // Set bin sizes for each
+  double histstep1[4], histstep2[4];
+  const double log2outscale = 0.0014419741739063218; // log2(1.001)
+  double dnbins = static_cast<double>(nbins);
+  for (unsigned int i = 0; i < 4; ++i) 
+    if (n[i] > 0) {
+      minbinval1[i] = log2(minbinval1[i]) - log2outscale;
+      maxbinval1[i] = log2(maxbinval1[i]) + log2outscale;
+      minbinval2[i] = log2(minbinval2[i]) - log2outscale;
+      maxbinval2[i] = log2(maxbinval2[i]) + log2outscale;
+      histstep1[i] = (maxbinval1[i] - minbinval1[i]) / dnbins;
+      histstep2[i] = (maxbinval2[i] - minbinval2[i]) / dnbins;
+    } else {
+      histstep1[i] = 1.0;
+      histstep2[i] = 1.0;
+    }
+
+  // Actually histogram, one component at a time
+  unsigned int nbins2 = nbins * nbins;
+  unsigned int curr_n, idx1, idx2, totidx, utmp;
+  unsigned int *tmpwt, *wtptr;
+  double wtval;
+  double *tmphist1, *tmphist2, *bm1ptr, *bm2ptr;
+  
+  tmpwt = new unsigned int[nbins2];
+  tmphist1 = new double[nbins2];
+  tmphist2 = new double[nbins2];
+
+  double min1, min2, istp1, istp2;
+  for (unsigned int compidx = 0; compidx < 4; ++compidx) {
+    curr_n = n[compidx];
+    if (curr_n > 0) {
+      // Zero temporary arrays
+      for (unsigned int i = 0; i < nbins2; ++i) tmpwt[i] = 0;
+      for (unsigned int i = 0; i < nbins2; ++i) tmphist1[i] = 0.0;
+      for (unsigned int i = 0; i < nbins2; ++i) tmphist2[i] = 0.0;
+
+      // Now loop over pixels
+      min1 = minbinval1[compidx];
+      min2 = minbinval2[compidx];
+      istp1 = 1.0 / histstep1[compidx];
+      istp2 = 1.0 / histstep2[compidx];
+      for (unsigned int i = 0; i < npix2; ++i) {
+	// Skip if not in this component
+	if (comparr[i] != compidx) continue; // Also skips too-close-to-zeros
+	fval1 = fabs(bmtmp1[i]);
+	fval2 = fabs(bmtmp2[i]);
+	idx1 = static_cast<unsigned int>((log2(fval1) - min1) * istp1);
+	idx2 = static_cast<unsigned int>((log2(fval2) - min2) * istp2);
+	totidx = idx1 * nbins + idx2;
+	tmpwt[totidx] += 1;
+	tmphist1[totidx] += fval1;
+	tmphist2[totidx] += fval2;
+      }
+
+      // Now we copy the bins to the final array.  Not necessary to zero
+      wtptr = new unsigned int[curr_n];
+      bm1ptr = new double[curr_n];
+      bm2ptr = new double[curr_n];
+      totidx = 0;
+      for (unsigned int i = 0; i < nbins2; ++i) {
+	utmp = tmpwt[i];
+	if (utmp > 0) {
+	  wtptr[totidx] = utmp;
+	  wtval = static_cast<double>(utmp);
+	  bm1ptr[totidx] = tmphist1[i] / wtval;
+	  bm2ptr[totidx] = tmphist2[i] / wtval;
+	}
+      }
+
+      if (inverse) {
+	for (unsigned int i = 0; i < curr_n; ++i)
+	  bm1ptr[i] = 1.0 / bm1ptr[i];
+	for (unsigned int i = 0; i < curr_n; ++i)
+	  bm2ptr[i] = 1.0 / bm2ptr[i];
+      }
+
+      wt[compidx] = wtptr;
+      bm1[compidx] = bm1ptr;
+      bm2[compidx] = bm2ptr;
+    }
+  }
+      
+  has_data = true;
+
+  // Clean up
+  fftw_free(bmtmp1);
+  fftw_free(bmtmp2);
+  delete[] comparr;
+  delete[] tmpwt;
+  delete[] tmphist1;
+  delete[] tmphist2;
+}
+
+/*!
+  \param[in] outputfile Name of FITS file to write to
+*/
+void doublebeamHist::writeToFits(const std::string& outputfile) const {
+
+  if (!has_data)
+    throw pofdExcept("doublebeamHist", "writeToFits", "Hist not filled", 1);
+
+  // Write as binary table
+  int status = 0;
+  fitsfile *fp;
+  
+  fits_create_file(&fp, outputfile.c_str(), &status);
+  if (status) {
+    fits_report_error(stderr, status);
     return;
   }
 
-  //Make factorized beam in each band.
-  double* fac1 = new double[n];
-  double sig1 = fwhm1 * pofd_coverage::fwhmfac / pixsize;//Gaussian sigma in pix
-  double expfac = - 0.5 / (sig1 * sig1);
-  int ni = static_cast<int>(n);
-  int no2 = ni / 2;
-  double dist;
-  for (int i = 0; i < ni; ++i) {
-    dist = fabs(i - no2);
-    fac1[i] = exp(expfac * dist * dist);
+  // Empty primary HDU
+  long axissize[2];
+  axissize[0] = axissize[1] = 0;
+  fits_create_img(fp, FLOAT_IMG, 2, axissize, &status);
+  if (status) {
+    fits_report_error(stderr, status);
+    return;
   }
-  double* fac2 = new double[n];
-  double sig2 = fwhm2 * pofd_coverage::fwhmfac / pixsize;//Gaussian sigma in pix
-  expfac = - 0.5 / (sig2 * sig2);
-  for (int i = 0; i < ni; ++i) {
-    dist = fabs(i - no2);
-    fac2[i] = exp(expfac * dist * dist);
+  
+  // Primary header
+  int itmp;
+  double dtmp;
+  itmp = inverse;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &itmp,
+		 const_cast<char*>("Inverse beam?"), &status);
+  dtmp = fwhm1;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp,
+		 const_cast<char*>("FWHM1 [arcsec]"), &status);
+  dtmp = fwhm2;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp,
+		 const_cast<char*>("FWHM1 [arcsec]"), &status);
+  dtmp = pixsize;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp,
+		 const_cast<char*>("Pixel scale [arcsec]"), &status);
+  dtmp = nfwhm;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
+		 const_cast<char*>("Number of FWHM out"), &status);
+  
+  if (filtscale > 0.0) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
+		   const_cast<char*>("Is beam filtered?"), &status);
+    dtmp = filtscale;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
+		   const_cast<char*>("Filtering scale [arcsec]"), &status);
+  } else {
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
+		   const_cast<char*>("Is beam filtered?"), &status);
+  }
+  
+  if (oversamp > 1) {
+    unsigned int utmp;
+    utmp = oversamp;
+    fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
+		   const_cast<char*>("Oversampling"), &status);
   }
 
-  //Compute the range we will bin over in each dimension
-  //First, compute the minimum beam value we will encounter in each
-  // band. We can take advantage of the symmetry to compare the corner
-  // value -- the lowest -- with our cutoff.  Also -- the beam is always
-  // positive.  We must skip locations where either beam falls below
-  // this value because we can't store the other value in our array
-  double cminval1 = (minval > fac1[0]*fac1[0]) ? minval : 
-    0.999 * fac1[0]*fac1[0];
-  double cminval2 = (minval > fac2[0]*fac2[0]) ? minval : 
-    0.999 * fac2[0]*fac2[0];
-  double minbinval1 = log2(cminval1);
-  double minbinval2 = log2(cminval2);
-  double maxbinval = log2(1.001); //Each beam peaks at one
-  double histstep1 = (maxbinval - minbinval1) / static_cast<double>(nbins);
-  double histstep2 = (maxbinval - minbinval2) / static_cast<double>(nbins);
+  fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
+		 const_cast<char*>(pofd_coverage::version), 
+		 const_cast<char*>("pofd_coverage version"),
+		 &status);
+  fits_write_history(fp, const_cast<char*>("Beam from pofd_coverage"),
+		     &status);
+  fits_write_date(fp, &status);
+  
 
-  unsigned int ntotbins = nbins * nbins;
-  unsigned int* initwt = new unsigned int[ntotbins];
-  double* meanbinval1 = new double[ntotbins];
-  double* meanbinval2 = new double[ntotbins];
-  for (unsigned int i = 0; i < ntotbins; ++i) initwt[i] = 0;
-  for (unsigned int i = 0; i < ntotbins; ++i) meanbinval1[i] = 0.0;
-  for (unsigned int i = 0; i < ntotbins; ++i) meanbinval2[i] = 0.0;
+  char* ttype[]= {"WEIGHT", "BEAM1", "BEAM2"};
+  char* tform[] = {"1I", "1D", "1D"};
 
-  unsigned int idx1, idx2, idx; //idx is the flattened index
-  double fval1, fval2, val1, val2;
-  for (unsigned int i = 0; i < n; ++i) {
-    fval1 = fac1[i];
-    fval2 = fac2[i];
-    for (unsigned int j = 0; j < n; ++j) {
-      val1 = fval1 * fac1[j];
-      val2 = fval2 * fac2[j];
-      if (val1 < cminval1 || val2 < cminval2) continue;  //Ignore
-      idx1 = static_cast<unsigned int>((log2(val1) - minbinval1) / histstep1);
-      idx2 = static_cast<unsigned int>((log2(val2) - minbinval2) / histstep2);
-      idx = idx1*nbins + idx2;
-      initwt[idx] += 1;
-      meanbinval1[idx] += val1;
-      meanbinval2[idx] += val2;
+  char* label[4] = {"POSPOS", "POSNEG", "NEGPOS", "NEGNEG"};
+
+  for (unsigned int idx=0; idx < 4; ++idx)
+    if (n[idx] > 0) {
+      fits_create_tbl(fp, BINARY_TBL, 0, 3, ttype, tform, NULL, label[idx],
+		      &status );
+      fits_insert_rows(fp, 0, n[idx], &status);
+      for (unsigned int i = 0; i < n[idx]; ++i) {
+	itmp = static_cast<int>(wt[idx][i]);
+	fits_write_col(fp, TINT, 1, i+1, 1, 1, &itmp, &status);
+	dtmp= bm1[idx][i];
+	fits_write_col(fp, TDOUBLE, 2, i+1, 1, 1, &dtmp, &status);
+	dtmp= bm2[idx][i];
+	fits_write_col(fp, TDOUBLE, 3, i+1, 1, 1, &dtmp, &status);
+      }
     }
-  }
-  delete[] fac1;
-  delete[] fac2;
 
-  //Now cut down to those elements that are actually filled and
-  // copy accross.  We use the mean value of the entries in the
-  // bin as that bins value
-  for (unsigned int i = 0; i < ntotbins; ++i) wt[i] = 0;
-  for (unsigned int i = 0; i < ntotbins; ++i) bm1[i] = 0.0;
-  for (unsigned int i = 0; i < ntotbins; ++i) bm2[i] = 0.0;
-  nnonzero = 0;
-  double d_iwt;
-  for (unsigned int i = 0; i < ntotbins; ++i) {
-    if (initwt[i] != 0) {
-      wt[nnonzero] = initwt[i];
-      d_iwt = 1.0 / static_cast<double>(initwt[i]);
-      bm1[nnonzero] = meanbinval1[i] * d_iwt;
-      bm2[nnonzero] = meanbinval2[i] * d_iwt;
-      ++nnonzero;
-    }
+  //Close up and go home
+  fits_close_file(fp, &status);
+  if (status) {
+    fits_report_error(stderr, status);
+    return;
   }
-  delete[] initwt;
-  delete[] meanbinval1;
-  delete[] meanbinval2;
-  if (nnonzero == 0)
-    throw pofdExcept("doublebeam", "getBeamHist", "No binned elements", 7);  
-
-  if (inverse) {
-    for (unsigned int i = 0; i < nnonzero; ++i) bm1[i] = 1.0 / bm1[i];
-    for (unsigned int i = 0; i < nnonzero; ++i) bm2[i] = 1.0 / bm2[i];
-  }
-
 }

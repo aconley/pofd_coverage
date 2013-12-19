@@ -12,7 +12,6 @@
 
 #include "../include/numberCounts.h"
 #include "../include/PD.h"
-#include "../include/hipassFilter.h"
 
 /*!
   Always call initPD before using getPD for a given model.

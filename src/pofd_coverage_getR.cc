@@ -290,23 +290,97 @@ int getRDouble(int argc, char** argv) {
   // Minflux is 0
 
   double *R = NULL;
+  double *flux1 = NULL;
+  double *flux2 = NULL;
   try {
     numberCountsDouble model(modelfile);
     doublebeam bm(fwhm1, fwhm2);
+    doublebeamHist inv_bmhist(nbins, filterscale);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp);
 
     if (n0 == 0)
       n0 = model.getBaseN0();
 
-    throw pofdExcept("pofd_coverage_getR", "getRDouble",
-		     "Not implemented yet", 1);
+    if (verbose) {
+      std::pair<double, double> dpr;
+      dpr = bm.getFWHM();
+      printf("   Beam fwhm1:         %0.2f\n", dpr.first);
+      printf("   Beam fwhm2:         %0.2f\n", dpr.second);
+      dpr = bm.getEffectiveArea();
+      printf("   Beam area1:         %0.3e\n", dpr.first);
+      printf("   Beam area2:         %0.3e\n", dpr.second);
+      printf("   Pixel size:         %0.2f\n", pixsize);
+      printf("   Flux per area1:     %0.2f\n",
+	     model.getBaseFluxPerArea1());
+      printf("   Flux per area2:     %0.2f\n",
+	     model.getBaseFluxPerArea2());
+      printf("   Base N0:            %0.4e\n", model.getBaseN0());
+      printf("   N0:                 %0.4e\n", n0);
+      if (filterscale > 0.0)
+	printf("   filter scale:       %0.4f\n", filterscale);
+      if (oversamp != 1)
+	printf("   oversamp:           %u\n", oversamp);
+    }
+
+    // Set up fluxes
+    double dflux1, dflux2;
+    if (nflux > 1) {
+      dflux1 = maxflux1 / static_cast<double>(nflux - 1);
+      dflux2 = maxflux2 / static_cast<double>(nflux - 1);
+    } else {
+      dflux1 = 0.0;
+      dflux2 = 0.0;
+    }
+    flux1 = new double[nflux];
+    for (unsigned int i = 0; i < nflux; ++i)
+      flux1[i] = dflux1 * static_cast<double>(i);
+    flux2 = new double[nflux];
+    for (unsigned int i = 0; i < nflux; ++i)
+      flux2[i] = dflux2 * static_cast<double>(i);
+
+    // Get R
+    R = new double[nflux * nflux];
+    model.getR(nflux, flux1, nflux, flux2, inv_bmhist, R);
+    delete[] flux1;
+    delete[] flux2;
+
+    // Adjust for N0
+    double n0fac = n0 / model.getBaseN0();
+    if (n0fac != 1)
+      for (unsigned int i = 0; i < nflux * nflux; ++i)
+	R[i] *= n0fac;
+
+    // Write
+
+    FILE *fp;
+    fp = fopen(outfile.c_str(), "w");
+    if (!fp) {
+      std::cerr << "Failed to open output file" << std::endl;
+      return 128;
+    }
+    fprintf(fp,"#%4u %4u\n", nflux, nflux);
+    fprintf(fp,"#minflux1: %12.6e dflux1: %12.6e\n", 0., dflux1);
+    fprintf(fp,"#minflux2: %12.6e dflux2: %12.6e\n", 0., dflux2);
+    for (unsigned int i = 0; i < nflux; ++i) {
+      for (unsigned int j = 0; j < nflux - 1; ++j)
+        fprintf(fp,"%13.7e ",R[nflux * i + j]);
+      fprintf(fp,"%13.7e\n",R[nflux * i + nflux - 1]);
+    }
+    fclose(fp);
+
+    delete[] R; 
   } catch (const pofdExcept& ex) {
     std::cerr << "Error encountered" << std::endl;
     std::cerr << ex << std::endl;
     if (R != NULL) delete[] R;
+    if (flux1 != NULL) delete[] flux1;
+    if (flux2 != NULL) delete[] flux2;
     return 8;
   } catch (const std::bad_alloc& ba) {
     std::cerr << "Bad allocation error: " << ba.what() << std::endl;
     if (R != NULL) delete[] R;
+    if (flux1 != NULL) delete[] flux1;
+    if (flux2 != NULL) delete[] flux2;
     return 16;
   }
   return 0;

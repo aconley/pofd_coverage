@@ -5,13 +5,14 @@
 #include<fstream>
 
 #include<fitsio.h>
-
 #include<fftw3.h> // For fftw_malloc
 
 #include "../include/global_settings.h"
 #include "../include/simImage.h"
 #include "../include/beam.h"
 #include "../include/pofdExcept.h"
+
+#pragma GCC diagnostic ignored "-Wwrite-strings"
 
 /*!
   \param[in] N1 Dimension of simulated image along 1st axis
@@ -36,6 +37,19 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 		   double FWHM, double SIGI, double ESMOOTH, 
 		   double FILTERSCALE, unsigned int OVERSAMPLE, 
 		   unsigned int NBINS, const std::string& powerspecfile) {
+
+  if (N1 == 0)
+    throw pofdExcept("simImage", "simImage", "Invalid (non-positive) N1", 1);
+  if (N2 == 0)
+    throw pofdExcept("simImage", "simImage", "Invalid (non-positive) N2", 2);
+  if (PIXSIZE <= 0.0)
+    throw pofdExcept("simImage", "simImage", 
+		     "Invalid (non-positive) PIXSIZE", 3);
+  if (FWHM <= 0.0)
+    throw pofdExcept("simImage", "simImage", "Invalid (non-positive) FWHM", 4);
+  if (OVERSAMPLE % 2 == 0)
+    throw pofdExcept("simImage", "simImage", "Invalid (even) OVERSAMPLE", 5);
+  
   n1 = N1;
   n2 = N2;
   oversample = OVERSAMPLE;
@@ -43,15 +57,13 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   ngen2 = n2 * oversample;
   data = (double*) fftw_malloc(sizeof(double) * n1 * n2);
   work = (double*) fftw_malloc(sizeof(double) * ngen1 * ngen2);
-  if (oversample == 0)
-    throw pofdExcept("simImage", "simImage", 
-		     "Invalid (non-positive) oversample", 1);
-  else if (oversample > 1)
+  if (oversample > 1)
     gen_image = (double*) fftw_malloc(sizeof(double) * ngen1 * ngen2);
   else
     gen_image = NULL;
   pixsize = PIXSIZE;
   pixsize_gen = PIXSIZE / static_cast<double>(oversample);
+
   fwhm = FWHM;
   sigi = SIGI;
   is_full = false;
@@ -79,10 +91,9 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   else filt = NULL;
 
   // Position generator if needed
-  if (powerspecfile.empty()) {
-    use_clustered_pos = false;
-    posgen = NULL;
-  } else {
+  use_clustered_pos = false;
+  posgen = NULL;
+  if (!powerspecfile.empty()) {
     use_clustered_pos = true;
     posgen = new positionGeneratorClustered(ngen1, ngen2, pixsize_gen,
 					    powerspecfile);
@@ -90,7 +101,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 
   // Set up array to hold 1D beams (center normalized)
   // Note that the beam is set up in oversampled space
-  const double nfwhm = 3.5;
+  const double nfwhm = 4.5;
   ngauss = static_cast<unsigned int>(nfwhm * fwhm / pixsize_gen + 0.99999999);
   ngauss = 2 * ngauss + 1;
   gauss = new double[ngauss];
@@ -347,6 +358,7 @@ double simImage::getFinalNoise(unsigned int ntrials) const {
 
   // esmooth normalization factor input
   const double prefac = 4 * std::log(2) / pofd_coverage::pi;
+  const double noise_prefac = sqrt(2 * std::log(2) / pofd_coverage::pi);
 
   // First decide if we can re-use the previous value
   bool recompute = true;
@@ -371,19 +383,18 @@ double simImage::getFinalNoise(unsigned int ntrials) const {
 	sigi_final = sigi;
       } else {
 	// Only extra Gaussian smoothing.  Can be done analytically
-	const double prefac = sqrt(2 * std::log(2) / pofd_coverage::pi);
 	double fwhm2 = fwhm * fwhm;
 	sigi_final_computed = true;
 	sigi_final_ntrials = ntrials;
-	sigi_final = prefac * sigi * pixsize * (fwhm2 + esmooth * esmooth) / 
-	  (esmooth * fwhm2);
+	sigi_final = noise_prefac * sigi * pixsize * 
+	  (fwhm2 + esmooth * esmooth) / (esmooth * fwhm2);
       }
     } else {
       // Filtering, and maybe smoothing.  
       // We have to do this by making a simulated image, filling it with 
       // noise, etc.  This is why this function may not be cheap,
       // and why we support multiple trials
-      double* tmpdata = new double[n1 * n2];
+      double* tmpdata = (double*) fftw_malloc(sizeof(double) * n1 * n2);
 
       // Compute esmooth prefactor if needed
       double normval = 1.0;
@@ -429,7 +440,7 @@ double simImage::getFinalNoise(unsigned int ntrials) const {
       if (ntrials > 1)
 	var /= static_cast<double>(ntrials);
 
-      delete[] tmpdata;
+      fftw_free(tmpdata);
       sigi_final_computed = true;
       sigi_final_ntrials = ntrials;
       sigi_final = sqrt(var);
@@ -540,7 +551,7 @@ void simImage::realize(const numberCounts& model, double n0,
 
   // Apply filtering.  Note this is done after adding noise and
   // downsampling to the final resolution (if oversampling is used).
-  // Note that filtering will always result in mean subtraction since
+  // Filtering will always result in mean subtraction since
   // it is a hipass filter.
   if (filt != NULL)
     filt->filter(pixsize, n1, n2, data);
@@ -644,22 +655,22 @@ void simImage::getMeanAndVar(double& mn, double& var) const {
     throw pofdExcept("simImage","getMeanAndVar",
 		     "Trying to get mean and var of empty image",1);
   //Use corrected two pass algorithm
-  double norm = 1.0/static_cast<double>(n1*n2);
+  double norm = 1.0/static_cast<double>(n1 * n2);
   mn = data[0];
-  for (unsigned int i = 1; i < n1*n2; ++i)
+  for (unsigned int i = 1; i < n1 * n2; ++i)
     mn += data[i];
   mn *= norm;
 
   double sum1, sum2, tmp;
   tmp = data[0]-mn;
-  sum1 = tmp*tmp;
+  sum1 = tmp * tmp;
   sum2 = tmp;
-  for (unsigned int i = 1; i < n1*n2; ++i) {
-    tmp = data[i]-mn;
-    sum1 += tmp*tmp;
+  for (unsigned int i = 1; i < n1 * n2; ++i) {
+    tmp = data[i] - mn;
+    sum1 += tmp * tmp;
     sum2 += tmp;
   }
-  var = (sum1 - norm*sum2*sum2)/static_cast<double>(n1*n2-1);
+  var = (sum1 - norm * sum2 * sum2) / static_cast<double>(n1 * n2 - 1);
 }
 
 double simImage::getBeamSum() const {
@@ -671,7 +682,7 @@ double simImage::getBeamSum() const {
   for (unsigned int i = 1; i < ngauss; ++i)
     sum1D += gauss[i];
   if (oversample > 1) sum1D /= static_cast<double>(oversample);
-  return sum1D*sum1D;
+  return sum1D * sum1D;
 }
 
 
@@ -684,10 +695,10 @@ double simImage::getBeamSumSq() const {
   double sum1D = tmp*tmp;
   for (unsigned int i = 1; i < ngauss; ++i) {
     tmp = gauss[i];
-    sum1D += tmp*tmp;
+    sum1D += tmp * tmp;
   }
   if (oversample > 1) sum1D /= static_cast<double>(oversample);
-  return sum1D*sum1D;
+  return sum1D * sum1D;
 }
 
 double simImage::getFiltScale() const {

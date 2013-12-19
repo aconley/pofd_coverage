@@ -12,8 +12,8 @@
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
 const unsigned int simManager::nbeambins = 120; 
-const double simManager::nfwhm_nofilt = 3.5;
-const unsigned int simManager::nnoisetrials = 5;
+const double simManager::nfwhm_nofilt = 4.5;
+const unsigned int simManager::nnoisetrials = 7;
 
 //This is the function we call to find the best fitting n0
 /*!
@@ -63,7 +63,7 @@ static double minfunc(double x, void* params) {
               applied.
   \param[in] SIGI Instrument noise (without smoothing or filtering) in Jy
   \param[in] N0 Simulated number of sources per sq deg.
-  \param[in] ESMOOTH Amount of extra smoothing to apply
+  \param[in] ESMOOTH Amount of extra Gaussian smoothing to apply
   \param[in] OVERSAMPLE Amount of oversampling to use when simulating image
   \param[in] POWERSPECFILE File containing power spectrum for on-sky source
               distribution.  If not provided, uniform sampling is used.
@@ -89,19 +89,16 @@ simManager::simManager(const std::string& MODELFILE,
   inv_bmhist(nbeambins, FILTSCALE, false), 
   simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, FILTSCALE, OVERSAMPLE, 
 	NBINS, POWERSPECFILE), 
-  use_binning(USEBIN), model(MODELFILE) {
+  use_binning(USEBIN), model(MODELFILE), esmooth(ESMOOTH) {
 
 #ifdef TIMING
   initTime = getTime = getLikeTime = 0;
 #endif
 
-  if (simim.isSmoothed()) {
-    do_extra_smooth = true;
-    bm.setFWHM(std::sqrt(fwhm*fwhm+esmooth*esmooth));
-  } else {
-    do_extra_smooth = false;
+  if (simim.isSmoothed())
+    bm.setFWHM(std::sqrt(fwhm * fwhm + esmooth * esmooth));
+  else 
     bm.setFWHM(fwhm);
-  }
 
   if (nsims > 0) {
     bestn0 = new double[nsims];
@@ -456,11 +453,11 @@ int simManager::writeToFits(const std::string& outputfile) const {
   }
   dtmp = simim.getInstNoise();
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI"), &dtmp, 
-		 const_cast<char*>("Instrument noise"), 
+		 const_cast<char*>("Raw instrument noise"), 
 		 &status);
   dtmp = simim.getFinalNoise();
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL"), &dtmp, 
-		 const_cast<char*>("Instrument noise with smoothing/filtering"), 
+		 const_cast<char*>("Final instrument noise"), 
 		 &status);
   if (simim.isOversampled()) {
     utmp = simim.getOversampling();

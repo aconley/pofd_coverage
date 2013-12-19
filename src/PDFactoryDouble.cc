@@ -250,9 +250,7 @@ bool PDFactoryDouble::addWisdom(const std::string& filename) {
 //Returns true if internal memory resizing required
 bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2, 
 			    const numberCountsDouble& model,
-			    const doublebeam& bm, double pixsize, 
-			    double nfwhm, unsigned int nbins,
-			    bool setEdge) {
+			    const doublebeamHist& bm, bool setEdge) {
   
   //Make sure we have enough room
   bool did_resize = resize(n);
@@ -279,7 +277,7 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
 #ifdef TIMING
   std::clock_t starttime = std::clock();
 #endif
-  model.getR(n, RFlux1, n, RFlux2, bm, pixsize, nfwhm, nbins, rvals);
+  model.getR(n, RFlux1, n, RFlux2, bm, rvals);
 #ifdef TIMING
   RTime += std::clock() - starttime;
 #endif
@@ -343,8 +341,7 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
 #ifdef TIMING
     starttime = std::clock();
 #endif
-    model.getR(nedge, REdgeFlux1, nedge, REdgeFlux2, bm,
-	       pixsize, nfwhm, nbins, REdgeWork);
+    model.getR(nedge, REdgeFlux1, nedge, REdgeFlux2, bm, REdgeWork);
 #ifdef TIMING
     RTime += std::clock() - starttime;
 #endif
@@ -391,8 +388,7 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
 #ifdef TIMING
       starttime = std::clock();
 #endif
-      model.getR(nedge, REdgeFlux1, 1, &fixed_value, bm,
-		 pixsize, nfwhm, nbins, REdgeWork);
+      model.getR(nedge, REdgeFlux1, 1, &fixed_value, bm, REdgeWork);
 #ifdef TIMING
       RTime += std::clock() - starttime;
 #endif
@@ -416,8 +412,7 @@ bool PDFactoryDouble::initR(unsigned int n, double maxflux1, double maxflux2,
 #ifdef TIMING
       starttime = std::clock();
 #endif
-      model.getR(1, &fixed_value, nedge, REdgeFlux2, bm,
-		 pixsize, nfwhm, nbins, REdgeWork);
+      model.getR(1, &fixed_value, nedge, REdgeFlux2, bm, REdgeWork);
 #ifdef TIMING
       RTime += std::clock() - starttime;
 #endif
@@ -564,9 +559,6 @@ void PDFactoryDouble::getRIntegralsInternal(unsigned int n,
   \param[in] maxn0   Maximum n0 supported (number of sources per area)
   \param[in] model    number counts model to use for fill.  Params must be set
   \param[in] bm       Beam
-  \param[in] pixsize Pixel size in arcseconds
-  \param[in] nfwhm   Number of FWHM out to go in beam
-  \param[in] nbins   Number of bins used in histogrammed beam
   \param[in] setEdge  Use integral of mean values at the edges
 
   Note that n is the transform size; the output array will generally
@@ -577,9 +569,7 @@ void PDFactoryDouble::initPD(unsigned int n,
 			     double inst_sigma1, double inst_sigma2, 
 			     double maxflux1, double maxflux2, 
 			     double maxn0, const numberCountsDouble& model,
-			     const doublebeam& bm, double pixsize,
-			     double nfwhm, unsigned int nbins,
-			     bool setEdge) {
+			     const doublebeamHist& bm, bool setEdge) {
 
   if (n == 0)
     throw pofdExcept("PDFactoryDouble","initPD",
@@ -670,24 +660,25 @@ void PDFactoryDouble::initPD(unsigned int n,
   // estimating statistics from it.
   //Estimate the model flux and sigma crudely
   double maxflux_R1, maxflux_R2, s_ave, est_shift, var;
+  std::pair<double, double> effarea;
+  effarea = bm.getEffectiveArea();
   s_ave = n0ratio * model.getBaseFluxPerArea1();
-  mn1 =  s_ave * bm.getEffectiveArea1();
-  var = model.getBaseFluxSqPerArea1() * bm.getEffectiveArea1() - s_ave*s_ave;
+  mn1 =  s_ave * effarea.first;
+  var = model.getBaseFluxSqPerArea1() * effarea.first - s_ave * s_ave;
   if (var <= 0) var = 0.0;
-  sg1 = sqrt(n0ratio * n0ratio * var + inst_sigma1*inst_sigma1);
+  sg1 = sqrt(n0ratio * n0ratio * var + inst_sigma1 * inst_sigma1);
   est_shift = mn1 + pofd_coverage::n_sigma_shift * sg1;
   maxflux_R1 = maxflux1 + est_shift;
   s_ave = n0ratio * model.getBaseFluxPerArea2();
-  mn2 =  s_ave * bm.getEffectiveArea2();
-  var = model.getBaseFluxSqPerArea2() * bm.getEffectiveArea2() - s_ave*s_ave;
+  mn2 =  s_ave * effarea.second;
+  var = model.getBaseFluxSqPerArea2() * effarea.second - s_ave*s_ave;
   if (var <= 0) var = 0.0;
-  sg2 = sqrt(n0ratio * n0ratio * var + inst_sigma2*inst_sigma2);
+  sg2 = sqrt(n0ratio * n0ratio * var + inst_sigma2 * inst_sigma2);
   est_shift = mn2 + pofd_coverage::n_sigma_shift * sg2;
   maxflux_R2 = maxflux2 + est_shift;
 
   //Now, compute R out to those values for the base model
-  initR(n, maxflux_R1, maxflux_R2, model, bm, pixsize,
-	nfwhm, nbins, setEdge);
+  initR(n, maxflux_R1, maxflux_R2, model, bm, setEdge);
 
   //Now estimate the mean and standard deviation from that
   std::vector<double> mom(5);
@@ -706,8 +697,7 @@ void PDFactoryDouble::initPD(unsigned int n,
 
   //Get final R for base model.  Don't save whether we resized, 
   // since we got that last time
-  initR(n, maxflux_R1, maxflux_R2, model, bm, pixsize, nfwhm, nbins,
-	setEdge);
+  initR(n, maxflux_R1, maxflux_R2, model, bm, setEdge);
   
   //Update moments
   getRIntegralsInternal(2, mom);

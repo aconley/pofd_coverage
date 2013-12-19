@@ -27,6 +27,10 @@ class simManagerDouble {
 
  private:
 
+  static const unsigned int nbeambins; //!< Number of bins for beam histogram
+  static const double nfwhm_nofilt; //!< How far out to go on beam if no filtering for P(D) computation.
+  static const unsigned int nnoisetrials; //!< Number of trials to carry out when computing filtered noise level
+
   unsigned int nsims; //!< Number of simulations to do
   double n0initrange; //!< Initial range for likelihood peak finding step
 
@@ -50,22 +54,18 @@ class simManagerDouble {
 
   //Model params
   double n0; //!< Number of sources per sq deg in input model
-  double sig_i1; //!< Instrument noise, band 1
-  double sig_i2; //!< Instrument noise, band 2
-  double sig_i1_sm; //!< Smoothed instrument noise, band 1
-  double sig_i2_sm; //!< Smoothed instrument noise, band 2
 
   //Stuff for doing individual sims
   double fwhm1, fwhm2; //!< Beam sizes
   double pixsize; //!< Pixel size of image and beam
   doublebeam bm; //!< Beam
+  doublebeamHist inv_bmhist; //!< Histogrammed inverse beam
   mutable simImageDouble simim; //!< Simulated image
   bool use_binning; //!< Work on binned images in likelihood
   mutable PDDouble pd; //!< Holds computed P(D)
   mutable PDFactoryDouble pdfac; //!< Computes P(D)
   mutable numberCountsDouble model; //!< Model variable
 
-  bool do_extra_smooth; //!< Apply additional smoothing?
   double esmooth1, esmooth2; //!< Additional smoothing amount
 
   //Stuff for GSL minimization call
@@ -81,14 +81,15 @@ class simManagerDouble {
  public:
   simManagerDouble(const std::string& MODELFILE,
 		   unsigned int NSIMS=200, double N0INITRANGE=0.3,
-		   bool MAPLIKE=true, unsigned int NLIKE=500, 
+		   bool MAPLIKE=true, unsigned int NLIKE=401, 
 		   double N0RANGEFRAC=0.1, unsigned int FFTSIZE=4096, 
 		   unsigned int N1=720, unsigned int N2=720, 
-		   double PIXSIZE=5, double FWHM1=15, double FWHM2=20, 
-		   double SIGI1=0.004, double SIGI2=0.006, double N0=2.63e3, 
+		   double PIXSIZE=5.0, double FWHM1=15, double FWHM2=20, 
+		   double FILTSCALE=0.0, double SIGI1=0.004, 
+		   double SIGI2=0.006, double N0=2.63e3, 
 		   double ESMOOTH1=0, double ESMOOTH2=0, 
 		   unsigned int OVERSAMPLE=1, 
-		   const std::string& powerspecfile="", unsigned int SPARCITY=1,
+		   const std::string& POWERSPECFILE="", unsigned int SPARCITY=1,
 		   bool USEBIN=false, unsigned int NBINS=1000);
   ~simManagerDouble();
 
@@ -100,8 +101,7 @@ class simManagerDouble {
   unsigned int getN1() const { return simim.getN1(); }
   unsigned int getN2() const { return simim.getN2(); }
   double getArea() const { return simim.getArea(); }
-  double getFWHM1() const { return bm.getFWHM1(); }
-  double getFWHM2() const { return bm.getFWHM2(); }
+  std::pair<double, double> getFWHM() const { return bm.getFWHM(); }
 
 #ifdef TIMING
   void resetTime();

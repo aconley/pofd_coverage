@@ -40,11 +40,10 @@ int makeSimSingle(int argc, char **argv) {
   double extra_smooth; //Additional smoothing
   std::string modelfile, outputfile, powspecfile;
   unsigned long long int user_seed;
-  bool verbose, do_extra_smooth, have_user_seed;
+  bool verbose, have_user_seed;
   unsigned int oversample;
 
   //Defaults
-  do_extra_smooth     = false;
   extra_smooth        = 0.0;
   sigma               = 0.0;
   filtscale           = 0.0;
@@ -57,11 +56,10 @@ int makeSimSingle(int argc, char **argv) {
   int c;
   int option_index = 0;
   optind = 1; //Reset parse
-  while ((c = getopt_long(argc,argv,optstring,long_options,
+  while ((c = getopt_long(argc, argv, optstring, long_options,
 			  &option_index)) != -1) 
     switch(c) {
     case 'e' :
-      do_extra_smooth = true;
       extra_smooth = atof(optarg);
       break;
     case 'F':
@@ -119,7 +117,7 @@ int makeSimSingle(int argc, char **argv) {
     std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
     return 1;
   }
-  if (do_extra_smooth && extra_smooth < 0.0) {
+  if (extra_smooth < 0.0) {
     std::cout << "Invalid (non-positive) extra smoothing FWHM" << std::endl;
     return 1;
   }
@@ -168,19 +166,19 @@ int makeSimSingle(int argc, char **argv) {
 int makeSimDouble(int argc, char **argv) {
 
   unsigned int n1, n2;
-  double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2;
+  double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2, filtscale;
   double extra_smooth1, extra_smooth2; //Additional smoothing
-  std::string modelfile, outputfile1, outputfile2, powerspecfile; 
+  std::string modelfile, outputfile, powerspecfile; 
   unsigned long long int user_seed;
-  bool verbose, do_extra_smooth, have_user_seed;
+  bool verbose, have_user_seed;
   unsigned int oversample;
 
   //Defaults
-  do_extra_smooth     = false;
   extra_smooth1       = 0.0;
   extra_smooth2       = 0.0;
   sigma1              = 0.0;
   sigma2              = 0.0;
+  filtscale           = 0.0;
   verbose             = false;
   user_seed           = 0;
   have_user_seed      = false;
@@ -190,16 +188,17 @@ int makeSimDouble(int argc, char **argv) {
   int c;
   int option_index = 0;
   optind = 1; //Reset parse
-  while ( ( c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index ) ) != -1 ) 
+  while ((c = getopt_long(argc, argv, optstring, long_options,
+			  &option_index)) != -1) 
     switch(c) {
     case '1' :
-      do_extra_smooth = true;
       extra_smooth1 = atof(optarg);
       break;
     case '2' :
-      do_extra_smooth = true;
       extra_smooth2 = atof(optarg);
+      break;
+    case 'F':
+      filtscale = atof(optarg);
       break;
     case 'o':
       oversample = atoi(optarg);
@@ -222,7 +221,7 @@ int makeSimDouble(int argc, char **argv) {
       break;
     }
 
-  if (optind >= argc - 8) {
+  if (optind >= argc - 7) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
@@ -235,8 +234,7 @@ int makeSimDouble(int argc, char **argv) {
   pixsize    = atof(argv[optind + 4]);
   n1         = atoi(argv[optind + 5]);
   n2         = atoi(argv[optind + 6]);
-  outputfile1 = std::string(argv[optind + 7]);
-  outputfile2 = std::string(argv[optind + 8]);
+  outputfile = std::string(argv[optind + 7]);
 
   if (n0 < 0.0) {
     std::cout << "Invalid (negative) n0: " << n0 << std::endl;
@@ -262,12 +260,12 @@ int makeSimDouble(int argc, char **argv) {
     std::cout << "Invalid (non-positive) FWHM band 1" << std::endl;
     return 1;
   }
-  if (do_extra_smooth && extra_smooth1 < 0.0) {
+  if (extra_smooth1 < 0.0) {
     std::cout << "Invalid (non-positive) extra smoothing FWHM band 1" 
 	      << std::endl;
     return 1;
   }
-  if (do_extra_smooth && extra_smooth2 < 0.0) {
+  if (extra_smooth2 < 0.0) {
     std::cout << "Invalid (non-positive) extra smoothing FWHM band 2" 
 	      << std::endl;
     return 1;
@@ -289,15 +287,17 @@ int makeSimDouble(int argc, char **argv) {
 		<< " Your value: " << n0 << std::endl;
 
     simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, 
-		       extra_smooth1, extra_smooth2, oversample, 1000,
-		       powerspecfile);
+		       filtscale, extra_smooth1, extra_smooth2, oversample, 
+		       1000, powerspecfile);
     if (have_user_seed) dim.setSeed( user_seed );
-    dim.realize(model, n0, do_extra_smooth, true, false); //Do mean subtract
+    
+    // Generate with mean subtraction
+    dim.realize(model, n0, true, false);
 
     //Write it
-    if (verbose) std::cout << "Writing simulated image to " << outputfile1
-			   << " and " << outputfile2 << std::endl;
-    int status = dim.writeToFits(outputfile1, outputfile2);
+    if (verbose) std::cout << "Writing simulated image to " << outputfile
+			   << std::endl;
+    int status = dim.writeToFits(outputfile);
     if (status != 0) return status;
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
@@ -344,7 +344,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t Two-dimensional case:" << std::endl;
       std::cout << "\t  pofd_coverage_makeSim [options] -d modelfile n0 fwhm1 "
 		<< "fwhm2" << std::endl;
-      std::cout << "\t    pixsize n1 n2 outputfile1 outputfile2" << std::endl;
+      std::cout << "\t    pixsize n1 n2 outputfile" << std::endl;
       std::cout << std::endl;
       std::cout << "DESCRIPTION" << std::endl;
       std::cout << "\tCreates a simulated image for a given model, and writes"
@@ -408,6 +408,10 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tPrint this message and exit." << std::endl;
       std::cout << "\t-d, --double" << std::endl;
       std::cout << "\t\tUse the 2D model instead of the 1D one." << std::endl;
+      std::cout << "\t-F, --filtscale VALUE" << std::endl;
+      std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
+		<< std::endl;
+      std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount of oversampling to use (integral) when " 
 		<< "generating" << std::endl;
@@ -435,10 +439,6 @@ int main( int argc, char** argv ) {
 		<< " FWHM" << std::endl;
       std::cout << "\t\t(in arcseconds); this is applied after noise is added."
 		<< std::endl;
-      std::cout << "\t-F, --filtscale VALUE" << std::endl;
-      std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
-		<< std::endl;
-      std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
       std::cout << "\t-s, --sigma NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (def: 0)." << std::endl;
       std::cout << "\tTWO-D MODEL OPTIONS" << std::endl;

@@ -5,8 +5,6 @@
 #ifndef __beam__
 #define __beam__
 
-#include<utility>
-
 #include "../include/hipassFilter.h"
 
 /*!
@@ -40,7 +38,7 @@ class beam {
   double getEffectiveAreaSq() const; //!< Get effective area of beam^2 in sq deg
 
   /*!\brief Get factorized beam, no filtering*/
-  void getBeamFac(unsigned int, double, double* const) const; 
+  void getBeamFac(unsigned int n, double pixsize, double* const fac) const; 
 
   /*!\brief Get 2D beam*/
   void getBeam(unsigned int n, double pixsize, double* const, 
@@ -52,7 +50,7 @@ class beam {
 
   /*!\brief Write the beam to a FITS file*/
   void writeToFits(const std::string& outfile, double pixsize, 
-		   double nfwhm=3.5, unsigned int oversamp=0,
+		   double nfwhm=3.5, unsigned int oversamp=1,
 		   hipassFilter* const=NULL, bool inverse=false) const;
 };
 
@@ -110,7 +108,7 @@ class beamHist {
   const unsigned int* getWtNeg() const { return wt_neg; }
   const double* getBmNeg() const { return bm_neg; }
   
-  bool isFiltered() const { return filt == NULL; } //!< Is the beam filtered
+  bool isFiltered() const { return filtscale>0; } //!< Is the beam filtered
   double getFiltScale() const { return filtscale; } //!< Get filtering scale
 
   // Min/max values

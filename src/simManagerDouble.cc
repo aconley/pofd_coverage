@@ -11,13 +11,17 @@
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
+const unsigned int simManagerDouble::nbeambins = 150; 
+const double simManagerDouble::nfwhm_nofilt = 4.5;
+const unsigned int simManagerDouble::nnoisetrials = 7;
+
 //This is the function we call to find the best fitting n0
 /*!
   \param[in] x Value of n0
   \param[in] params Messy array to hold everything to compute likelihood
  */
 static double minfunc(double x, void* params) {
-  //Basically in the order we need them
+//Basically in the order we need them
   //This is very, very ugly, but seems to be the only way
   // to interface class members to the GSL
   void** vptr = static_cast<void**>(params);
@@ -53,10 +57,15 @@ static double minfunc(double x, void* params) {
   \param[in] PIXSIZE Pixel size, in arcsec
   \param[in] FWHM1 Fwhm of band 1 beam, in arcsec
   \param[in] FWHM2 Fwhm of band 2 beam, in arcsec
-  \param[in] SIGI1 Instrument noise (without smoothing) in Jy, band 1
-  \param[in] SIGI2 Instrument noise (without smoothing) in Jy, band 2
+  \param[in] FILTSCALE Filtering scale, in arcsec.  If 0, no filtering is
+              applied.
+  \param[in] SIGI1 Instrument noise (without smoothing or filtering) in Jy, 
+             band 1
+  \param[in] SIGI2 Instrument noise (without smoothing or filtering) in Jy, 
+             band 2
   \param[in] N0 Simulated number of sources per sq deg.
-  \param[in] ESMOOTH Amount of extra smoothing to apply
+  \param[in] ESMOOTH1 Amount of extra Gaussian smoothing to apply, band 1
+  \param[in] ESMOOTH2 Amount of extra Gaussian smoothing to apply, band 2
   \param[in] OVERSAMPLE Oversampling of simulated image
   \param[in] POWERSPECFILE File containing power spectrum for on-sky source
               distribution.  If not provided, uniform sampling is used.
@@ -64,14 +73,15 @@ static double minfunc(double x, void* params) {
              0 or 1 means fully sample, using all data.
   \param[in] USEBIN Bin the data in the likelihood calculation
   \param[in] NBINS Number of bins in binned data
- */
+*/
 simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   unsigned int NSIMS, double N0INITRANGE,
 				   bool MAPLIKE, unsigned int NLIKE, 
 				   double N0RANGEFRAC, unsigned int FFTSIZE,
 				   unsigned int N1, unsigned int N2, 
 				   double PIXSIZE, double FWHM1, double FWHM2, 
-				   double SIGI1, double SIGI2, double N0, 
+				   double FILTSCALE, double SIGI1, 
+				   double SIGI2, double N0, 
 				   double ESMOOTH1, double ESMOOTH2,
 				   unsigned int OVERSAMPLE,
 				   const std::string& POWERSPECFILE,
@@ -79,11 +89,10 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   bool USEBIN, unsigned int NBINS) :
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
-  fftsize(FFTSIZE), n0(N0), sig_i1(SIGI1), sig_i2(SIGI2), 
-  sig_i1_sm(SIGI1), sig_i2_sm(SIGI2), fwhm1(FWHM1), fwhm2(FWHM2), 
-  pixsize(PIXSIZE),
+  fftsize(FFTSIZE), n0(N0), fwhm1(FWHM1), fwhm2(FWHM2), pixsize(PIXSIZE),
+  inv_bmhist(nbeambins, FILTSCALE, false),
   simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, 
-	OVERSAMPLE, NBINS, POWERSPECFILE), 
+	FILTSCALE, OVERSAMPLE, NBINS, POWERSPECFILE), 
   use_binning(USEBIN), model(MODELFILE), 
   esmooth1(ESMOOTH1), esmooth2(ESMOOTH2) {
 
@@ -91,18 +100,14 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   initTime = getTime = getLikeTime = 0;
 #endif
 
+  bool do_extra_smooth;
   if (esmooth1 > 0.0 || esmooth2 > 0.0) do_extra_smooth = true;
   else do_extra_smooth = false;
-  if (do_extra_smooth) {
-    bm.setFWHM(std::sqrt(fwhm1*fwhm1+esmooth1*esmooth1),
-	       std::sqrt(fwhm2*fwhm2+esmooth2*esmooth2));
-    std::pair<double,double> pr;
-    pr = simim.getSmoothedNoiseEstimate();
-    sig_i1_sm = pr.first;
-    sig_i2_sm = pr.second;
-  } else {
+  if (do_extra_smooth)
+    bm.setFWHM(std::sqrt(fwhm1 * fwhm1 + esmooth1 * esmooth1),
+	       std::sqrt(fwhm2 * fwhm2 + esmooth2 * esmooth2));
+  else
     bm.setFWHM(fwhm1, fwhm2);
-  }
   
   if (nsims > 0) {
     bestn0 = new double[nsims];
@@ -122,6 +127,18 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     min_n0 = NULL;
     delta_n0 = NULL;
   }
+
+  // Set up the histogrammed beam
+  double nfwhm;
+  if (FILTSCALE > 0) {
+    // Go all the way out to the image size so the filtering is
+    // accurate.  Expensive, but we only do this once after all.
+    unsigned int maxextent = N1 > N2 ? N1 : N2;
+    double maxfwhm = fwhm1 > fwhm2 ? fwhm1 : fwhm2;
+    nfwhm = static_cast<double>(maxextent) * PIXSIZE / (2 * maxfwhm);
+  } else nfwhm = nfwhm_nofilt; // Can be smaller if not filtering
+  inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE);
+
 
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
@@ -148,24 +165,18 @@ simManagerDouble::~simManagerDouble() {
 void simManagerDouble::doSims(bool verbose=false) {
   //Two steps; first: find the best fit n0.  Then -- maybe --
   // map out the likelihood
-  const float nfwhm = 3.0; //!< How far out to go on beam
-  const unsigned int nbeambins = 80; // Number of beam histogram bins
   const unsigned int max_iter = 100; //!< Maximum number of iters for min
   const unsigned int max_expiter = 20; //!< Maximum number of bracket steps
   const double reltol = 0.001; //!< Relative tolerance in n0: 0.1%
   double sigval1, sigval2; // Params to pass to minimizer
-  std::pair<double, double> maxflux;
+  std::pair<double, double> maxflux, sigfinal;
 
   //Turn off gsl error handler during call
   gsl_error_handler_t *old_handler = gsl_set_error_handler_off();
 
-  if (do_extra_smooth) {
-    sigval1 = sig_i1_sm; 
-    sigval2 = sig_i2_sm; 
-  } else {
-    sigval1 = sig_i1;
-    sigval2 = sig_i2;
-  }
+  sigfinal = simim.getFinalNoise(nnoisetrials);
+  sigval1 = sigfinal.first;
+  sigval2 = sigfinal.second;
 
   //Now, set up the parameters to pass to the minimizer.  Ugly!
   varr[0] = static_cast<void*>(&pdfac);
@@ -193,7 +204,7 @@ void simManagerDouble::doSims(bool verbose=false) {
   starttime = std::clock();
 #endif
   pdfac.initPD(fftsize, sigval1, sigval2, maxflux.first, maxflux.second, 
-	       init_b, model, bm, pixsize, nfwhm, nbeambins, true);
+	       init_b, model, inv_bmhist, true);
 #ifdef TIMING
   initTime += std::clock() - starttime;
 #endif 
@@ -209,8 +220,7 @@ void simManagerDouble::doSims(bool verbose=false) {
     }
     //Make simulated image, don't mean sub until we have mn estimate
     // so we can estimate shifts
-    simim.realize(model, n0, do_extra_smooth, true, use_binning,
-		  like_sparcity);
+    simim.realize(model, n0, true, use_binning, like_sparcity);
 
     //Now set up the minimization; note this involves calling minfunc
     // so we can't do it until all the arguments are ready
@@ -422,11 +432,11 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		 &status);
 
   //Sim params
-  dtmp = bm.getFWHM1();
+  dtmp = fwhm1;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp, 
 		 const_cast<char*>("Beam fwhm, band 1 [arcsec]"), 
 		 &status);
-  dtmp = bm.getFWHM2();
+  dtmp = fwhm2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp, 
 		 const_cast<char*>("Beam fwhm, band 2 [arcsec]"), 
 		 &status);
@@ -446,16 +456,16 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		 const_cast<char*>("Beam squared area, band 2 [pixels]"), 
 		 &status);
 
-  if (do_extra_smooth) {
+  if (simim.isSmoothed()) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
-    dtmp = esmooth1;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH1"), &dtmp, 
+    dpr = simim.getEsmooth();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH1"), &dpr.first, 
 		   const_cast<char*>("Extra smoothing fwhm, band 1 [arcsec]"), 
 		   &status);
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH2"), &dtmp, 
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH2"), &dpr.second, 
 		   const_cast<char*>("Extra smoothing fwhm, band 2 [arcsec]"), 
 		   &status);
   } else {
@@ -465,25 +475,32 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		   &status);
   }
   
-  dtmp = sig_i1;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_1"), &dtmp, 
-		 const_cast<char*>("Instrument noise, band 1"), 
+  dpr = simim.getInstNoise();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_1"), &dpr.first, 
+		 const_cast<char*>("Raw instrument noise, band 1"), 
 		 &status);
-  dtmp = sig_i2;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &dtmp, 
-		 const_cast<char*>("Instrument noise, band 1"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &dpr.second, 
+		 const_cast<char*>("Raw instrument noise, band 2"), 
 		 &status);
-  if (do_extra_smooth) {
-    dtmp = sig_i1_sm;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGISM1"), &dtmp, 
-		   const_cast<char*>("Smoothed instrument noise, band 1"), 
-		   &status);
-    dtmp = sig_i2_sm;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGISM2"), &dtmp, 
-		   const_cast<char*>("Smoothed instrument noise, band 2"), 
+  dpr = simim.getFinalNoise();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL1"), &dpr.first, 
+		 const_cast<char*>("Final instrument noise, band 1"), 
+		 &status);
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL2"), &dpr.second, 
+		 const_cast<char*>("Final instrument noise, band 2"), 
+		 &status);
+
+  if (simim.isOversampled()) {
+    utmp = simim.getOversampling();
+    fits_write_key(fp, TUINT, const_cast<char*>("OVERSMPL"), &utmp, 
+		   const_cast<char*>("Oversampling factor"), 
 		   &status);
   }
-  
+
+  itmp = static_cast<int>(simim.isClustered());
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &itmp,
+		 const_cast<char*>("Use clustered positions"), &status);
+
   if (use_binning) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("USEBIN"), &itmp,
@@ -499,9 +516,6 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		   const_cast<char*>("Use binned likelihood"), 
 		   &status);
   }
-  itmp = static_cast<int>(simim.isClustered());
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &itmp,
-		 const_cast<char*>("Use clustered positions"), &status);
 
   
   dtmp = simim.getPixSize();
@@ -525,6 +539,18 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TDOUBLE, const_cast<char*>("N0INIRNG"), &dtmp, 
 		 const_cast<char*>("N0 range fraction for minimization"), 
 		 &status);
+
+  itmp = simim.isFiltered();
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp, 
+		 const_cast<char*>("Has hipass filtering been applied?"), 
+		 &status);
+  if (simim.isFiltered()) {
+    dtmp = simim.getFiltScale();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp, 
+		 const_cast<char*>("Hipass filtering scale [arcsec]"), 
+		 &status);
+  } 
+
   utmp = getN1();
   fits_write_key(fp, TUINT, const_cast<char*>("N1"), &utmp, 
 		 const_cast<char*>("Image extent, dimension 1"), 

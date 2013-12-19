@@ -4,31 +4,78 @@
 
 #include<iostream> //For debuggin
 
-#include<fitsio.h>
+#include<fftw3.h> // For fftw_malloc
 
 #include "../include/global_settings.h"
 #include "../include/simImageDouble.h"
 #include "../include/pofdExcept.h"
 
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+
+/*!
+  \param[in] N1 Dimension of simulated image along 1st axis
+  \param[in] N2 Dimension of simulated image along 2nd axis
+  \param[in] PIXSIZE Pixel size in arcseconds.
+  \param[in] FWHM1 The FWHM of the simulated image in arcsec, before
+              filtering or smoothing, band 1
+  \param[in] FWHM2 The FWHM of the simulated image in arcsec, before
+              filtering or smoothing, band 2
+  \param[in] SIGI1 Gaussian instrumental noise in the units the model is in,
+              band 1. This is the noise before additional smoothing or 
+	      filtering.
+  \param[in] SIGI2 Gaussian instrumental noise in the units the model is in,
+              band 2. This is the noise before additional smoothing or 
+	      filtering.
+  \param[in] ESMOOTH1 Additional Gaussian smoothing FWHM, band 1.  If non-zero,
+              additional smoothing is applied.
+  \param[in] ESMOOTH2 Additional Gaussian smoothing FWHM, band 2.  If non-zero,
+              additional smoothing is applied.
+  \param[in] FILTERSCALE High-pass filtering scale, in arcseconds.
+              Zero means no filtering.
+  \param[in] OVERSAMPLE Oversampling of simulated image.  Must be odd.
+              1 means no additional oversampling.
+  \param[in] NBINS Number of bins, if binning is applied.
+  \param[in] powerspecfile File containing power spectrum.  If set, the
+              source positions are generated using this P(k).  If not set, they
+	      are uniformly distributed across the image.
+*/
 simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 			       double FWHM1, double FWHM2, double SIGI1, 
 			       double SIGI2, double ESMOOTH1, double ESMOOTH2,
-			       unsigned int OVERSAMPLE, unsigned int NBINS,
+			       double FILTERSCALE, unsigned int OVERSAMPLE, 
+			       unsigned int NBINS,
 			       const std::string& powerspecfile) {
+
+  if (N1 == 0)
+    throw pofdExcept("simImageDouble", "simImageDouble", 
+		     "Invalid (non-positive) N1", 1);
+  if (N2 == 0)
+    throw pofdExcept("simImageDouble", "simImageDouble", 
+		     "Invalid (non-positive) N2", 2);
+  if (PIXSIZE <= 0.0)
+    throw pofdExcept("simImageDouble", "simImageDouble", 
+		     "Invalid (non-positive) PIXSIZE", 3);
+  if (FWHM1 <= 0.0)
+    throw pofdExcept("simImageDouble", "simImageDouble", 
+		     "Invalid (non-positive) FWHM1", 4);
+  if (FWHM2 <= 0.0)
+    throw pofdExcept("simImageDouble", "simImageDouble", 
+		     "Invalid (non-positive) FWHM2", 5);
+  if (OVERSAMPLE % 2 == 0)
+    throw pofdExcept("simImageDouble", "simImageDouble", 
+		     "Invalid (even) OVERSAMPLE", 6);
+  
   n1 = N1;
   n2 = N2;
   oversample = OVERSAMPLE;
   ngen1 = n1 * oversample;
   ngen2 = n2 * oversample;
-  data1 = new double[n1 * n2];
-  data2 = new double[n1 * n2];
-  work  = new double[ngen1 * ngen2];
-  if (oversample == 0)
-    throw pofdExcept("simImageDouble", "simImageDouble", 
-		     "Invalid (non-positive) oversample", 1);
+  data1 = (double*) fftw_malloc(sizeof(double) * n1 * n2);
+  data2 = (double*) fftw_malloc(sizeof(double) * n1 * n2);
+  work = (double*) fftw_malloc(sizeof(double) * ngen1 * ngen2);
   if (oversample > 1) {
-    gen_1 = new double[ngen1 * ngen2];
-    gen_2 = new double[ngen1 * ngen2];
+    gen_1 = (double*) fftw_malloc(sizeof(double) * ngen1 * ngen2);
+    gen_2 = (double*) fftw_malloc(sizeof(double) * ngen1 * ngen2);
   } else
     gen_1 = gen_2 = NULL;
   pixsize = PIXSIZE;
@@ -41,7 +88,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   is_full = false;
   esmooth1 = ESMOOTH1;
   esmooth2 = ESMOOTH2;
-  smooth_applied = false;
+
   is_binned = false;
   nbins = NBINS;
   bin_sparcity = 1;
@@ -51,17 +98,25 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   bindelta2 = 0.0;
   binval = NULL;
 
+  sigi_final_computed = false;
+  sigi_final_ntrials = 0;
+  sigi_final1 = sigi_final2 = 0.0;
+
   //Set RNG seed
   unsigned long long int seed;
   seed = static_cast<unsigned long long int>(time(NULL));
   seed += static_cast<unsigned long long int>(clock());
   rangen.set_seed(seed);
 
-   // Position generator if needed
-  if (powerspecfile.empty()) {
-    use_clustered_pos = false;
-    posgen = NULL;
-  } else {
+  // Filtering
+  if (FILTERSCALE > 0.0)
+    filt = new hipassFilter(FILTERSCALE);
+  else filt = NULL;
+
+  // Position generator if needed
+  use_clustered_pos = false;
+  posgen = NULL;
+  if (!powerspecfile.empty()) {
     use_clustered_pos = true;
     posgen = new positionGeneratorClustered(ngen1, ngen2, pixsize_gen,
 					    powerspecfile);
@@ -70,7 +125,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   //Set up array to hold 1D beams in each band (center normalized)
   //We have to decide how far out to go.  Note that the beams are set
   // up in oversampled space
-  const double nfwhm = 3.5;
+  const double nfwhm = 4.5;
   ngauss1 = static_cast<unsigned int>(nfwhm * fwhm1 / pixsize_gen + 0.99999999);
   ngauss1 = 2 * ngauss1 + 1;
   gauss1 = new double[ngauss1];
@@ -78,8 +133,8 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   ngauss2 = 2 * ngauss2 + 1;
   gauss2 = new double[ngauss2];
   doublebeam bm(fwhm1, fwhm2);
-  bm.getBeamFac1(ngauss1, pixsize_gen, gauss1);
-  bm.getBeamFac2(ngauss2, pixsize_gen, gauss2);
+  bm.getBeamFac(1, ngauss1, pixsize_gen, gauss1);
+  bm.getBeamFac(2, ngauss2, pixsize_gen, gauss2);
 
   //Set up additional smoothing 
   // This is done in un-oversampled space
@@ -90,7 +145,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 					      0.99999999);
       ngauss_add1 = 2 * ngauss_add1 + 1;
       gauss_add1 = new double[ngauss_add1];
-      ebm.getBeamFac1(ngauss_add1, pixsize, gauss_add1);
+      ebm.getBeamFac(1, ngauss_add1, pixsize, gauss_add1);
     } else {
       ngauss_add1 = 0;
       gauss_add1 = NULL;
@@ -100,7 +155,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 					      0.99999999);
       ngauss_add2 = 2 * ngauss_add2 + 1;
       gauss_add2 = new double[ngauss_add2];
-      ebm.getBeamFac2(ngauss_add2, pixsize, gauss_add2);
+      ebm.getBeamFac(2, ngauss_add2, pixsize, gauss_add2);
     } else {
       ngauss_add2 = 0;
       gauss_add2 = NULL;
@@ -112,12 +167,13 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 }
 
 simImageDouble::~simImageDouble() {
-  delete[] data1;
-  delete[] data2;
-  delete[] work;
-  if (gen_1 != NULL) delete[] gen_1;
-  if (gen_2 != NULL) delete[] gen_2;
+  fftw_free(data1);
+  fftw_free(data2);
+  fftw_free(work);
+  if (gen_1 != NULL) fftw_free(gen_1);
+  if (gen_2 != NULL) fftw_free(gen_2);
   if (posgen != NULL) delete posgen;
+  if (filt != NULL) delete filt;
   delete[] gauss1;
   delete[] gauss2;
   if (ngauss_add1 > 0) delete[] gauss_add1;
@@ -128,6 +184,7 @@ simImageDouble::~simImageDouble() {
 bool simImageDouble::isValid() const {
   if (n1 == 0) return false;
   if (n2 == 0) return false;
+  if (oversample == 0) return false;
   if (pixsize <= 0.0) return false;
   if (fwhm1 <= 0.0) return false;
   if (fwhm2 <= 0.0) return false;
@@ -185,7 +242,7 @@ void simImageDouble::downSample(unsigned int ni1, unsigned int ni2,
 void simImageDouble::convolveInner(unsigned int n, const double* const arr,
 				   unsigned int ni1, unsigned int ni2,
 				   double* const inarr,
-				   double* const outarr) {
+				   double* const outarr) const {
   //inarr, outarr must be same size (ni1 by ni2)
 
   //Here we take major advantage of the fact that a Gaussian beam factorizes
@@ -307,7 +364,6 @@ void simImageDouble::convolveWithBeam() {
     convolveInner(ngauss1, gauss1, n1, n2, data1, data1);
     convolveInner(ngauss2, gauss2, n1, n2, data2, data2);
   }
-  smooth_applied = false;
 }
 
 void simImageDouble::convolveWithAdd() {
@@ -330,7 +386,6 @@ void simImageDouble::convolveWithAdd() {
       pixsize*pixsize / (fwhm1*fwhm1*esmooth1*esmooth1);
     for (unsigned int i = 0; i < n1*n2; ++i)
       data1[i] *= normval;
-    smooth_applied = true;
   }
 
   if (esmooth2 > 0) {
@@ -342,52 +397,158 @@ void simImageDouble::convolveWithAdd() {
       pixsize*pixsize / (fwhm2*fwhm2*esmooth2*esmooth2);
     for (unsigned int i = 0; i < n1*n2; ++i)
       data2[i] *= normval;
-    smooth_applied = true;
   }
 
 }
 
 
-std::pair<double,double> simImageDouble::getNoise() const {
-  if (smooth_applied) return getSmoothedNoiseEstimate(); else
-    return std::make_pair(sigi1, sigi2);
+double simImageDouble::getFinalNoiseHelper(unsigned int ntrials,
+					   double* const data, double sigi,
+					   double fwhm, double esmooth, 
+					   unsigned int ngauss_add,
+					   const double* const gauss_add,
+					   hipassFilter* const filt) const {
+  // Compute esmooth prefactor if needed
+  const double prefac = 4 * std::log(2) / pofd_coverage::pi;
+  double normval = 1.0;
+  if (esmooth > 0) {
+    double fwhmsq = fwhm * fwhm;
+    double esmoothsq = esmooth * esmooth;
+    normval = prefac * (fwhmsq + esmoothsq) * pixsize * pixsize / 
+      (fwhmsq + esmoothsq);
+  }
+
+  double var, var1, var2, mn, dtmp;
+  var = 0.0;
+  for (unsigned int idx = 0; idx < ntrials; ++idx) {
+    // Fill with random noise
+    for (unsigned int i = 0; i < n1 * n2; ++i)
+      data[i] = sigi * rangen.gauss();
+
+    // Apply additional Gaussian smoothing if needed
+    if (esmooth > 0) {
+      convolveInner(ngauss_add, gauss_add, n1, n2, data, data);
+      // Then renormalize
+      for (unsigned int i = 0; i < n1 * n2; ++i)
+	data[i] *= normval;
+    }
+
+    // Now filtering
+    filt->filter(pixsize, n1, n2, data);
+
+    // Measure using two pass algorithm
+    mn = data[0];
+    for (unsigned int i = 1; i < n1 * n2; ++i)
+      mn += data[i];
+    mn /= static_cast<double>(n1 * n2);
+    var1 = var2 = 0.0;
+    for (unsigned int i = 0; i < n1 * n2; ++i) {
+      dtmp = data[i] - mn;
+      var1 += dtmp * dtmp;
+      var2 += dtmp;
+    }
+    var1 -= var2 * var2 / static_cast<double>(n1 * n2);
+    var += var1 / static_cast<double>(n1 * n2 - 1);
+  }
+  
+  if (ntrials > 1)
+    var /= static_cast<double>(ntrials);
+  return sqrt(var);
 }
 
-//Will return estimated smoothed noise, even if current image is not smoothed
-std::pair<double,double> simImageDouble::getSmoothedNoiseEstimate() const {
-  const double prefac = sqrt(2*std::log(2)/pofd_coverage::pi);
-  double s1, s2;
+/*
+  \param[in] ntrials Number of trials to do if measuring filtered noise.
+  \returns Instrument noise including effects of filtering, etc.
+  
+  This can include both filtering and additional Gaussian smoothing.
+  Note that it is not necessary for the data array to be filled
+  for this function to work, but it can take additional storage
+  equal to the size of the image.  
 
-  if ( sigi1 == 0.0 ) s1 = 0.0;
-  else if (esmooth1 <= 0.0) s1 = sigi1;
-  else s1 = prefac*sigi1*pixsize*(fwhm1*fwhm1+esmooth1*esmooth1) / 
-	 ( esmooth1 * fwhm1*fwhm1 );
+  This is not particularly cheap the first time it is called.
+  After that it uses the previously computed value if possible.  
+*/
+std::pair<double, double> 
+simImageDouble::getFinalNoise(unsigned int ntrials) const {
 
-  if ( sigi2 == 0.0 ) s2 = 0.0;
-  else if (esmooth2 <= 0.0) s2 = sigi2;
-  else s2 = prefac*sigi2*pixsize*(fwhm2*fwhm2+esmooth2*esmooth2) / 
-	 ( esmooth2 * fwhm2*fwhm2 );
+  // esmooth normalization factor input, when analyticity is possible
+  const double noise_prefac = sqrt(2 * std::log(2) / pofd_coverage::pi);
 
-  return std::make_pair(s1, s2);
+  bool recompute = true;
+  if (sigi_final_computed) {
+    // Decide if we can re-use the previous value
+    if (filt == NULL) recompute = false; // Ignore ntrials -- not needed
+    else if (ntrials <= sigi_final_ntrials) recompute = false;
+  }
+  if (!recompute)
+    return std::make_pair(sigi_final1, sigi_final2);
 
+  // Figure out if we need temporary storage for sims
+  double *tmpdata;
+  if (filt != NULL) {
+    if (ntrials == 0)
+      throw pofdExcept("simImageDouble", "getFinalNoise",
+		       "Invalid (non-positive) ntrials", 1);
+    tmpdata = (double*) fftw_malloc(sizeof(double) * n1 * n2);
+  } else tmpdata = NULL;
+
+  // First, sigi1
+  if (sigi1 == 0)
+    sigi_final1 = 0.0;
+  else if (filt == NULL) {
+    if (esmooth1 <= 0.0) 
+      sigi_final1 = sigi1;
+    else {
+      // Only extra Gaussian smoothing.  Can be done analytically
+      double fwhm1sq = fwhm1 * fwhm1;
+      sigi_final1 = noise_prefac * sigi1 * pixsize * 
+	(fwhm1sq + esmooth1 * esmooth1) / (esmooth1 * fwhm1sq);
+    }
+  } else {
+    // Filtering, and maybe smoothing.  
+    // We have to do this by making a simulated image, filling it with 
+    // noise, etc.  This is why this function may not be cheap,
+    // and why we support multiple trials
+    sigi_final1 = getFinalNoiseHelper(ntrials, tmpdata, sigi1, fwhm1, esmooth1, 
+				      ngauss_add1, gauss_add1, filt);
+  }
+  if (sigi2 == 0)
+    sigi_final2 = 0.0;
+  else if (filt == NULL) {
+    if (esmooth2 <= 0.0) 
+      sigi_final2 = sigi2;
+    else {
+      double fwhm2sq = fwhm2 * fwhm2;
+      sigi_final2 = noise_prefac * sigi2 * pixsize * 
+	(fwhm2sq + esmooth2 * esmooth2) / (esmooth2 * fwhm2sq);
+    }
+  } else {
+    sigi_final2 = getFinalNoiseHelper(ntrials, tmpdata, sigi2, fwhm2, esmooth2, 
+				      ngauss_add2, gauss_add2, filt);
+  }
+  if (tmpdata != NULL) fftw_free(tmpdata);
+
+  sigi_final_computed = true;
+  sigi_final_ntrials = ntrials;
+  return std::make_pair(sigi_final1, sigi_final2);
 }
 
 double simImageDouble::getArea() const {
-  return pixsize*pixsize*n1*n2/(3600.0*3600.0);
+  double val = pixsize / 3600.0;
+  return val * val * n1 * n2;
 }
 
 /*!
   Generates a simulated image
   \params[in] model Base number counts model
   \params[in] n0 Number of sources per area to generate
-  \params[in] extra_smooth Apply additional Gaussian smoothing
   \params[in] meansub Do mean subtraction
   \params[in] bin Create binned image data
   \params[in] sparsebin Only take every this many pixels in binned image.
                          Does nothing if no binning.
  */
 void simImageDouble::realize(const numberCountsDouble& model,
-			     double n0, bool extra_smooth, bool meansub, 
+			     double n0, bool meansub, 
 			     bool bin, unsigned int sparsebin) {
 
   if (!isValid())
@@ -476,40 +637,38 @@ void simImageDouble::realize(const numberCountsDouble& model,
       data2[i] += sigi2 * rangen.gauss();
 
   //Extra smoothing, if set
-  if ( extra_smooth && ( (nsrcs > 0) || (sigi1 > 0.0 || sigi2 > 0.0) ) ) {
-    if (ngauss_add1 == 0)
-       throw pofdExcept("simImageDouble","realize",
-			"Trying to apply extra smoothing without setting esmooth1",2);
-    if (ngauss_add2 == 0)
-       throw pofdExcept("simImageDouble","realize",
-			"Trying to apply extra smoothing without setting esmooth2",2);
+  if ((esmooth1 > 0) || (esmooth2 > 0))
     convolveWithAdd();
-  }
 
-
-  //Mean subtract
-  if (meansub) meanSubtract();
+  // Apply filtering.  Note this is done after adding noise and
+  // downsampling to the final resolution (if oversampling is used).
+  // Filtering will always result in mean subtraction since
+  // it is a hipass filter.
+  if (filt != NULL) {
+    filt->filter(pixsize, n1, n2, data1);
+    filt->filter(pixsize, n1, n2, data2);
+  } else if (meansub) meanSubtract();
 
   //bin
-  if (bin) applyBinning(sparsebin); else is_binned = false;
+  is_binned = false;
+  if (bin) applyBinning(sparsebin);
 
 }
 
 std::pair<double,double> simImageDouble::meanSubtract() {
-  double mn1, mn2;
-  getMean(mn1, mn2);
+  std::pair<double,double> mn;
+  mn = getMean();
+  double mn1 = mn.first;
   for (unsigned int i = 0; i < n1*n2; ++i)
     data1[i] -= mn1;
+  double mn2 = mn.second;
   for (unsigned int i = 0; i < n1*n2; ++i)
     data2[i] -= mn2;
-  std::pair<double,double> ret;
-  ret.first = mn1;
-  ret.second = mn2;
   if (is_binned) {
     bincent01 -= mn1;
     bincent02 -= mn2;
   }
-  return ret;
+  return mn;
 }
 
 void simImageDouble::getMinMax(double& min1, double& max1, double& min2,
@@ -536,19 +695,21 @@ void simImageDouble::getMinMax(double& min1, double& max1, double& min2,
     if (data2[i] > max2) max2 = data2[i];
 }
 
-void simImageDouble::getMean(double& mn1, double& mn2) const {
+std::pair<double, double> 
+simImageDouble::getMean() const {
   if (!is_full)
     throw pofdExcept("simImageDouble","getMean",
 		     "Trying to get means of empty images",1);
-  double norm = 1.0/static_cast<double>(n1 * n2);
-  mn1 = data1[0];
+  double norm = 1.0 / static_cast<double>(n1 * n2);
+  double mn1 = data1[0];
   for (unsigned int i = 1; i < n1*n2; ++i)
     mn1 += data1[i];
   mn1 *= norm;
-  mn2 = data2[0];
+  double mn2 = data2[0];
   for (unsigned int i = 1; i < n1*n2; ++i)
     mn2 += data2[i];
   mn2 *= norm;
+  return std::make_pair(mn1, mn2);
 }
 
 void simImageDouble::getMeanAndVar(double& mn1, double& var1,
@@ -557,36 +718,36 @@ void simImageDouble::getMeanAndVar(double& mn1, double& var1,
     throw pofdExcept("simImageDouble","getMeanAndVar",
 		     "Trying to get mean and vars of empty images",1);
   //Use corrected two pass algorithm
-  double norm = 1.0/static_cast<double>(n1*n2);
+  double norm = 1.0/static_cast<double>(n1 * n2);
   mn1 = data1[0];
-  for (unsigned int i = 1; i < n1*n2; ++i)
+  for (unsigned int i = 1; i < n1 * n2; ++i)
     mn1 += data1[i];
   mn1 *= norm;
 
   double sum1, sum2, tmp;
   tmp = data1[0]-mn1;
-  sum1 = tmp*tmp;
+  sum1 = tmp * tmp;
   sum2 = tmp;
-  for (unsigned int i = 1; i < n1*n2; ++i) {
-    tmp = data1[i]-mn1;
-    sum1 += tmp*tmp;
+  for (unsigned int i = 1; i < n1 * n2; ++i) {
+    tmp = data1[i] - mn1;
+    sum1 += tmp * tmp;
     sum2 += tmp;
   }
-  var1 = (sum1 - norm*sum2*sum2)/static_cast<double>(n1*n2-1);
+  var1 = (sum1 - norm * sum2 * sum2)/static_cast<double>(n1 * n2 - 1);
 
   mn2 = data2[0];
-  for (unsigned int i = 1; i < n1*n2; ++i)
+  for (unsigned int i = 1; i < n1 * n2; ++i)
     mn2 += data2[i];
   mn2 *= norm;
-  tmp = data2[0]-mn2;
-  sum1 = tmp*tmp;
+  tmp = data2[0] - mn2;
+  sum1 = tmp * tmp;
   sum2 = tmp;
   for (unsigned int i = 1; i < n1*n2; ++i) {
-    tmp = data2[i]-mn2;
-    sum1 += tmp*tmp;
+    tmp = data2[i] - mn2;
+    sum1 += tmp * tmp;
     sum2 += tmp;
   }
-  var2 = (sum1 - norm*sum2*sum2)/static_cast<double>(n1*n2-1);
+  var2 = (sum1 - norm * sum2 * sum2) / static_cast<double>(n1 * n2 - 1);
 }
 
 std::pair<double,double> simImageDouble::getBeamSum() const {
@@ -618,19 +779,25 @@ std::pair<double,double> simImageDouble::getBeamSumSq() const {
 		     "No beam pixels, band 2",2);
   
   double tmp = gauss1[0];
-  double sum1D_1 = tmp*tmp;
+  double sum1D_1 = tmp * tmp;
   for (unsigned int i = 1; i < ngauss1; ++i) {
     tmp = gauss1[i];
-    sum1D_1 += tmp*tmp;
+    sum1D_1 += tmp * tmp;
   }
 
-  double sum1D_2 = tmp*tmp;
+  tmp = gauss2[0];
+  double sum1D_2 = tmp * tmp;
   for (unsigned int i = 1; i < ngauss2; ++i) {
     tmp = gauss2[i];
-    sum1D_2 += tmp*tmp;
+    sum1D_2 += tmp * tmp;
   }
 
   return std::make_pair(sum1D_1 * sum1D_1, sum1D_2 * sum1D_2);
+}
+
+double simImageDouble::getFiltScale() const {
+  if (filt == NULL) return std::numeric_limits<double>::quiet_NaN();
+  return filt->getFiltScale();
 }
 
 /*!
@@ -693,29 +860,18 @@ void simImageDouble::applyBinning(unsigned int sparsebin) {
 /*!
   Writes a single band to a fits file
 
-  \param[in] outputfile Name of file to write to
+  \param[in] fp Fitsfile pointer (assumed already open)
   \param[in] idx Which band to write (1 or 2)
   \returns 0 on success, an error code (!=0) for anything else
 */
-int simImageDouble::writeFits(const std::string& outputfile, 
-			      unsigned int idx) const {
+int simImageDouble::writeFits(fitsfile *fp, unsigned int idx) const {
 
   if (idx < 1 || idx > 2)
     throw pofdExcept("simImageDouble","writeFits",
 		     "Invalid index", 1);
 
-  //Make the fits file
-  int status = 0;
-  fitsfile *fp;
-
-  fits_create_file(&fp, outputfile.c_str(), &status);
-
-  if (status) {
-    fits_report_error(stderr,status);
-    return status;
-  }
-
   //Make image array
+  int status;
   long axissize[2];
   axissize[0] = static_cast<long>(n1);
   axissize[1] = static_cast<long>(n2);
@@ -751,7 +907,7 @@ int simImageDouble::writeFits(const std::string& outputfile,
 		 &status);
   
   //Sim params
-  int tmpi = 0;
+  int itmp = 0;
   double tmpval;
   tmpval = fwhm1;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &tmpval, 
@@ -761,9 +917,9 @@ int simImageDouble::writeFits(const std::string& outputfile,
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &tmpval, 
 		 const_cast<char*>("Beam fwhm, band 2 [arcsec]"), 
 		 &status);
-  if (smooth_applied) {
-    tmpi = 1;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+  if ((esmooth1 > 0) && (esmooth2 > 0)) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
     tmpval = esmooth1;
@@ -771,23 +927,33 @@ int simImageDouble::writeFits(const std::string& outputfile,
 		   const_cast<char*>("Extra smoothing fwhm, band 1 [arcsec]"), 
 		   &status);
     tmpval = esmooth2;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH1"), &tmpval, 
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH2"), &tmpval, 
 		   const_cast<char*>("Extra smoothing fwhm, band 2 [arcsec]"), 
 		   &status);
   } else {
-    tmpi = 0;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &tmpi,
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
 		   const_cast<char*>("Additional smoothing applied"), 
 		   &status);
   }
 
   tmpval = sigi1;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_1"), &tmpval, 
-		 const_cast<char*>("Instrument noise, band 1"), 
+		 const_cast<char*>("Raw instrument noise, band 1"), 
 		 &status);
   tmpval = sigi2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &tmpval, 
-		 const_cast<char*>("Instrument noise, band 2"), 
+		 const_cast<char*>("Raw instrument noise, band 2"), 
+		 &status);
+  std::pair<double, double> tmppair;
+  tmppair = getFinalNoise();
+  tmpval = tmppair.first;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL1"), &tmpval, 
+		 const_cast<char*>("Final instrument noise, band 1"), 
+		 &status);
+  tmpval = tmppair.second;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &tmpval, 
+		 const_cast<char*>("Final instrument noise, band 2"), 
 		 &status);
   
   if (oversample > 1) {
@@ -797,24 +963,20 @@ int simImageDouble::writeFits(const std::string& outputfile,
 		    &status);
   }
 
-  if (use_clustered_pos) tmpi = 1; else tmpi = 0;
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &tmpi,
+  if (use_clustered_pos) itmp = 1; else itmp = 0;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &itmp,
 		 const_cast<char*>("Use clustered positions"), &status);
 
-
-  if (smooth_applied) {
-    double tmpval2;
-    std::pair<double, double> ns;
-    ns = getSmoothedNoiseEstimate();
-    tmpval = ns.first;
-    tmpval2 = ns.second;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGISM1"), &tmpval, 
-		   const_cast<char*>("Smoothed instrument noise, band 1"), 
-		   &status);
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGISM2"), &tmpval2, 
-		   const_cast<char*>("Smoothed instrument noise, band 2"), 
+  if (filt != NULL) itmp = 1; else itmp = 0;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
+		 const_cast<char*>("Hipass filtering applied"), &status);
+  if (filt != NULL) {
+    tmpval = filt->getFiltScale();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &tmpval,
+		   const_cast<char*>("Hipass filtering scale [arcsec]"), 
 		   &status);
   }
+
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
 		 const_cast<char*>(pofd_coverage::version), 
 		 const_cast<char*>("pofd_coverage version"),
@@ -877,33 +1039,37 @@ int simImageDouble::writeFits(const std::string& outputfile,
   }
   delete[] tmpdata;
 
-  fits_close_file(fp, &status);
-
-  if (status) {
-    fits_report_error(stderr, status);
-    return status;
-  }
   return status;
 }
 
 /*!
-  \param[in] outputfile1 File to write band 1 map to
+  \param[in] outputfile1 File to write to
   \param[in] outputfile2 File to write band 2 map to
   \returns 0 on success, an error code (!=0) for anything else
 */
-int simImageDouble::writeToFits(const std::string& outputfile1,
-				const std::string& outputfile2) const {
+int simImageDouble::writeToFits(const std::string& outputfile) const {
 
   //Make the fits file
   int status = 0;
+  fitsfile *fp;
+  fits_create_file(&fp, outputfile.c_str(), &status);
+  if (status) {
+    fits_report_error(stderr,status);
+    return status;
+  }
 
-  status = writeFits(outputfile1, 1);
+  status = writeFits(fp, 1);
   if (status)
     throw pofdExcept("simImageDouble", "writeToFits",
 		     "Failure writing band 1 map", 1);
-  status = writeFits(outputfile2, 2);
+  status = writeFits(fp, 2);
   if (status)
     throw pofdExcept("simImageDouble", "writeToFits",
 		     "Failure writing band 2 map", 2);
+
+  // Close up
+  fits_close_file(fp, &status);
+  if (status)
+    fits_report_error(stderr, status);
   return status;
 }

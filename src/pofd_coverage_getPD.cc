@@ -59,7 +59,7 @@ int getPDSingle(int argc, char **argv) {
   has_wisdom          = false;
   nflux               = 131072;
   nbins               = 120;
-  nfwhm               = 3.5;
+  nfwhm               = 4.5;
   verbose             = false;
   return_log          = false;
   write_fits          = false;
@@ -274,10 +274,10 @@ int getPDDouble(int argc, char **argv) {
   std::string modelfile; //Knot parameters
   double n0; //Number of sources
   double maxflux1, maxflux2; //Maximum fluxes requested
-  double fwhm1, fwhm2, nfwhm, pixsize; //Calculation params (req)
+  double fwhm1, fwhm2, nfwhm, pixsize, filterscale; //Calculation params (req)
   double sigma1, sigma2; //Instrument noise
   std::string outputfile; //Ouput pofd option
-  unsigned int nflux, nbins;
+  unsigned int nflux, nbins, oversample;
   bool has_wisdom, verbose, return_log, write_fits, has_user_pixsize, write_r;
   std::string wisdom_file, r_file;
 
@@ -286,14 +286,16 @@ int getPDDouble(int argc, char **argv) {
   sigma2              = 2e-3;
   has_wisdom          = false;
   nflux               = 2048;
-  nbins               = 80;
-  nfwhm               = 3.5;
+  nbins               = 150;
+  nfwhm               = 4.5;
+  filterscale         = 0.0;
   verbose             = false;
   return_log          = false;
   write_fits          = false;
   has_user_pixsize    = false;
   pixsize             = 3.0;
   write_r             = false;
+  oversample          = 1;
 
   int c;
   int option_index = 0;
@@ -303,6 +305,9 @@ int getPDDouble(int argc, char **argv) {
     switch(c) {
     case 'f' :
       write_fits = true;
+      break;
+    case 'F' :
+      filterscale = atof(optarg);
       break;
     case 'l' :
       return_log = true;
@@ -317,8 +322,8 @@ int getPDDouble(int argc, char **argv) {
       nbins = static_cast<unsigned int>(atoi(optarg));
       break;
     case 'o':
-      std::cerr << "Oversampling not supported for 2D model" << std::endl;
-      return 1;
+      oversample = static_cast<unsigned int>(atoi(optarg));
+      break;
     case 'p':
       has_user_pixsize = true;
       pixsize = atof(optarg);
@@ -407,6 +412,15 @@ int getPDDouble(int argc, char **argv) {
 	      << std::endl;
     return 1;
   }
+  if (filterscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale: " << filterscale
+	      << std::endl;
+    return 1;
+  }
+  if (oversample % 2 == 0) {
+    std::cout << "Invalid (non-odd) oversampling " << oversample << std::endl;
+    return 1;
+  }
 
   try {
     numberCountsDouble model(modelfile);
@@ -431,10 +445,13 @@ int getPDDouble(int argc, char **argv) {
       n0 = model.getBaseN0();
 
     if (verbose) {
-      printf("   Beam fwhm1:         %0.2f\n", bm.getFWHM1());
-      printf("   Beam fwhm2:         %0.2f\n", bm.getFWHM2());
-      printf("   Beam area1:         %0.3e\n", bm.getEffectiveArea1());
-      printf("   Beam area2:         %0.3e\n", bm.getEffectiveArea2());
+      std::pair<double, double> dpr;
+      dpr = bm.getFWHM();
+      printf("   Beam fwhm1:         %0.2f\n", dpr.first);
+      printf("   Beam fwhm2:         %0.2f\n", dpr.second);
+      dpr = bm.getEffectiveArea();
+      printf("   Beam area1:         %0.3e\n", dpr.first);
+      printf("   Beam area2:         %0.3e\n", dpr.second);
       printf("   Pixel size:         %0.2f\n", pixsize);
       printf("   Flux per area1:     %0.2f\n",
 	     model.getBaseFluxPerArea1());
@@ -446,7 +463,13 @@ int getPDDouble(int argc, char **argv) {
       printf("   sigma2:             %0.4f\n", sigma2);
       if (return_log) 
 	printf("  Returning log(P(D)) rather than P(D)\n");
+      if (oversample != 1)
+	printf("oversamp:              %u\n", oversample);
     }
+
+    // Get histogrammed inverse beam
+    doublebeamHist inv_bmhist(nbins, filterscale);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample);
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 
@@ -454,8 +477,7 @@ int getPDDouble(int argc, char **argv) {
 			   << maxflux1 << " " << maxflux2 << std::endl;
     double base_n0 = model.getBaseN0();
     pfactory.initPD(nflux, sigma1, sigma2, maxflux1, maxflux2, 
-		    base_n0 > n0 ? base_n0 : n0, model, bm, pixsize, 
-		    nfwhm, nbins);
+		    base_n0 > n0 ? base_n0 : n0, model, inv_bmhist);
 
     if (write_r) {
       if (verbose) std::cout << "Writing R to " << r_file << std::endl;

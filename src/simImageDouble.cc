@@ -206,9 +206,9 @@ void simImageDouble::downSample(unsigned int ni1, unsigned int ni2,
 				unsigned int no2, double* const outarr) {
   unsigned int osamp = ni1 / no1;
   if (osamp == 0)
-    pofdExcept("simImageDouble","downSample","osamp is invalid (0)",1);
+    pofdExcept("simImageDouble", "downSample", "osamp is invalid (0)", 1);
   if (no2 * osamp != ni2)
-    pofdExcept("simImageDouble","downSample","Dimension 1 doesn't match",2);
+    pofdExcept("simImageDouble", "downSample", "Dimension 1 doesn't match", 2);
   if (osamp == 1) {
     for (unsigned int i = 0; i < no1 * no2; ++i) outarr[i] = inarr[i];
     return;
@@ -350,8 +350,8 @@ void simImageDouble::convolveInner(unsigned int n, const double* const arr,
 
 void simImageDouble::convolveWithBeam() {
   if (!is_full)
-    throw pofdExcept("simImageDouble","convolveWithBeam",
-		     "Trying to convolve empty image",1);
+    throw pofdExcept("simImageDouble", "convolveWithBeam",
+		     "Trying to convolve empty image", 1);
   if (oversample > 1) {
     //First, convolve generated image in band 1, using work as a temporary
     convolveInner(ngauss1, gauss1, ngen1, ngen2, gen_1, gen_1);
@@ -370,8 +370,8 @@ void simImageDouble::convolveWithBeam() {
 void simImageDouble::convolveWithAdd() {
   //This can only be done to data1, data2
   if (! is_full )
-    throw pofdExcept("simImageDouble","convolveWithAdd",
-		     "Trying to convolve empty image",1);
+    throw pofdExcept("simImageDouble", "convolveWithAdd",
+		     "Trying to convolve empty image", 1);
 
   if (esmooth1 > 0) {
     //From data to data, no oversampling
@@ -699,8 +699,8 @@ void simImageDouble::getMinMax(double& min1, double& max1, double& min2,
 std::pair<double, double> 
 simImageDouble::getMean() const {
   if (!is_full)
-    throw pofdExcept("simImageDouble","getMean",
-		     "Trying to get means of empty images",1);
+    throw pofdExcept("simImageDouble", "getMean",
+		     "Trying to get means of empty images", 1);
   double norm = 1.0 / static_cast<double>(n1 * n2);
   double mn1 = data1[0];
   for (unsigned int i = 1; i < n1*n2; ++i)
@@ -716,8 +716,8 @@ simImageDouble::getMean() const {
 void simImageDouble::getMeanAndVar(double& mn1, double& var1,
 				   double& mn2, double& var2) const {
   if (!is_full)
-    throw pofdExcept("simImageDouble","getMeanAndVar",
-		     "Trying to get mean and vars of empty images",1);
+    throw pofdExcept("simImageDouble", "getMeanAndVar",
+		     "Trying to get mean and vars of empty images", 1);
   //Use corrected two pass algorithm
   double norm = 1.0/static_cast<double>(n1 * n2);
   mn1 = data1[0];
@@ -753,11 +753,11 @@ void simImageDouble::getMeanAndVar(double& mn1, double& var1,
 
 std::pair<double,double> simImageDouble::getBeamSum() const {
   if (ngauss1 == 0)
-    throw pofdExcept("simImageDouble","getBeamSum",
-		     "No beam pixels, band 1",1);
+    throw pofdExcept("simImageDouble", "getBeamSum",
+		     "No beam pixels, band 1", 1);
   if (ngauss2 == 0)
-    throw pofdExcept("simImageDouble","getBeamSum",
-		     "No beam pixels, band 2",2);
+    throw pofdExcept("simImageDouble", "getBeamSum",
+		     "No beam pixels, band 2", 2);
   
   double sum1D_1 = gauss1[0];
   for (unsigned int i = 1; i < ngauss1; ++i)
@@ -773,11 +773,11 @@ std::pair<double,double> simImageDouble::getBeamSum() const {
 
 std::pair<double,double> simImageDouble::getBeamSumSq() const {
   if (ngauss1 == 0)
-    throw pofdExcept("simImageDouble","getBeamSumSq",
-		     "No beam pixels, band 1",1);
+    throw pofdExcept("simImageDouble", "getBeamSumSq",
+		     "No beam pixels, band 1", 1);
   if (ngauss2 == 0)
-    throw pofdExcept("simImageDouble","getBeamSumSq",
-		     "No beam pixels, band 2",2);
+    throw pofdExcept("simImageDouble", "getBeamSumSq",
+		     "No beam pixels, band 2", 2);
   
   double tmp = gauss1[0];
   double sum1D_1 = tmp * tmp;
@@ -810,11 +810,11 @@ double simImageDouble::getFiltScale() const {
  */
 void simImageDouble::applyBinning(unsigned int sparsebin) {
   if (!is_full)
-    throw pofdExcept("simImageDouble","applyBinning",
-		     "Trying to bin empty image",1);
+    throw pofdExcept("simImageDouble", "applyBinning",
+		     "Trying to bin empty image", 1);
 
-  if (nbins == 0) throw pofdExcept("simImageDouble","applyBinning",
-				   "Trying to bin with no bins",2);
+  if (nbins == 0) throw pofdExcept("simImageDouble", "applyBinning",
+				   "Trying to bin with no bins", 2);
   if (sparsebin >= n1 * n2) 
     throw pofdExcept("simImageDouble", "applyBinning",
 		     "Sparse binning factor larger than simulated image", 3);
@@ -869,7 +869,7 @@ int simImageDouble::writeFits(const std::string& outputfile,
 			      unsigned int idx) const {
 
   if (idx < 1 || idx > 2)
-    throw pofdExcept("simImageDouble","writeFits",
+    throw pofdExcept("simImageDouble", "writeFits",
 		     "Invalid index", 1);
 
   int status = 0;

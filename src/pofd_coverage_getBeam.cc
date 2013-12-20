@@ -166,7 +166,7 @@ int getBeamDouble(int argc, char **argv) {
   std::string outputfile; //Ouput pofd option
 
   //Defaults
-  nbins               = 120;
+  nbins               = 150;
   nfwhm               = 3.5;
   verbose             = false;
   histogram           = false;

@@ -84,11 +84,6 @@ int getRSingle(int argc, char** argv) {
 	      << std::endl;
     return 1;
   }
-  if (nflux & (nflux-1)) {
-    std::cout << "nflux must be power of 2" << std::endl;
-    std::cout << " yours is: " << nflux << std::endl;
-    return 1;
-  }
   if (nbins == 0) {
     std::cout << "Invalid (non-positive) number of beam histogram bins"
 	      << std::endl;
@@ -197,7 +192,7 @@ int getRDouble(int argc, char** argv) {
   // Defaults
   verbose = false;
   nfwhm = 4.0;
-  nbins = 120;
+  nbins = 150;
   filterscale = 0.0;
   oversamp = 1;
 
@@ -241,11 +236,6 @@ int getRDouble(int argc, char** argv) {
   if (nflux == 0) {
     std::cout << "Error -- number of fluxes requested is zero."
 	      << std::endl;
-    return 1;
-  }
-  if (nflux & (nflux-1)) {
-    std::cout << "nflux must be power of 2" << std::endl;
-    std::cout << " yours is: " << nflux << std::endl;
     return 1;
   }
   if (nbins == 0) {
@@ -411,13 +401,13 @@ int main(int argc, char** argv) {
       std::cerr << "SYNOPSIS" << std::endl;
       std::cerr << "\tEither" << std::endl;
       std::cerr << std::endl;
-      std::cerr << "\t pofd_mcmc_getR [options] modelfile n0 fwhm pixsize"
+      std::cerr << "\t pofd_coverage_getR [options] modelfile n0 fwhm pixsize"
 		<< " maxflux" << std::endl;
       std::cerr << "\t\tnflux outfile" << std::endl;
       std::cerr << std::endl;
       std::cerr << "\tfor the 1D case or" << std::endl;
       std::cerr << std::endl;
-      std::cerr << "\t pofd_mcmc_getR -d [options] modelfile n0 fwhm1 fwhm2 "
+      std::cerr << "\t pofd_coverage_getR -d [options] modelfile n0 fwhm1 fwhm2 "
 		<< "pixsize" << std::endl;
       std::cerr << "\t\tmaxflux1 maxflux2 nflux outfile" << std::endl;
       std::cerr << std::endl;

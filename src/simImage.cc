@@ -155,9 +155,9 @@ void simImage::downSample(unsigned int ni1, unsigned int ni2,
 			  unsigned int no2, double* const outarr) {
   unsigned int osamp = ni1 / no1;
   if (osamp == 0)
-    pofdExcept("simImage","downSample","osamp is invalid (0)",1);
+    pofdExcept("simImage", "downSample", "osamp is invalid (0)", 1);
   if (no2 * osamp != ni2)
-    pofdExcept("simImage","downSample","Dimension 1 doesn't match",2);
+    pofdExcept("simImage", "downSample", "Dimension 1 doesn't match", 2);
   if (osamp == 1) {
     for (unsigned int i = 0; i < no1 * no2; ++i) outarr[i] = inarr[i];
     return;
@@ -322,8 +322,8 @@ void simImage::convolveWithBeam(unsigned int ni1, unsigned int ni2,
 void simImage::convolveWithAdd() {
   //This can only be done to data
   if (! is_full )
-    throw pofdExcept("simImage","convolveWithAdd",
-		     "Trying to convolve empty image",1);
+    throw pofdExcept("simImage", "convolveWithAdd",
+		     "Trying to convolve empty image", 1);
 
   //From data to data, no oversampling
   convolveInner(ngauss_add, gauss_add, n1, n2, data, data);
@@ -627,8 +627,8 @@ double simImage::meanSubtract() {
 
 void simImage::getMinMax(double& min, double& max) const {
   if (! is_full )
-    throw pofdExcept("simImage","getMinMax",
-		     "Trying to getMinMax of empty image",1);
+    throw pofdExcept("simImage", "getMinMax",
+		     "Trying to getMinMax of empty image", 1);
 
   min = data[0];
   max = data[0];
@@ -640,8 +640,8 @@ void simImage::getMinMax(double& min, double& max) const {
 
 double simImage::getMean() const {
   if (!is_full)
-    throw pofdExcept("simImage","getMean",
-		     "Trying to get mean of empty image",1);
+    throw pofdExcept("simImage", "getMean",
+		     "Trying to get mean of empty image", 1);
   double norm = 1.0/static_cast<double>(n1*n2);
   double mn = data[0];
   for (unsigned int i = 1; i < n1*n2; ++i)
@@ -652,8 +652,8 @@ double simImage::getMean() const {
 
 void simImage::getMeanAndVar(double& mn, double& var) const {
   if (!is_full)
-    throw pofdExcept("simImage","getMeanAndVar",
-		     "Trying to get mean and var of empty image",1);
+    throw pofdExcept("simImage", "getMeanAndVar",
+		     "Trying to get mean and var of empty image", 1);
   //Use corrected two pass algorithm
   double norm = 1.0/static_cast<double>(n1 * n2);
   mn = data[0];
@@ -675,8 +675,8 @@ void simImage::getMeanAndVar(double& mn, double& var) const {
 
 double simImage::getBeamSum() const {
   if (ngauss == 0)
-    throw pofdExcept("simImage","getBeamSum",
-		     "No beam pixels",1);
+    throw pofdExcept("simImage", "getBeamSum",
+		     "No beam pixels", 1);
   
   double sum1D = gauss[0];
   for (unsigned int i = 1; i < ngauss; ++i)
@@ -688,8 +688,8 @@ double simImage::getBeamSum() const {
 
 double simImage::getBeamSumSq() const {
   if (ngauss == 0)
-    throw pofdExcept("simImage","getBeamSumSq",
-		     "No beam pixels",1);
+    throw pofdExcept("simImage", "getBeamSumSq",
+		     "No beam pixels", 1);
   
   double tmp = gauss[0];
   double sum1D = tmp*tmp;
@@ -721,8 +721,8 @@ double simImage::getEsmooth() const {
 int simImage::writeToFits(const std::string& outputfile) const {
 
   if (!is_full)
-    throw pofdExcept("simImage","writeToFits",
-		     "Trying to write image without realizing",1);
+    throw pofdExcept("simImage", "writeToFits",
+		     "Trying to write image without realizing", 1);
 
   //Make the fits file
   int status = 0;

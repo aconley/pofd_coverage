@@ -35,8 +35,8 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
     initfs.close();
     std::stringstream errmsg;
     errmsg << "Unable to open file:" << modelfile << std::endl;
-    throw pofdExcept("numberCountsDouble","numberCountsDouble",
-		       errmsg.str(),1);
+    throw pofdExcept("numberCountsDouble", "numberCountsDouble",
+		       errmsg.str(), 1);
   }
 
   //Read in number of knots in band1, sigmas, offsets
@@ -55,24 +55,24 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   }
   if (!has_nknots) {
     initfs.close();
-    throw pofdExcept("numberCountsDouble","numberCountsDouble",
-		     "Unable to find number of knots line",2);
+    throw pofdExcept("numberCountsDouble", "numberCountsDouble",
+		     "Unable to find number of knots line", 2);
   }
   if (nk < 2) {
     initfs.close();
-    throw pofdExcept("numberCountsDouble","numberCountsDouble",
-		       "Need at least 2 band 1 knots",3);
+    throw pofdExcept("numberCountsDouble", "numberCountsDouble",
+		       "Need at least 2 band 1 knots", 3);
   }
   if (ns < 1) {
     initfs.close();
-    throw pofdExcept("numberCountsDouble","numberCountsDouble",
-		       "Need at least one sigma color model knot",4);
+    throw pofdExcept("numberCountsDouble", "numberCountsDouble",
+		       "Need at least one sigma color model knot", 4);
 
   }
   if (no < 1) {
     initfs.close();
-    throw pofdExcept("numberCountsDouble","numberCountsDouble",
-		       "Need at least one offset color model knot",5);
+    throw pofdExcept("numberCountsDouble", "numberCountsDouble",
+		       "Need at least one offset color model knot", 5);
   }
   
   //Read in values
@@ -126,9 +126,9 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   // First, the sigma spline
   nsigma = ns;
   sigmapos = new double[nsigma];
-  for (unsigned int i = 0; i < nsigma; ++i) sigmapos[i] = wvec1[i+nk];
+  for (unsigned int i = 0; i < nsigma; ++i) sigmapos[i] = wvec1[i + nk];
   sigmavals = new double[nsigma];
-  for (unsigned int i = 0; i < nsigma; ++i) sigmavals[i] = wvec2[i+nk];
+  for (unsigned int i = 0; i < nsigma; ++i) sigmavals[i] = wvec2[i + nk];
 
   sigmainterp = NULL;
   accsigma = NULL;
@@ -167,7 +167,7 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   //Make sure what we read makes sense
   if (!isValidLoaded())
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
-		     "Invalid base model parameters",7);
+		     "Invalid base model parameters", 7);
 
   // Need to set base_n0, base_flux, etc.
   gsl_work = gsl_integration_workspace_alloc(1000);
@@ -192,13 +192,13 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   // and the corresponding flux densities.
   // First, set up the flux densities -- note they are the log2 values!
   gen_interp_flux = new double[gen_ninterp];
-  double lmaxf = logknotpos[nknots-1];
+  double lmaxf = logknotpos[nknots - 1];
   double lminf = logknotpos[0];
-  double dlogf = (lmaxf - lminf) / static_cast<double>(gen_ninterp-1);
+  double dlogf = (lmaxf - lminf) / static_cast<double>(gen_ninterp - 1);
   gen_interp_flux[0] = lmaxf;
   for (unsigned int i = 1; i < gen_ninterp-1; ++i)
     gen_interp_flux[i] = lmaxf - static_cast<double>(i) * dlogf;
-  gen_interp_flux[gen_ninterp-1] = lminf;
+  gen_interp_flux[gen_ninterp - 1] = lminf;
 
   // Now integrate down the number counts
   // Get cumulative distribution function using trapezoidal rule, at first
@@ -294,7 +294,7 @@ bool numberCountsDouble::isValid() const {
 double numberCountsDouble::getSigmaInner(double f1) const {
   if (nsigma == 1) return sigmavals[0];
   if (f1 <= sigmapos[0]) return sigmavals[0];
-  if (f1 >= sigmapos[nsigma-1]) return sigmavals[nsigma-1];
+  if (f1 >= sigmapos[nsigma-1]) return sigmavals[nsigma - 1];
   return gsl_interp_eval(sigmainterp, sigmapos, sigmavals, 
 			 f1, accsigma );
 }
@@ -308,7 +308,7 @@ double numberCountsDouble::getSigmaInner(double f1) const {
 double numberCountsDouble::getOffsetInner(double f1) const {
   if (noffset == 1) return offsetvals[0];
   if (f1 <= offsetpos[0]) return offsetvals[0];
-  if (f1 >= offsetpos[noffset-1]) return offsetvals[noffset-1];
+  if (f1 >= offsetpos[noffset-1]) return offsetvals[noffset - 1];
   return gsl_interp_eval(offsetinterp, offsetpos, offsetvals,
 			 f1, accoffset );
 }
@@ -350,8 +350,8 @@ double numberCountsDouble::getOffset(double f1) const {
 */
 double numberCountsDouble::
 getNumberCountsInner(double f1, double f2) const {
-  const double normfac = 1.0/sqrt(2*M_PI);
-  if (f1 < knotpos[0] || f1 >= knotpos[nknots-1] || f2 <= 0.0) 
+  const double normfac = 1.0/sqrt(2 * M_PI);
+  if (f1 < knotpos[0] || f1 >= knotpos[nknots - 1] || f2 <= 0.0) 
     return 0.0; //Out of range
 
   //This is the n_1 bit

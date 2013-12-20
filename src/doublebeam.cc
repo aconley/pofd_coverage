@@ -837,6 +837,10 @@ void doublebeamHist::writeToFits(const std::string& outputfile) const {
 		   const_cast<char*>("Oversampling"), &status);
   }
 
+  utmp = nbins;
+  fits_write_key(fp, TUINT, const_cast<char*>("NBINS"), &utmp,
+		 const_cast<char*>("Number of bins"), &status);
+
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
 		 const_cast<char*>(pofd_coverage::version), 
 		 const_cast<char*>("pofd_coverage version"),

@@ -340,12 +340,12 @@ int main( int argc, char** argv ) {
       std::cout << "\t One-dimensional case:" << std::endl;
       std::cout << "\t  pofd_coverage_makeSim [options] modelfile n0 fwhm "
 		<< "pixsize" << std::endl;
-      std::cout << "\t    n1 n2 outputfile1 outputfile2" << std::endl;
+      std::cout << "\t    n1 n2 outputfile" << std::endl;
       std::cout << std::endl;
       std::cout << "\t Two-dimensional case:" << std::endl;
       std::cout << "\t  pofd_coverage_makeSim [options] -d modelfile n0 fwhm1 "
 		<< "fwhm2" << std::endl;
-      std::cout << "\t    pixsize n1 n2 outputfile" << std::endl;
+      std::cout << "\t    pixsize n1 n2 outputfile1 outputfile2" << std::endl;
       std::cout << std::endl;
       std::cout << "DESCRIPTION" << std::endl;
       std::cout << "\tCreates a simulated image for a given model, and writes"

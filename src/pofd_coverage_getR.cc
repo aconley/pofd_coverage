@@ -39,7 +39,7 @@ int getRSingle(int argc, char** argv) {
 
   // Defaults
   verbose = false;
-  nfwhm = 4.0;
+  nfwhm = 40.0;
   nbins = 120;
   filterscale = 0.0;
   oversamp = 1;
@@ -191,7 +191,7 @@ int getRDouble(int argc, char** argv) {
 
   // Defaults
   verbose = false;
-  nfwhm = 4.0;
+  nfwhm = 40.0;
   nbins = 150;
   filterscale = 0.0;
   oversamp = 1;
@@ -489,8 +489,8 @@ int main(int argc, char** argv) {
       std::cerr << "\t\tNumber of beam histogram bins (def: 120)" << std::endl;
       std::cerr << "\t-N, --nfwhm VALUE" << std::endl;
       std::cerr << "\t\tNumber of FWHM to go out in beam representation. "
-		<< "(def: 4.0)" << std::endl;
-      std::cerr << "\t\t-o, --oversamp VALUE" << std::endl;
+		<< "(def: 40.0)" << std::endl;
+      std::cerr << "\t-o, --oversamp VALUE" << std::endl;
       std::cerr << "\t\tOversampling of pixels used to generate beam. One means"
 		<< std::endl;
       std::cerr << "\t\tno oversampling.  Must be odd (def: 1)" << std::endl;

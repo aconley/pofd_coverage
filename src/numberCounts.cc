@@ -272,6 +272,7 @@ double numberCounts::getR(double x, const beamHist& bm) const {
       R += wtptr[i] * cR * ibm;
     }
   }
+
   if (nneg > 0) {
     wtptr = bm.getWtNeg();
     ibmptr = bm.getBmNeg();

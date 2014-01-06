@@ -508,6 +508,7 @@ void simImage::realize(const numberCounts& model, double n0,
 	  gen_image[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
 	}
       }
+
       // This also moves the data from gen_image to the data array
       // and downsamples
       convolveWithBeam(ngen1, ngen2, gen_image, n1, n2, data);

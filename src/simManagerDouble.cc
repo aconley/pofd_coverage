@@ -11,9 +11,9 @@
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
-const unsigned int simManagerDouble::nbeambins = 150; 
+const unsigned int simManagerDouble::nbeambins = 500; 
 const double simManagerDouble::nfwhm_nofilt = 4.5;
-const unsigned int simManagerDouble::nnoisetrials = 7;
+const unsigned int simManagerDouble::nnoisetrials = 9;
 
 //This is the function we call to find the best fitting n0
 /*!
@@ -31,8 +31,12 @@ static double minfunc(double x, void* params) {
   simImageDouble *im = static_cast<simImageDouble*>(vptr[2]);
   unsigned int sparcity = *static_cast<unsigned int*>(vptr[3]);
 
-  if (x > pdfac->getMaxN0())
-    throw pofdExcept("","minfunc","N0 out of prepared range",1);
+  if (x > pdfac->getMaxN0()) {
+    std::stringstream errmsg;
+    errmsg << "N0 out of prepared range; x value: " << x << " max N0: "
+	   << pdfac->getMaxN0();
+    throw pofdExcept("", "minfunc", errmsg.str(), 1);
+  }
 
   pdfac->getPD(x, *pd, true, true);
   double loglike = pd->getLogLike(*im, sparcity);

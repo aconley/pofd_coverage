@@ -75,7 +75,10 @@ class PDFactory {
 
   unsigned int getPlanSize() const { return plan_size; }
   double getMaxN0() const { return max_n0; }
-
+  unsigned int getCurrSize() const { return currsize; }
+  double getSigma() const { return sigma; }
+  double getBaseN0() const { return base_n0; }
+  
   /*! \brief Adds wisdom file*/
   bool addWisdom(const std::string& filename);
 

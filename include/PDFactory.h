@@ -39,7 +39,7 @@ class PDFactory {
   bool isRTransAllocated; //!< Is rtrans allocated
 
   double dflux; //!< Flux size step of last computation
-  unsigned int maxidx; //!< Max non-zero index in Rs
+  double minflux_R; //!< Minimum flux in RFlux
   bool doshift; //!< Apply shifting
   double shift; //!< Shift amount
 
@@ -56,9 +56,16 @@ class PDFactory {
   bool resize(unsigned int); //!< Sets transform size arrays
   void strict_resize(unsigned int); //!< Sets transform size arrays
   
-  //*! \brief Initializes R*/
-  void initR(unsigned int n, double maxflux, const numberCounts& model,
-	     const beamHist& bm);
+  /*! \brief Sets RFlux, with wrapping */
+  void initRFlux(unsigned int n, double minflux, double maxflux);
+
+  /*! \brief Initializes R*/
+  void initR(unsigned int n, double minflux, double maxflux, 
+	     const numberCounts& model, const beamHist& bm);
+
+  /*! \brief Get mean and variance from R integrals*/
+  std::pair<double, double> getRMoments(unsigned int n, const numberCounts&, 
+					const beamHist&);
 
 #ifdef TIMING
   std::clock_t RTime, p0Time, fftTime, posTime, copyTime, normTime, edgeTime;
@@ -92,11 +99,6 @@ class PDFactory {
 
   /*! \brief Write out current R to text file*/
   void writeRToFile(const std::string&) const;
-
-  /*! \brief Get first n integrals of R*/
-  void getRIntegrals(unsigned int n, double maxflux, 
-		     const numberCounts&, const beamHist&, 
-		     std::vector<double>& vec, unsigned int nmom=7);
 
 #ifdef TIMING
   void resetTime();

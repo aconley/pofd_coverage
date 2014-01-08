@@ -99,6 +99,8 @@ class beamHist {
   double getPixsize() const { return pixsize; }
   unsigned int getOversamp() const { return oversamp; }
   double getEffectiveArea() const { return eff_area; }
+  bool hasPos() const { return n_pos > 0; }
+  bool hasNeg() const { return n_neg > 0; }
   unsigned int getNPos() const { return n_pos; }
   unsigned int getNNeg() const { return n_neg; }
 

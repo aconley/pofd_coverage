@@ -45,6 +45,7 @@ void PDFactory::init() {
   pval = NULL;
 
   dflux = 0.0;
+  minflux_R = 0.0;
 
   plan = plan_inv = NULL;
   plans_valid = false;
@@ -190,63 +191,109 @@ bool PDFactory::addWisdom(const std::string& filename) {
 }
 
 /*!
-  Compute integrals of R
+  Compute mean and variance from R
 
   \param[in] n       Size of transform 
-  \param[in] maxflux Maximum flux generated in R
   \param[in] model   number counts model to use for fill.  Params must be set
   \param[in] bm      Histogrammed beam
-  \param[out] vec    Returns moments
-  \param[in] nmom    Number of moments.  Note we start with the 0th one,
-                      so if you want the 2nd moment, nmom must be at least 3.
+  \returns A pair of the mean and variance
+		      
+  Will resize and change Rflux		      
 */
-void PDFactory::getRIntegrals(unsigned int n, double maxflux,
-			      const numberCounts& model, const beamHist& bm, 
-			      std::vector<double>& vec, unsigned int nmom) {
+std::pair<double, double> PDFactory::getRMoments(unsigned int n, 
+						 const numberCounts& model, 
+						 const beamHist& bm) {
 
   //We are totally going to screw things up, so mark as unclean
   initialized = false;  
   if (n == 0)
-    throw pofdExcept("PDFactory","getRIntegrals",
+    throw pofdExcept("PDFactory", "getRMoments",
 		     "n must be positive", 1);
-  if (nmom == 0)
-    throw pofdExcept("PDFactory","getRIntegrals",
-		     "nmom must be positive", 2);
 
-  vec.resize(nmom);
+  // Figure out min/max fluxes we want, which are the range of non-zero Rs.
+  // There will always be a positive beam bit, but maybe not
+  // a negative one
+  double maxknot = model.getMaxKnotPosition();
+  if (!bm.hasPos())
+    throw pofdExcept("PDFactory", "getRMoments",
+		     "Beam must have positive bits", 3);
+  double minflux, maxflux;
+  // Note bm is the inverse beam
+  maxflux = 1.05 * maxknot / bm.getMinMaxPos().first; // R is zero above this
+  if (bm.hasNeg()) minflux = -1.05 * maxknot / bm.getMinMaxNeg().first;
+  else minflux = 0.0;
+  
+  //Set R, Rflux, and dflux.  Note that rvals is actually filled
+  // with R * dflux
+  initR(n, minflux, maxflux, model, bm); 
 
-  //Set R and dflux
-  initR(n, maxflux, model, bm); 
-
-  //We use the trap rule.  Note R already is multiplied by dflux
-  //Do zeroth integral
-  double mom;
-  mom = 0.5 * rvals[0];
-  for (unsigned int i = 1; i < n-1; ++i) mom += rvals[i];
-  mom += 0.5 * rvals[n-1];
-  vec[0] = mom;
-
-  //Need a working array for the flux product.  The idea is to steadily
-  // accumulate Rflux^n * R in wrkarr.
-  double *wrkarr = new double[n];
-  for (unsigned int i = 0; i < n; ++i)
-    wrkarr[i] = rvals[i];
-
-  for (unsigned int i = 1; i < nmom; ++i) {
-    for (unsigned int j = 0; j < n; ++j)
-      wrkarr[j] *= RFlux[j];  //so for i=1 it is Rflux*R, for i=2 Rflux^2*R
-    mom = 0.5 * wrkarr[0];
-    for (unsigned int j = 1; j < n-1; ++j) mom += wrkarr[j];
-    mom += 0.5 * wrkarr[n-1];
-    vec[i] = mom;
+  //We use the trap rule. 
+  double mn, var, cf, prod;
+  cf = RFlux[0];
+  prod = 0.5 * cf * rvals[0];
+  mn = prod;
+  var = cf * prod;
+  for (unsigned int i = 1; i < n; ++i) {
+    cf = RFlux[i];
+    prod = cf * rvals[i];
+    mn += prod;
+    var += cf * prod;
   }
+  prod = 0.5 * cf * rvals[n-1];
+  mn += prod;
+  var += cf * prod;
+
+  var -= mn * mn; // Centralize moment
+
+  return std::make_pair(mn, var);
 }
 
+/*!
+  \param[in] n Number of elements
+  \param[in] minflux Minimum flux to use in R
+  \param[in] maxflux Maximum flux to use in R
+
+  Sets up RFlux.  Rflux may not quite get to minflux/maxflux
+  if minflux is negative.  
+*/
+void PDFactory::initRFlux(unsigned int n, double minflux, double maxflux) {
+  // Make sure there is room
+  resize(n);
+
+  double inm1 = 1.0 / static_cast<double>(n-1);
+  dflux = (maxflux - minflux) * inm1;
+  if (minflux >= 0.0) {
+    RFlux[0] = minflux;
+    for (unsigned int i = 1; i < n; ++i)
+      RFlux[i] = static_cast<double>(i) * dflux + minflux;
+    minflux_R = minflux;
+  } else {
+    // Here the complication is that we would really like to have
+    // RFlux = 0 included in the array.  Also, we are wrapping 
+    // negative fluxes around to the top of the array.
+    // We do this by tweaking minflux slightly
+    dflux = maxflux / (n - floor(-minflux / dflux) - 2.0);
+
+    // Figure out what index we go up to with positive fills
+    unsigned int maxpos = static_cast<unsigned int>(maxflux / dflux);
+    RFlux[0] = 0.0;
+    for (unsigned int i = 1; i < maxpos + 1; ++i) // Pos Rflux
+      RFlux[i] = static_cast<double>(i) * dflux;
+
+    // Figure out new minimum flux
+    double wrapval = - static_cast<double>(n) * dflux;
+    for (unsigned int i = maxpos + 1; i < n; ++i) // Wrapped neg Rflux
+      RFlux[i] = static_cast<double>(i) * dflux + wrapval;
+    minflux_R = RFlux[maxpos + 1];
+  }
+}
 
 /*!
   Prepare R.
  
   \param[in] n       Size of transform 
+  \param[in] minflux Minimum flux to use in R
+  \param[in] maxflux Maximum flux to use in R
   \param[in] model   number counts model to use for fill.  Params must be set
   \param[in] bm      Histogrammed beam
 
@@ -257,25 +304,17 @@ void PDFactory::getRIntegrals(unsigned int n, double maxflux,
   be smaller because of padding.  Furthermore, because of mean shifting,
   the maximum flux will often end up a bit off from the desired value.
 */
-void PDFactory::initR(unsigned int n, double maxflux, 
+void PDFactory::initR(unsigned int n, double minflux, double maxflux, 
 		      const numberCounts& model, const beamHist& bm) {
 
-  //Make sure we have enough room
-  resize(n);
-
-  double inm1 = 1.0 / static_cast<double>(n-1);
-  dflux = maxflux * inm1;
-
-  //Fill in flux values (note minflux is 0)
-  RFlux[0] = 0.0;
-  for (unsigned int i = 1; i < n; ++i)
-    RFlux[i] = static_cast<double>(i)*dflux;
+  //Fill in Rflux values, set dflux.  Also resizes.
+  initRFlux(n, minflux, maxflux);
 
   //Now fill in R.  
 #ifdef TIMING
   std::clock_t starttime = std::clock();
 #endif
-  model.getR(n, 0.0, maxflux, bm, rvals);
+  model.getR(n, RFlux, bm, rvals);
   for (unsigned int i = 1; i < n; ++i) rvals[i] *= dflux;
 #ifdef TIMING
   RTime += std::clock() - starttime;
@@ -378,38 +417,50 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   // re-use it a bunch of times, we can afford to compute R twice to get
   // a better estimate
 
-  //Estimate the mean model flux and sigma crudely
-  double maxflux_R, s_ave, est_shift, var;
-  s_ave = n0ratio * model.getBaseFluxPerArea();
-  mn =  s_ave * bm.getEffectiveArea();
-  var = model.getBaseFluxSqPerArea() * bm.getEffectiveArea() - s_ave*s_ave;
-  if (var <= 0) var = 0.0;
-  sg = sqrt(n0ratio * n0ratio * var + inst_sigma*inst_sigma);
-  est_shift = mn + pofd_coverage::n_sigma_shift * sg;
-  maxflux_R = maxflux + est_shift;
+  if (!bm.hasPos())
+    throw pofdExcept("PDFactory", "initPD", 
+		     "Code assumes positive beam is present", 7);
 
-  //Compute R integrals to update estimates for shift
-  // Note these are values for the base model
-  std::vector<double> mom(3); //0th, 1st, 2nd moment
-  getRIntegrals(n, maxflux_R, model, bm, mom, 3);
+  // We want to estimate the mean model flux and sigma.
+  // We do this by computing R and using it's moments
+  std::pair<double, double> mom; // Mean, var
+  mom = getRMoments(n, model, bm);
+  mn = n0ratio * mom.first; // mean goes as n0
+  sg = sqrt(n0ratio * mom.second + inst_sigma * inst_sigma); // var goes as n0
+  double est_shift = mn + pofd_coverage::n_sigma_shift * sg;
 
-  mn = n0ratio * mom[1];
-  //Note the variance goes up as n0ratio, not the sigma
-  sg = sqrt(n0ratio * mom[2] + inst_sigma * inst_sigma);
-  est_shift = mn + pofd_coverage::n_sigma_shift * sg;
-  maxflux_R = maxflux + est_shift;
+  // Now compute the range we will ask for R over in the actual
+  // computation.  This is rather messy, even if there is no
+  // negative beam.  
+  // Start by figuring out the range over which R is non-zero.
+  // Recall that this is the inverse beam, so the max is the maximum
+  // knot divided by the minimum 1 / beam
+  double minFRnonzero, maxFRnonzero;
+  double maxknot = model.getMaxKnotPosition();
+  maxFRnonzero = maxknot / bm.getMinMaxPos().first; 
+  if (bm.hasNeg()) minFRnonzero = -maxknot / bm.getMinMaxNeg().first;
+  else minFRnonzero = 0.0;
+
+  // We want to ensure there is enough padding at the top.  In general,
+  // this is likely because maxflux is probably large enough.  But
+  // it's good to check
+  double maxflux_R = maxflux + est_shift;
+  double altval = maxFRnonzero + pofd_coverage::n_sigma_pad * sg;
+  if (altval > maxflux_R) maxflux_R = altval;
 
   //Now prepare final R.  Note this uses the base model, even
   // though we computed the maximum R value based on the maximum n0 value
   // The returned value is R * dflux, and dflux is set
-  initR(n, maxflux_R, model, bm);
+  // We go from the smallest non-zero R to the value we just found.
+  // Note that this automatically pads R with zeros as needed!
+  initR(n, minFRnonzero, maxflux_R, model, bm);
 
-  //Decide if we will shift and pad, and if so by how much
+  //Decide if we will shift, and if so by how much
   //Only do shift if the noise is larger than one actual step size
   // Otherwise we can't represent it well.
-  bool dopad = (inst_sigma > dflux);
-  doshift = (dopad && ( mn < pofd_coverage::n_sigma_shift * sg));
-  if (doshift) shift = pofd_coverage::n_sigma_shift*sg - mn; else shift=0.0;
+  doshift = ((inst_sigma > dflux) && (mn < pofd_coverage::n_sigma_shift * sg));
+  if (doshift) shift = pofd_coverage::n_sigma_shift * sg - mn; 
+  else shift=0.0;
 
   if (verbose) {
     std::cout << " Initial mean estimate: " << mn << std::endl;
@@ -418,36 +469,6 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
       std::cout << " Additional shift applied: " << shift << std::endl;
     else std::cout << " Not applying additional shift" << std::endl;
   }
-
-  //Make sure that maxflux is large enough that we don't get
-  // bad aliasing wrap from the top around into the lower P(D) values.
-  if (maxflux_R <= pofd_coverage::n_sigma_pad * sg)
-    throw pofdExcept("PDFactory", "initPD", "Top wrap problem", 4);
-
-  //The other side of the equation is that we want to zero-pad the
-  // top, and later discard that stuff.
-  // The idea is as follows:
-  // the 'target mean' of the calculated P(D) will lie at mn+shift.
-  // We assume that anything within n_sigma_pad*sg
-  // is 'contaminated'.  That means that, if n_sigma_pad*sg >
-  // mn+shift, there will be some wrapping around the bottom of the P(D)
-  // to contaminate the top by an amount n_sigma_pad*sg - (mn+shift).
-  // We therefore zero pad and discard anything above
-  // maxflux - (n_sigma_pad*sg - (mn+shift))
-  if (dopad) {
-    double contam = pofd_coverage::n_sigma_pad*sg - (mn+shift);
-    if (contam < 0) maxidx = n; else {
-      double topflux = maxflux_R - contam;
-      if (topflux < 0)
-	throw pofdExcept("PDFactory", "initPD", "Padding problem", 7);
-      maxidx = static_cast< unsigned int>(topflux/dflux);
-      if (maxidx > n)
-	throw pofdExcept("PDFactory","initPD", "Padding problem", 8);
-      //Actual padding
-      for (unsigned int i = maxidx; i < n; ++i)
-	rvals[i] = 0.0;
-    }
-  } else maxidx = n;
 
   //Compute forward transform of this r value, store in rtrans
 #ifdef TIMING
@@ -587,8 +608,8 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
 #ifdef TIMING
   starttime = std::clock();
 #endif
-  pd.resize(maxidx);
-  for (unsigned int i = 0; i < maxidx; ++i)
+  pd.resize(n);
+  for (unsigned int i = 0; i < n; ++i)
     pd.pd_[i] = pofd[i];
   pd.logflat = false;
   pd.minflux = 0.0; pd.dflux = dflux;
@@ -609,7 +630,8 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
 #ifdef TIMING
   starttime = std::clock();
 #endif
-  if (edgeFix) pd.edgeFix();
+  // HACK
+  //if (edgeFix) pd.edgeFix();
 #ifdef TIMING
 edgeTime += std::clock() - starttime;
 #endif

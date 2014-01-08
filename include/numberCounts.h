@@ -71,7 +71,7 @@ class numberCounts {
   double getR(double f, const beamHist&) const;
 
   /*!\brief Get number of source responses for base model, general case, array*/
-  void getR(unsigned int n, double minf, double maxf, const beamHist&, 
+  void getR(unsigned int n, const double* const flux, const beamHist&, 
 	    double* const R) const;
 
   /*! \brief Generate a source flux from model */

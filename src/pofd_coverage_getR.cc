@@ -34,7 +34,7 @@ int getRSingle(int argc, char** argv) {
   std::string modelfile; //Init file (having model we want)
   std::string outfile; //File to write to
   bool verbose;
-  double n0, nfwhm, pixsize, maxflux, filterscale, fwhm;
+  double n0, nfwhm, pixsize, minflux, maxflux, filterscale, fwhm;
   unsigned int nflux, nbins, oversamp;
 
   // Defaults
@@ -67,7 +67,7 @@ int getRSingle(int argc, char** argv) {
       break;
     }
 
-  if (optind >= argc - 6) {
+  if (optind >= argc - 7) {
     std::cerr << "Required arguments missing" << std::endl;
     return 1;
   }
@@ -75,9 +75,10 @@ int getRSingle(int argc, char** argv) {
   n0 = atof(argv[optind+1]);
   fwhm = atof(argv[optind+2]);
   pixsize = atof(argv[optind+3]);
-  maxflux = atof(argv[optind+4]);
-  nflux = static_cast<unsigned int>(atoi(argv[optind+5]));
-  outfile = std::string(argv[optind+6]);
+  minflux = atof(argv[optind+4]);
+  maxflux = atof(argv[optind+5]);
+  nflux = static_cast<unsigned int>(atoi(argv[optind+6]));
+  outfile = std::string(argv[optind+7]);
 
   if (nflux == 0) {
     std::cout << "Error -- number of fluxes requested is zero."
@@ -116,6 +117,7 @@ int getRSingle(int argc, char** argv) {
   }
 
   double *R = NULL;
+  double *flux = NULL;
   try {
     numberCounts model(modelfile);
     beam bm(fwhm);
@@ -140,8 +142,14 @@ int getRSingle(int argc, char** argv) {
     }
 
     // Get R
+    double dflux;
+    if (nflux > 1) dflux = (maxflux - minflux) / static_cast<double>(nflux - 1);
+    else dflux = 0.0;
+    flux = new double[nflux];
+    for (unsigned int i = 0; i < nflux; ++i)
+      flux[i] = static_cast<double>(i) * dflux + minflux;
     R = new double[nflux];
-    model.getR(nflux, 0, maxflux, inv_bmhist, R);
+    model.getR(nflux, flux, inv_bmhist, R);
     
     // Adjust for N0
     double n0fac = n0 / model.getBaseN0();
@@ -150,30 +158,28 @@ int getRSingle(int argc, char** argv) {
 	R[i] *= n0fac;
 
     // Write
-    double dflux;
-    if (nflux > 1)
-      dflux = maxflux / static_cast<double>(nflux - 1);
-    else 
-      dflux = 0.0;
     FILE *fp;
-    fp = fopen( outfile.c_str(),"w");
+    fp = fopen(outfile.c_str(), "w");
     if (!fp) {
       std::cerr << "Failed to open output file" << std::endl;
       return 128;
     }
     fprintf(fp, "#%-11s   %-12s\n", "Flux", "R");
     for (unsigned int i = 0; i < nflux; ++i) 
-      fprintf(fp, "%12.6e   %15.9e\n", i*dflux, R[i]);
+      fprintf(fp, "%12.6e   %15.9e\n", flux[i], R[i]);
     fclose(fp);
-    
-    delete[] R; 
+
+    delete[] flux;    
+    delete[] R;
   } catch (const pofdExcept& ex) {
     std::cerr << "Error encountered" << std::endl;
     std::cerr << ex << std::endl;
     if (R != NULL) delete[] R;
+    if (flux != NULL) delete[] flux;
     return 8;
   } catch (const std::bad_alloc& ba) {
     std::cerr << "Bad allocation error: " << ba.what() << std::endl;
+    if (flux != NULL) delete[] flux;
     if (R != NULL) delete[] R;
     return 16;
   }
@@ -402,7 +408,7 @@ int main(int argc, char** argv) {
       std::cerr << "\tEither" << std::endl;
       std::cerr << std::endl;
       std::cerr << "\t pofd_coverage_getR [options] modelfile n0 fwhm pixsize"
-		<< " maxflux" << std::endl;
+		<< " minflux maxflux" << std::endl;
       std::cerr << "\t\tnflux outfile" << std::endl;
       std::cerr << std::endl;
       std::cerr << "\tfor the 1D case or" << std::endl;

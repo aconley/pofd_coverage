@@ -246,12 +246,6 @@ double numberCounts::getR(double x, const beamHist& bm) const {
   if (!bm.isInverse())
     throw pofdExcept("numberCounts", "getR", "Beam histogram not inverse", 3);
 
-  unsigned int npos, nneg;
-  npos = bm.getNPos();
-  nneg = bm.getNNeg();
-  if ((npos == 0) && (nneg == 0))
-    throw pofdExcept("numberCounts", "getR", "No non-zero parts of beam", 4);
-  
   double s_min = knotpos[0];
   double s_max = knotpos[nknots-1];
 
@@ -260,7 +254,9 @@ double numberCounts::getR(double x, const beamHist& bm) const {
   const double* ibmptr;
   double cval, cR, R, ibm;
   R = 0.0;
-  if (npos > 0) {
+
+  if ((x > 0) && bm.hasPos()) {
+    unsigned npos = bm.getNPos();
     wtptr = bm.getWtPos();
     ibmptr = bm.getBmPos();
     for (unsigned int i = 0; i < npos; ++i) {
@@ -271,20 +267,19 @@ double numberCounts::getR(double x, const beamHist& bm) const {
       cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
       R += wtptr[i] * cR * ibm;
     }
-  }
-
-  if (nneg > 0) {
+  } else if ((x < 0) && bm.hasNeg()) {
+    unsigned nneg = bm.getNNeg();
     wtptr = bm.getWtNeg();
     ibmptr = bm.getBmNeg();
     for (unsigned int i = 0; i < nneg; ++i) {
       ibm = ibmptr[i]; //1 / eta
-      cval = x * ibm;
+      cval = -x * ibm;
       if (cval < s_min) continue;
       if (cval >= s_max) continue;
       cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
       R += wtptr[i] * cR * ibm;
     }
-  }
+  } else return 0.0;
 
   double prefac = bm.getPixsize() / 3600.0;
   return prefac * prefac * R;
@@ -293,17 +288,15 @@ double numberCounts::getR(double x, const beamHist& bm) const {
 /*!\brief Get number of source responses, vector version 
 
   \param[in] n The number of values to compute R for
-  \param[in] minflux The minimum value to compute R for
-  \param[in] maxflux The maximum value to compute R for
+  \param[in] flux The flux densities, length n
   \param[in] bm The histogrammed beam
   \param[out] R The returned values of R, of length n.  Must
                 be pre-allocated by the caller
 
   R is computed for the base model		 
 */
-void numberCounts::getR(unsigned int n, double minflux,
-			double maxflux, const beamHist& bm, 
-			double* const R) const {
+void numberCounts::getR(unsigned int n, const double* const flux, 
+			const beamHist& bm, double* const R) const {
 
   //As for the scalar version of getR above, this could be done much more
   // efficiently but we aim for simplicity rather than efficiency
@@ -315,19 +308,16 @@ void numberCounts::getR(unsigned int n, double minflux,
   if (!bm.isInverse())
     throw pofdExcept("numberCounts", "getR", "Beam histogram not inverse", 3);
 
-  unsigned int npos, nneg;
-  npos = bm.getNPos();
-  nneg = bm.getNNeg();
-  if ((npos == 0) && (nneg == 0))
-    throw pofdExcept("numberCounts", "getR", "No non-zero parts of beam", 4);
-  
   double s_min = knotpos[0];
   double s_max = knotpos[nknots-1]; 
-  double dflux = (maxflux - minflux) / static_cast<int>(n - 1);
-  if (n == 1) dflux = 0.0;
   
   double prefac = bm.getPixsize() / 3600.0;
   prefac = prefac * prefac;
+
+  bool haspos = bm.hasPos();
+  bool hasneg = bm.hasNeg();
+  unsigned int npos = bm.getNPos();
+  unsigned int nneg = bm.getNNeg();
 
   //And now the actual computation.  We loop over each flux
   const unsigned int* wtptr_pos = NULL;
@@ -335,21 +325,20 @@ void numberCounts::getR(unsigned int n, double minflux,
   const double* ibmptr_pos = NULL;
   const double* ibmptr_neg = NULL;
   double cflux, cval, cR, ibm, workR;
-  npos = bm.getNPos();
-  if (npos > 0) {
+  if (haspos) {
     wtptr_pos = bm.getWtPos();
     ibmptr_pos = bm.getBmPos();
   }
   nneg = bm.getNNeg();
-  if (nneg > 0) {
+  if (hasneg) {
     wtptr_neg = bm.getWtNeg();
     ibmptr_neg = bm.getBmNeg();
   }
 
   for (unsigned int i = 0; i < n; ++i) {
-    cflux = minflux + static_cast<double>(i) * dflux;
+    cflux = flux[i];
     workR = 0.0;
-    if (npos > 0)
+    if (cflux > 0 && haspos) {
       for (unsigned int j = 0; j < npos; ++j) {
 	ibm = ibmptr_pos[j]; //1 / eta
 	cval = cflux * ibm;
@@ -358,15 +347,16 @@ void numberCounts::getR(unsigned int n, double minflux,
 	cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
 	workR += wtptr_pos[j] * cR * ibm;
       }
-    if (nneg > 0)
+    } else if (cflux < 0 && hasneg) {
       for (unsigned int j = 0; j < nneg; ++j) {
 	ibm = ibmptr_neg[j];
-	cval = cflux * ibm;
+	cval = fabs(cflux) * ibm;
 	if (cval < s_min) continue;
 	if (cval >= s_max) continue;
 	cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
 	workR += wtptr_neg[j] * cR * ibm;
       }
+    }
     R[i] = prefac * workR;
   }
 }

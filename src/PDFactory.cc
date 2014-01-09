@@ -62,7 +62,7 @@ void PDFactory::init() {
 #ifdef TIMING
 void PDFactory::resetTime() {
   RTime = p0Time = fftTime = posTime = copyTime = normTime = 0;
-  edgeTime = meanTime = logTime = 0;
+  meanTime = logTime = 0;
 }
 
 void PDFactory::summarizeTime(unsigned int nindent) const {
@@ -81,8 +81,6 @@ void PDFactory::summarizeTime(unsigned int nindent) const {
 	    << 1.0*copyTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "norm time: " << prestring 
 	    << 1.0*normTime/CLOCKS_PER_SEC << std::endl;
-  std::cout << "edge time: " << prestring 
-	    << 1.0*edgeTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "mean time: " << prestring 
 	    << 1.0*meanTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "log time: " << prestring 
@@ -191,64 +189,6 @@ bool PDFactory::addWisdom(const std::string& filename) {
 }
 
 /*!
-  Compute mean and variance from R
-
-  \param[in] n       Size of transform 
-  \param[in] model   number counts model to use for fill.  Params must be set
-  \param[in] bm      Histogrammed beam
-  \returns A pair of the mean and variance
-		      
-  Will resize and change Rflux		      
-*/
-std::pair<double, double> PDFactory::getRMoments(unsigned int n, 
-						 const numberCounts& model, 
-						 const beamHist& bm) {
-
-  //We are totally going to screw things up, so mark as unclean
-  initialized = false;  
-  if (n == 0)
-    throw pofdExcept("PDFactory", "getRMoments",
-		     "n must be positive", 1);
-
-  // Figure out min/max fluxes we want, which are the range of non-zero Rs.
-  // There will always be a positive beam bit, but maybe not
-  // a negative one
-  double maxknot = model.getMaxKnotPosition();
-  if (!bm.hasPos())
-    throw pofdExcept("PDFactory", "getRMoments",
-		     "Beam must have positive bits", 3);
-  double minflux, maxflux;
-  // Note bm is the inverse beam
-  maxflux = 1.05 * maxknot / bm.getMinMaxPos().first; // R is zero above this
-  if (bm.hasNeg()) minflux = -1.05 * maxknot / bm.getMinMaxNeg().first;
-  else minflux = 0.0;
-  
-  //Set R, Rflux, and dflux.  Note that rvals is actually filled
-  // with R * dflux
-  initR(n, minflux, maxflux, model, bm); 
-
-  //We use the trap rule. 
-  double mn, var, cf, prod;
-  cf = RFlux[0];
-  prod = 0.5 * cf * rvals[0];
-  mn = prod;
-  var = cf * prod;
-  for (unsigned int i = 1; i < n; ++i) {
-    cf = RFlux[i];
-    prod = cf * rvals[i];
-    mn += prod;
-    var += cf * prod;
-  }
-  prod = 0.5 * cf * rvals[n-1];
-  mn += prod;
-  var += cf * prod;
-
-  var -= mn * mn; // Centralize moment
-
-  return std::make_pair(mn, var);
-}
-
-/*!
   \param[in] n Number of elements
   \param[in] minflux Minimum flux to use in R
   \param[in] maxflux Maximum flux to use in R
@@ -321,6 +261,164 @@ void PDFactory::initR(unsigned int n, double minflux, double maxflux,
 #endif
 }
 
+
+/*!
+  \param[in] n Number of elements
+  \param[out] pd Holds P(D) on output, normalized and mean subtracted
+
+  This does the unwrapping of the internal P(D) into pd.
+*/
+// This should only ever be called by getPD, so we don't really
+// check the inputs
+void PDFactory::unwrapPD(unsigned int n, PD& pd) const {
+  
+  const double nsig = 3.0; // Number of sigma out break point must be from mn
+
+  // This is slightly tricky -- we may (probably do) have wrapping issues
+  // so we need to un-wrap.  We do this by scanning from the top to
+  // find the minimum in the P(D), then split the array there.
+  // We do need to do some sanity checks
+
+#ifdef TIMING
+  starttime = std::clock();
+#endif
+  int mdx = static_cast<int>(n - 1);
+  double cval, minval;
+  minval = pofd[mdx];
+  for (int i = n - 2; i >= 0; --i) {
+    cval = pofd[i];
+    if (cval < minval) {
+      minval = cval;
+      mdx = i;
+    }
+  }
+  unsigned int minidx = static_cast<unsigned>(mdx);
+
+  // Make sure this is sane!
+  double fwrap = RFlux[minidx]; // Wrap in pos flux
+  if (fwrap <= nsig * sg) {
+    std::stringstream errstr;
+    errstr << "Top wrapping problem; wrapping point at "
+	   << fwrap << " which is only " << fwrap / sg
+	   << " sigma away from expected (0) mean";
+    throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 1);
+  }
+  fwrap = - static_cast<double>(n - minidx) * dflux; // Wrap in bot flux
+  if (-fwrap <= nsig * sg) {
+    std::stringstream errstr;
+    errstr << "Bottom wrapping problem; wrapping point at "
+	   << fwrap << " which is only " << -fwrap / sg
+	   << " sigma away from expected (0) mean";
+    throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 2);
+  }
+  
+  // Copy over.  Things above minidx in pofd go into the bottom of
+  // pd.pd_, then the stuff below that in pofd goes above that in pd.pd_
+  // in the same order.
+  pd.resize(n);
+  double *ptr_curr, *ptr_out; // convenience vars
+  ptr_curr = pofd + minidx;
+  ptr_out = pd.pd_;
+  for (unsigned int i = 0; i < n - minidx; ++i)
+    ptr_out[i] = ptr_curr[i];
+  ptr_curr = pofd;
+  ptr_out = pd.pd_ + n - minidx;
+  for (unsigned int i = 0; i < minidx; ++i)
+    ptr_out[i] = ptr_curr[i];
+
+  pd.logflat = false;
+  pd.minflux = 0.0; pd.dflux = dflux;
+
+#ifdef TIMING
+  copyTime += std::clock() - starttime;
+#endif
+
+  //Normalize
+#ifdef TIMING
+  starttime = std::clock();
+#endif
+  pd.normalize();
+#ifdef TIMING
+  normTime += std::clock() - starttime;
+#endif
+
+  //Now mean subtract flux axis
+#ifdef TIMING
+  starttime = std::clock();
+#endif
+  double tmn; //True mean
+  pd.getMean(tmn, false);
+  if (std::isinf(tmn) || std::isnan(tmn)) {
+    std::stringstream str;
+    str << "Un-shift amounts not finite: " << tmn << " " << std::endl;
+    str << "At length: " << n << " with noise: " << sigma;
+    throw pofdExcept("PDFactory", "unwrapPD", str.str(), 3);
+  }
+  pd.minflux = -tmn;
+#ifdef TIMING
+  meanTime += std::clock() - starttime;
+#endif
+
+}
+
+
+/*!
+  Compute mean and variance from R
+
+  \param[in] n       Size of transform 
+  \param[in] model   number counts model to use for fill.  Params must be set
+  \param[in] bm      Histogrammed beam
+  \returns A pair of the mean and variance
+		      
+  Will resize and change Rflux		      
+*/
+std::pair<double, double> PDFactory::getRMoments(unsigned int n, 
+						 const numberCounts& model, 
+						 const beamHist& bm) {
+
+  //We are totally going to screw things up, so mark as unclean
+  initialized = false;  
+  if (n == 0)
+    throw pofdExcept("PDFactory", "getRMoments",
+		     "n must be positive", 1);
+
+  // Figure out min/max fluxes we want, which are the range of non-zero Rs.
+  // There will always be a positive beam bit, but maybe not
+  // a negative one
+  double maxknot = model.getMaxKnotPosition();
+  if (!bm.hasPos())
+    throw pofdExcept("PDFactory", "getRMoments",
+		     "Beam must have positive bits", 3);
+  double minflux, maxflux;
+  // Note bm is the inverse beam
+  maxflux = 1.05 * maxknot / bm.getMinMaxPos().first; // R is zero above this
+  if (bm.hasNeg()) minflux = -1.05 * maxknot / bm.getMinMaxNeg().first;
+  else minflux = 0.0;
+  
+  //Set R, Rflux, and dflux.  Note that rvals is actually filled
+  // with R * dflux
+  initR(n, minflux, maxflux, model, bm); 
+
+  //We use the trap rule. 
+  double mn, var, cf, prod;
+  cf = RFlux[0];
+  prod = 0.5 * cf * rvals[0];
+  mn = prod;
+  var = cf * prod;
+  for (unsigned int i = 1; i < n; ++i) {
+    cf = RFlux[i];
+    prod = cf * rvals[i];
+    mn += prod;
+    var += cf * prod;
+  }
+  prod = 0.5 * cf * rvals[n-1];
+  mn += prod;
+  var += cf * prod;
+
+  var -= mn * mn; // Centralize moment
+
+  return std::make_pair(mn, var);
+}
 
 /*!
   Gets ready for P(D) computation by preparing R and computing its forward
@@ -421,13 +519,12 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
     throw pofdExcept("PDFactory", "initPD", 
 		     "Code assumes positive beam is present", 7);
 
-  // We want to estimate the mean model flux and sigma.
+  // Estimate the mean model flux and sigma.
   // We do this by computing R and using it's moments
   std::pair<double, double> mom; // Mean, var
   mom = getRMoments(n, model, bm);
   mn = n0ratio * mom.first; // mean goes as n0
   sg = sqrt(n0ratio * mom.second + inst_sigma * inst_sigma); // var goes as n0
-  double est_shift = mn + pofd_coverage::n_sigma_shift * sg;
 
   // Now compute the range we will ask for R over in the actual
   // computation.  This is rather messy, even if there is no
@@ -444,7 +541,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   // We want to ensure there is enough padding at the top.  In general,
   // this is likely because maxflux is probably large enough.  But
   // it's good to check
-  double maxflux_R = maxflux + est_shift;
+  double maxflux_R = maxflux;
   double altval = maxFRnonzero + pofd_coverage::n_sigma_pad * sg;
   if (altval > maxflux_R) maxflux_R = altval;
 
@@ -456,10 +553,11 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   initR(n, minFRnonzero, maxflux_R, model, bm);
 
   //Decide if we will shift, and if so by how much
-  //Only do shift if the noise is larger than one actual step size
-  // Otherwise we can't represent it well.
-  doshift = ((inst_sigma > dflux) && (mn < pofd_coverage::n_sigma_shift * sg));
-  if (doshift) shift = pofd_coverage::n_sigma_shift * sg - mn; 
+  // The idea is to shift the mean to zero -- but we only
+  // do the shift if the sigma is larger than one actual step size
+  // because otherwise we can't represent it well.
+  doshift = (sg > dflux) && (fabs(mn) > dflux);
+  if (doshift) shift = - mn; 
   else shift=0.0;
 
   if (verbose) {
@@ -492,8 +590,6 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   \param[out] pd Holds P(D) on output
   \param[in] setLog If true, pd is log(P(D) on output; convenient
               for likelihood evaluation.
-  \param[in] edgeFix  Apply a fix to the lower edges to minimize wrapping
-                      effects using a Gaussian to each row/col
 
   Note that n is the transform size; the output array will generally
   be smaller because of padding.  Furthermore, because of mean shifting,
@@ -501,22 +597,22 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
 
   You must call initPD first, or bad things will probably happen.
 */
-void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
+void PDFactory::getPD(double n0, PD& pd, bool setLog) {
 
   // The basic idea is to compute the P(D) from the previously filled
   // R values, adding in noise and all that fun stuff, filling pd
   // for output
 
   if (!initialized)
-    throw pofdExcept("PDFactory","getPD",
-		     "Must call initPD first",1);
+    throw pofdExcept("PDFactory", "getPD",
+		     "Must call initPD first", 1);
   if (n0 > max_n0) {
     std::stringstream errstr("");
     errstr << "N_0 " << n0
 	   << " larger than maximum prepared value " << max_n0
 	   << std::endl;
     errstr << "initPD should have been called with at least " << n0;
-    throw pofdExcept("PDFactory","getPD",errstr.str(),2);
+    throw pofdExcept("PDFactory", "getPD", errstr.str(), 2);
   }
   double n0ratio = n0 / base_n0;
   
@@ -545,8 +641,10 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
   double iflux = pofd_coverage::two_pi / (n * dflux);
 
   if (doshift) {
-    //This should be the most common case,
-    // and corresponds to having some noise
+    //This should be the most common case.  Note that the shift
+    // was computed based on max_n0, not the current or base n0
+    // so we have to correct for that
+    double curr_shift = n0 * shift / max_n0;
     double sigfac = 0.5 * sigma * sigma;
 #pragma omp parallel
     {
@@ -555,23 +653,36 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
       for (unsigned int idx = 1; idx < ncplx; ++idx) {
 	w = iflux * static_cast<double>(idx);
 	rval = n0ratio * rtrans[idx][0] - r0 - sigfac * w * w;
-	ival = n0ratio * rtrans[idx][1] - shift * w;
+	ival = n0ratio * rtrans[idx][1] - curr_shift * w;
 	expfac = exp(rval);
 	pval[idx][0] = expfac * cos(ival);
 	pval[idx][1] = expfac * sin(ival);
       } 
     }
   } else {
-    //No shift, sigma must be zero
 #pragma omp parallel
     {
       double expfac, ival;
+      if (sigma > 0.0) {
+	double w, rval;
+	double sigfac = 0.5 * sigma * sigma;
+	for (unsigned int idx = 1; idx < ncplx; ++idx) {
+	  w = iflux * static_cast<double>(idx);
+	  rval = n0ratio * rtrans[idx][0] - r0 - sigfac * w * w;
+	  ival = n0ratio * rtrans[idx][1];
+	  expfac = exp(rval);
+	  pval[idx][0] = expfac * cos(ival);
+	  pval[idx][1] = expfac * sin(ival);
+	}
+      } else {
+	// No instrument sigma, simple
 #pragma omp for
-      for (unsigned int idx = 1; idx < ncplx; ++idx) {
-	expfac = exp(n0ratio * rtrans[idx][0] - r0);
-	ival = n0ratio * rtrans[idx][1];
-	pval[idx][0] = expfac*cos(ival);
-	pval[idx][1] = expfac*sin(ival);
+	for (unsigned int idx = 1; idx < ncplx; ++idx) {
+	  expfac = exp(n0ratio * rtrans[idx][0] - r0);
+	  ival = n0ratio * rtrans[idx][1];
+	  pval[idx][0] = expfac * cos(ival);
+	  pval[idx][1] = expfac * sin(ival);
+	}
       }
     }
   }
@@ -604,57 +715,8 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog, bool edgeFix) {
   posTime += std::clock() - starttime;
 #endif
 
-  //Copy into output variable
-#ifdef TIMING
-  starttime = std::clock();
-#endif
-  pd.resize(n);
-  for (unsigned int i = 0; i < n; ++i)
-    pd.pd_[i] = pofd[i];
-  pd.logflat = false;
-  pd.minflux = 0.0; pd.dflux = dflux;
-#ifdef TIMING
-  copyTime += std::clock() - starttime;
-#endif
-
-  //Normalize
-#ifdef TIMING
-  starttime = std::clock();
-#endif
-  pd.normalize();
-#ifdef TIMING
-  normTime += std::clock() - starttime;
-#endif
-
-  //Fix up the edge
-#ifdef TIMING
-  starttime = std::clock();
-#endif
-  // HACK
-  //if (edgeFix) pd.edgeFix();
-#ifdef TIMING
-edgeTime += std::clock() - starttime;
-#endif
-
-  //Now mean subtract flux axis
-#ifdef TIMING
-  starttime = std::clock();
-#endif
-  double tmn; //True mean
-  pd.getMean(tmn, false);
-  if ( std::isinf(tmn) || std::isnan(tmn) ) {
-    std::stringstream str;
-    str << "Un-shift amounts not finite: " << tmn << " " << std::endl;
-    str << "At length: " << n << " with noise: " << sigma;
-    throw pofdExcept("PDFactory","getPD",str.str(),8);
-  }
-  // Get mn corrected for n0 computation value
-  if (verbose) std::cout << " Expected mean: " << shift + mn * n0 / max_n0
-			 << " Realized mean: " << tmn << std::endl;
-  pd.minflux = -tmn;
-#ifdef TIMING
-  meanTime += std::clock() - starttime;
-#endif
+  // Copy into output variable, normalizing, mean subtracting, etc.
+  unwrapPD(n, pd);
 
   //Turn PD to log for more efficient log computation of likelihood
 #ifdef TIMING

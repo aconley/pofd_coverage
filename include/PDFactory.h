@@ -67,8 +67,11 @@ class PDFactory {
   std::pair<double, double> getRMoments(unsigned int n, const numberCounts&, 
 					const beamHist&);
 
+  /*! \brief Moves P(D) over to output variable inside getPD */
+  void unwrapPD(unsigned int n, PD& pd) const;
+
 #ifdef TIMING
-  std::clock_t RTime, p0Time, fftTime, posTime, copyTime, normTime, edgeTime;
+  std::clock_t RTime, p0Time, fftTime, posTime, copyTime, normTime;
   std::clock_t meanTime, logTime;
 #endif
 
@@ -94,8 +97,7 @@ class PDFactory {
 	      double maxn0, const numberCounts&, const beamHist&);
 
   /*! \brief Gets P(D) of specified transform size */
-  void getPD(double, PD&, bool setLog=true, 
-	     bool edgeFix=false);
+  void getPD(double, PD&, bool setLog=true);
 
   /*! \brief Write out current R to text file*/
   void writeRToFile(const std::string&) const;

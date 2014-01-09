@@ -370,12 +370,6 @@ double simImage::getFinalNoise(unsigned int ntrials) const {
     throw pofdExcept("simImage", "getFinalNoise",
 		     "Invalid (non-positive) ntrials", 1);
 
-  // HACK
-  sigi_final_computed = true;
-  sigi_final_ntrials = ntrials;
-  sigi_final = sigi;
-  return sigi_final;
-
   // If necessary, do the computation
   if (recompute) {
     if (sigi == 0) {
@@ -548,11 +542,9 @@ void simImage::realize(const numberCounts& model, double n0,
   is_full = true;
 
   //Add instrument noise
-  /*
   if (sigi > 0.0)
     for (unsigned int i = 0; i < n1 * n2; ++i)
       data[i] += sigi * rangen.gauss();
-  */
 
   //Extra smoothing, if set
   if (esmooth > 0.0 && ((nsrcs > 0) || (sigi > 0.0)))
@@ -566,11 +558,6 @@ void simImage::realize(const numberCounts& model, double n0,
     filt->filter(pixsize, n1, n2, data);
   else
     if (meansub) meanSubtract();
-
-  // HACK
-  if (sigi > 0.0)
-    for (unsigned int i = 0; i < n1 * n2; ++i)
-      data[i] += sigi * rangen.gauss();
 
   is_binned = false;
   if (bin) applyBinning(sparsebin);

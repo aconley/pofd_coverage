@@ -212,7 +212,7 @@ int getPDSingle(int argc, char **argv) {
       printf("   N0:                 %0.4e\n", n0);
       printf("   sigma:              %0.4f\n", sigma);
       if (filterscale > 0.0)
-	printf("   filter scale:       %0.4f\n", filterscale);
+	printf("   filter scale:       %0.1f\n", filterscale);
       if (return_log) 
 	printf("  Returning log(P(D)) rather than P(D)\n");
       if (oversample != 1)
@@ -236,7 +236,7 @@ int getPDSingle(int argc, char **argv) {
       pfactory.writeRToFile(r_file);
     }
     
-    pfactory.getPD(n0, pd, return_log, true);
+    pfactory.getPD(n0, pd, return_log);
     
     //Write it
     if (verbose) std::cout << "Writing P(D) to " << outputfile 

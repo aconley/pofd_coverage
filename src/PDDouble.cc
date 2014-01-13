@@ -1,6 +1,7 @@
 //PDDouble.cc
 #include<limits>
 #include<sstream>
+#include<cstring>
 
 #include<fitsio.h>
 #include<fftw3.h>
@@ -30,10 +31,10 @@ PDDouble::~PDDouble() {
  */
 void PDDouble::resize(unsigned int N1, unsigned int N2) {
   //Doesn't actually resize arrays if it can avoid it
-  unsigned int newcap = N1*N2;
-  if ( newcap > capacity ) {
+  unsigned int newcap = N1 * N2;
+  if (newcap > capacity) {
     if (pd_ != NULL) fftw_free(pd_);
-    if (newcap > 0) pd_ = (double *) fftw_malloc( sizeof(double)*newcap );
+    if (newcap > 0) pd_ = (double *) fftw_malloc(sizeof(double) * newcap);
     else pd_ = NULL;
     capacity = newcap;
   }
@@ -46,9 +47,9 @@ void PDDouble::resize(unsigned int N1, unsigned int N2) {
  */
 void PDDouble::shrink() {
   unsigned int newcap = n1*n2;
-  if ( newcap < capacity ) {
+  if (newcap < capacity) {
     if (newcap > 0) {
-      double* tmp = (double*) fftw_malloc( sizeof(double)*newcap );
+      double* tmp = (double*) fftw_malloc(sizeof(double) * newcap);
       for (unsigned int i = 0; i < newcap; ++i)
 	tmp[i] = pd_[i];
       if (pd_ != NULL) fftw_free(pd_);
@@ -65,10 +66,10 @@ void PDDouble::shrink() {
   Generally doesn't preserve data
  */
 void PDDouble::strict_resize(unsigned int N1, unsigned int N2) {
-  unsigned int newcap = N1*N2;
-  if ( newcap != capacity ) {
+  unsigned int newcap = N1 * N2;
+  if (newcap != capacity) {
     if (pd_ != NULL) fftw_free(pd_);
-    if (newcap > 0) pd_ = (double*) fftw_malloc( sizeof(double)*newcap );
+    if (newcap > 0) pd_ = (double*) fftw_malloc(sizeof(double) * newcap);
     else pd_ = NULL;
     capacity = newcap;
   }
@@ -80,7 +81,7 @@ double PDDouble::getTotal() const {
   if ( (n1 == 0) || (n2 == 0) )
     return std::numeric_limits<double>::quiet_NaN();
   double retval;
-  unsigned int sz = n1*n2;
+  unsigned int sz = n1 * n2;
   if (logflat) {
     retval = exp2(pd_[0]);
     for (unsigned int i = 1; i < sz; ++i)
@@ -99,28 +100,28 @@ double PDDouble::getIntegral() const {
   
   double tot, *rowptr;
   if (logflat) {
-    tot = 0.5*exp2(pd_[0]);
+    tot = 0.5 * exp2(pd_[0]);
     for (unsigned int j = 1; j < n2-1; ++j)
       tot += exp2(pd_[j]);
-    tot += 0.5*exp2(pd_[n2-1]);
+    tot += 0.5 * exp2(pd_[n2-1]);
     tot *= 0.5;
     for (unsigned int i = 1; i < n1-1; ++i) {
       rowptr = pd_ + i*n2;
-      tot += 0.5*exp2(rowptr[0]);
+      tot += 0.5 * exp2(rowptr[0]);
       for (unsigned int j = 1; j < n2-1; ++j)
 	tot += exp2(rowptr[j]);
-      tot += 0.5*exp2(rowptr[n2-1]);
+      tot += 0.5 * exp2(rowptr[n2-1]);
     }
     rowptr = pd_ + (n1-1)*n2;
-    tot += 0.25*exp2(rowptr[0]);
+    tot += 0.25 * exp2(rowptr[0]);
     for (unsigned int j = 1; j < n2-1; ++j)
-      tot += 0.5*exp2(rowptr[j]);
+      tot += 0.5 * exp2(rowptr[j]);
     tot += 0.25*exp2(rowptr[n2-1]);
   } else {
-    tot = 0.5*pd_[0];
+    tot = 0.5 * pd_[0];
     for (unsigned int j = 1; j < n2-1; ++j)
       tot += pd_[j];
-    tot += 0.5*pd_[n2-1];
+    tot += 0.5 * pd_[n2-1];
     tot *= 0.5;
     for (unsigned int i = 1; i < n1-1; ++i) {
       rowptr = pd_ + i*n2;
@@ -130,12 +131,12 @@ double PDDouble::getIntegral() const {
       tot += 0.5*rowptr[n2-1];
     }
     rowptr = pd_ + (n1-1)*n2;
-    tot += 0.25*rowptr[0];
+    tot += 0.25 * rowptr[0];
     for (unsigned int j = 1; j < n2-1; ++j)
-      tot += 0.5*rowptr[j];
-    tot += 0.25*rowptr[n2-1];
+      tot += 0.5 * rowptr[j];
+    tot += 0.25 * rowptr[n2-1];
   }
-  return tot*dflux1*dflux2;
+  return tot * dflux1 * dflux2;
 }
 
 /*!
@@ -143,19 +144,19 @@ double PDDouble::getIntegral() const {
   to integrate
  */
 void PDDouble::normalize() {
-  if ( (n1 == 0) || (n2 == 0) )
+  if ((n1 == 0) || (n2 == 0))
     throw pofdExcept("PDDouble","normalize",
 		     "No information present to normalize",1);
   //Note, because of the 0.5 edge pieces we don't just use
   // getTotal
   double tot = getIntegral();
-  unsigned int sz = n1*n2;
+  unsigned int sz = n1 * n2;
   if (logflat) {
     double lgtot = log2( tot );
     for (unsigned int i = 0; i < sz; ++i)
       pd_[i] -= lgtot;
   } else {
-    double itot = 1.0/tot;
+    double itot = 1.0 / tot;
     for (unsigned int i = 0; i < sz; ++i)
       pd_[i] *= itot;
   }
@@ -163,7 +164,7 @@ void PDDouble::normalize() {
 
 void PDDouble::applyLog(bool nocheck) {
   if (logflat) return;
-  unsigned int sz = n1*n2;
+  unsigned int sz = n1 * n2;
   double val;
   if (nocheck)
     for (unsigned int i = 0; i < sz; ++i)
@@ -635,8 +636,7 @@ PDDouble& PDDouble::operator=(const PDDouble& other) {
       throw pofdExcept("PDDouble", "operator=", 
 			"initialization of this space failed", 2);
       
-    for (unsigned int i = 0; i < sz; ++i)
-      pd_[i] = other.pd_[i];
+    std::memcpy(pd_, other.pd_, sz * sizeof(double));
   }
   logflat = other.logflat;
   return *this;
@@ -660,9 +660,7 @@ void PDDouble::fill(unsigned int N1, double MINFLUX1, double DFLUX1,
     if (pd_ == NULL)
       throw pofdExcept("PDDouble", "fill", 
 			"Initialization of this space failed", 2);
-
-    for (unsigned int i = 0; i < sz; ++i)
-      pd_[i] = PD[i];
+    std::memcpy(pd_, PD, sz * sizeof(double));
   }
 }
 
@@ -676,12 +674,12 @@ double PDDouble::getPDVal(double x, double y,bool logval) const {
   //look up the effective indexes
   int idx1 = static_cast<int>( (x-minflux1)/dflux1 );
   int idx2 = static_cast<int>( (y-minflux2)/dflux2 );
-  int n2idx1 = n2*idx1;
+  int n2idx1 = n2 * idx1;
 
   double maxflux1 = minflux1 + static_cast<double>(n1-1)*dflux1;
   double maxflux2 = minflux2 + static_cast<double>(n2-1)*dflux2;
 
-  unsigned int n2n1 = n2*n1;
+  unsigned int n2n1 = n2 * n1;
   double interp_val;
   //Check to see if we are off the edge
   if ( x < minflux1 ) {
@@ -747,60 +745,60 @@ int PDDouble::writeToFits( const std::string& outputfile ) const {
 
   if (status) {
     fits_report_error(stderr,status);
-    throw pofdExcept("PDDouble","writeToFits",
-		       "Error creating FITS output file",1);
+    throw pofdExcept("PDDouble", "writeToFits",
+		     "Error creating FITS output file", 1);
   }
 
   long axissize[2];
   axissize[0] = static_cast<long>(n1);
   axissize[1] = static_cast<long>(n2);
   
-  fits_create_img( fp, DOUBLE_IMG, 2, axissize, &status );
+  fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
   
   //Add "WCS" info to hdr
   float crpix = 1;
   double tmpval;
-  fits_write_key( fp, TSTRING, const_cast<char*>("CTYPE1"),
-		  const_cast<char*>("FLUX1"),
-		  const_cast<char*>("Type of Data axis 1"),&status);
-  fits_write_key( fp, TFLOAT, const_cast<char*>("CRPIX1"), &crpix, 
-		  const_cast<char*>("Ref pix of axis 1"), &status );
+  fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE1"),
+		 const_cast<char*>("FLUX1"),
+		 const_cast<char*>("Type of Data axis 1"),&status);
+  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX1"), &crpix, 
+		 const_cast<char*>("Ref pix of axis 1"), &status);
   tmpval = minflux1;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
-		  const_cast<char*>("val at ref pix"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
+		 const_cast<char*>("val at ref pix"), &status);
   tmpval = dflux1;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CDELT1"), &tmpval,
-		  const_cast<char*>("delta along axis 1"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CDELT1"), &tmpval,
+		 const_cast<char*>("delta along axis 1"), &status);
 
-  fits_write_key( fp, TSTRING, const_cast<char*>("CTYPE2"),
-		  const_cast<char*>("FLUX2"),
-		  const_cast<char*>("Type of Data axis 2"),&status);
-  fits_write_key( fp, TFLOAT, const_cast<char*>("CRPIX2"), &crpix, 
-		  const_cast<char*>("Ref pix of axis 2"), &status );
+  fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE2"),
+		 const_cast<char*>("FLUX2"),
+		 const_cast<char*>("Type of Data axis 2"),&status);
+  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX2"), &crpix, 
+		 const_cast<char*>("Ref pix of axis 2"), &status);
   tmpval = minflux2;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CRVAL2"), &tmpval, 
-		  const_cast<char*>("val at ref pix"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL2"), &tmpval, 
+		 const_cast<char*>("val at ref pix"), &status);
   tmpval = dflux2;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CDELT2"), &tmpval,
-		  const_cast<char*>("delta along axis 2"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CDELT2"), &tmpval,
+		 const_cast<char*>("delta along axis 2"), &status);
   tmpval = dflux1;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CD1_1"), &tmpval,
-		  const_cast<char*>("WCS matrix element 1 1"),&status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_1"), &tmpval,
+		 const_cast<char*>("WCS matrix element 1 1"),&status);
   tmpval = 0.0;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CD1_2"), &tmpval, 
-		  const_cast<char*>("WCS matrix element 1 2"),
-		  &status );
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CD2_1"), &tmpval, 
-		  const_cast<char*>("WCS matrix element 2 1"),
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_2"), &tmpval, 
+		 const_cast<char*>("WCS matrix element 1 2"),
+		 &status);
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_1"), &tmpval, 
+		 const_cast<char*>("WCS matrix element 2 1"),
+		 &status);
   tmpval = dflux2;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CD2_2"), &tmpval, 
-		  const_cast<char*>("WCS matrix element 2 2"),
-		  &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_2"), &tmpval, 
+		 const_cast<char*>("WCS matrix element 2 2"),
+		 &status);
 
   int lg = static_cast<int>(logflat);
-  fits_write_key( fp, TLOGICAL, const_cast<char*>("LOG"),&lg,
-		  const_cast<char*>("Is log P(D) stored?"), &status);
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("LOG"), &lg,
+		 const_cast<char*>("Is log P(D) stored?"), &status);
 
   //Do data writing.  We have to make a transposed copy of the
   // data to do this, which is irritating as hell
@@ -809,7 +807,7 @@ int PDDouble::writeToFits( const std::string& outputfile ) const {
   for ( unsigned int j = 0; j < n2; ++j ) {
     for (unsigned int i = 0; i < n1; ++i) tmpdata[i] = pd_[i*n2+j];
     fpixel[1] = static_cast<long>(j+1);
-    fits_write_pix( fp, TDOUBLE, fpixel, n1, tmpdata, &status );
+    fits_write_pix(fp, TDOUBLE, fpixel, n1, tmpdata, &status);
   }
   delete[] tmpdata;
 
@@ -817,8 +815,8 @@ int PDDouble::writeToFits( const std::string& outputfile ) const {
 
   if (status) {
     fits_report_error(stderr,status);
-    throw pofdExcept("PDDouble","writeToFits",
-		       "Error doing FITS write",2);
+    throw pofdExcept("PDDouble", "writeToFits",
+		     "Error doing FITS write", 2);
   }
   return status;
 }

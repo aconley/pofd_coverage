@@ -237,7 +237,7 @@ int runSimSingle(int argc, char **argv) {
       if (oversample > 1)
 	printf("   oversampling:       %u\n", oversample);
       if (filtscale > 0)
-	printf("   filtering Scale:    %0.2f\n", filtscale);
+	printf("   filtering scale:    %0.1f\n", filtscale);
       if (sparcity > 1)
 	printf("   sparcity:           %u\n", sparcity);
       if (!powerspecfile.empty())
@@ -502,7 +502,7 @@ int runSimDouble(int argc, char **argv) {
       if (oversample > 1)
 	printf("   oversampling:       %u\n",oversample);
       if (filtscale > 0)
-	printf("   filtering Scale:    %0.2f\n", filtscale);
+	printf("   filtering scale:    %0.1f\n", filtscale);
       if (sparcity > 1)
 	printf("   sparcity:           %u\n", sparcity);
       if (!powerspecfile.empty())

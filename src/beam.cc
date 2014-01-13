@@ -6,7 +6,6 @@
 #include<fitsio.h>
 
 #include "../include/beam.h"
-#include "../include/global_settings.h"
 #include "../include/pofdExcept.h"
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
@@ -419,7 +418,7 @@ beamHist::~beamHist() {
   inverse beam, then the minimum/maximum of the inverse positive beam
   are returned.
 */
-std::pair<double, double> beamHist::getMinMaxPos() const {
+dblpair beamHist::getMinMaxPos() const {
   if (!has_data) 
     return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			  std::numeric_limits<double>::quiet_NaN());
@@ -441,7 +440,7 @@ std::pair<double, double> beamHist::getMinMaxPos() const {
   inverse beam, then the minimum/maximum of the inverse negative beam
   are returned.
 */
-std::pair<double, double> beamHist::getMinMaxNeg() const {
+dblpair beamHist::getMinMaxNeg() const {
   if (!has_data) 
     return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			  std::numeric_limits<double>::quiet_NaN());

@@ -54,12 +54,14 @@ class PDFactoryDouble {
   bool rvars_allocated; //!< Are R variables (rest of this block) allocated
   bool is_r_set; //!< Has R been set to something?
   unsigned int rsize; //!< Size of R fill along each dimension
+  double *RFlux1; //!< Holds R flux values for fill
+  double *RFlux2; //!< Holds R flux values for fill
+  double minfluxR_1; //!< Minimum flux in RFlux1
+  double minfluxR_2; //!< Minimum flux in RFlux2
   double* rvals; //!< Working space for R computation, row major order
   fftw_complex *rtrans; //!< Holds FFTed rvals 
   fftw_complex* pval; //!< Working variable holding p = exp( stuff )
-  double* pofd; //!< Internal P(D) variable.  
-  double *RFlux1; //!< Holds R flux values for fill
-  double *RFlux2; //!< Holds R flux values for fill
+  double* pofd; //!< Internal P(D) variable.
 
   void allocateRvars(); //!< Allocates R variables if needed
   void freeRvars(); //!< Free R variables
@@ -76,8 +78,6 @@ class PDFactoryDouble {
 
   double dflux1; //!< Flux size step of last computation, band 1
   double dflux2; //!< Flux size step of last computation, band 2
-  unsigned int maxidx1; //!< Max non-zero index in R, band 2
-  unsigned int maxidx2; //!< Max non-zero index in R, band 2
   bool doshift1; //!< Apply shifting, band 2
   bool doshift2; //!< Apply shifting, band 2
   double shift1; //!< Shift amount, band 2
@@ -94,17 +94,32 @@ class PDFactoryDouble {
   void strict_resize(unsigned int); //!< Sets transform size arrays
   void free(); //!< Frees memory
 
-  //*! \brief Initializes R*/
-  bool initR(unsigned int n, double maxflux1, double maxflux2, 
-	     const numberCountsDouble& model, const doublebeamHist& bm,
-	     bool setEdge=true);
+  /*! \brief Sets RFlux1, Rflux2, with wrapping */
+  void initRFlux(unsigned int n, double minflux1, double maxflux1,
+		 double minflux2, double maxflux2);
 
-  //*! \brief Compute integrals of R */
-  void getRIntegralsInternal(unsigned int, std::vector<double>&) const;
+  /*! \brief Initializes R */
+  void initR(unsigned int n, double minflux1, double maxflux1, 
+	     double minflux2, double maxflux2, const numberCountsDouble& model,
+	     const doublebeamHist& bm, bool setEdge=true);
+
+  /*! \brief Figure out min/max flux densities where R is non-zero */
+  std::pair<dblpair, dblpair> getMinMaxR(const numberCountsDouble&,
+					 const doublebeamHist&) const;
+
+  //*! \brief Compute means and variances from R */
+  std::pair<dblpair, dblpair> getRMoments(unsigned int n, 
+					  const numberCountsDouble&,
+					  const doublebeamHist&,
+					  const std::pair<dblpair, dblpair>&,
+					  bool setEdge=true);
+
+  /*! \brief Moves P(D) over to output variable inside getPD */
+  void unwrapPD(unsigned int n, PDDouble& pd) const;
 
 #ifdef TIMING
   std::clock_t RTime, p0Time, fftTime, posTime, copyTime;
-  std::clock_t normTime, edgeTime, meanTime, logTime;
+  std::clock_t normTime, meanTime, logTime;
 #endif
 
  public :
@@ -135,8 +150,7 @@ class PDFactoryDouble {
 	      bool setEdge=true);
 
   /*! \brief Gets P(D) with specified noise levels */
-  void getPD(double, PDDouble&, bool setLog=true, 
-	     bool edgeFix=false);
+  void getPD(double, PDDouble&, bool setLog=true);
 
   void writeRToFile(const std::string&) const;
   

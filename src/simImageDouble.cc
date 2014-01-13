@@ -1,8 +1,7 @@
 #include<ctime>
 #include<cmath>
 #include<limits>
-
-#include<iostream> //For debuggin
+#include<cstring>
 
 #include<fitsio.h>
 #include<fftw3.h> // For fftw_malloc
@@ -571,8 +570,8 @@ void simImageDouble::realize(const numberCountsDouble& model,
   std::pair<double, double> src;
   if (oversample > 1) {
     //Generate in oversampled gen_1, gen_2
-    for (unsigned int i = 0; i < ngen1 * ngen2; ++i) gen_1[i] = 0.0;
-    for (unsigned int i = 0; i < ngen1 * ngen2; ++i) gen_2[i] = 0.0;
+    std::memset(gen_1, 0, ngen1 * ngen2 * sizeof(double));
+    std::memset(gen_2, 0, ngen1 * ngen2 * sizeof(double));
     if (nsrcs > 0) {
       unsigned int idx1, idx2, combidx;
       if (use_clustered_pos) {
@@ -598,8 +597,8 @@ void simImageDouble::realize(const numberCountsDouble& model,
     }
   } else {
     //Generate in data1, data2
-    for (unsigned int i = 0; i < n1 * n2; ++i) data1[i] = 0.0;
-    for (unsigned int i = 0; i < n1 * n2; ++i) data2[i] = 0.0;
+    std::memset(data1, 0, n1 * n2 * sizeof(double));
+    std::memset(data2, 0, n1 * n2 * sizeof(double));
 
     //Inject sources
     if (nsrcs > 0) {
@@ -823,8 +822,7 @@ void simImageDouble::applyBinning(unsigned int sparsebin) {
   //There is no way to change nbins after initialization
   if (binval == NULL)
     binval = new unsigned int[nbins * nbins];
-  for (unsigned int i = 0; i < nbins * nbins; ++i)
-    binval[i] = 0;
+  std::memset(binval, 0, nbins * nbins * sizeof(unsigned int));
 
   //First, we need the minimum and maximum
   double minval1, maxval1, minval2, maxval2;

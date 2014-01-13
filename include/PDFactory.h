@@ -10,6 +10,7 @@
 #include<gsl/gsl_errno.h>
 #include<fftw3.h>
 
+#include "../include/global_settings.h"
 #include "../include/numberCounts.h"
 #include "../include/PD.h"
 
@@ -35,11 +36,10 @@ class PDFactory {
   double* rvals; //!< Working space for R computation
   fftw_complex *rtrans; //!< Holds forward transformed base R
   fftw_complex* pval; //!< Working variable holding p = exp( stuff )
-  double* pofd; //!< Internal P(D) variable.  
+  double* pofd; //!< Internal P(D) variable.
   bool isRTransAllocated; //!< Is rtrans allocated
 
   double dflux; //!< Flux size step of last computation
-  double minflux_R; //!< Minimum flux in RFlux
   bool doshift; //!< Apply shifting
   double shift; //!< Shift amount
 
@@ -51,6 +51,7 @@ class PDFactory {
 
   //Working variable for main R fill
   double *RFlux; //!< Holds R flux values for fill
+  double minflux_R; //!< Minimum flux in RFlux; it wraps, so good to keep track fo
 
   void init(); //!< Initializes memory
   bool resize(unsigned int); //!< Sets transform size arrays
@@ -63,9 +64,12 @@ class PDFactory {
   void initR(unsigned int n, double minflux, double maxflux, 
 	     const numberCounts& model, const beamHist& bm);
 
+  /*! \brief Figure out non-zero range of R */
+  dblpair getMinMaxR(const numberCounts& model, const beamHist& bm) const;
+
   /*! \brief Get mean and variance from R integrals*/
-  std::pair<double, double> getRMoments(unsigned int n, const numberCounts&, 
-					const beamHist&);
+  dblpair getRMoments(unsigned int n, const numberCounts&, const beamHist&,
+		      dblpair range);
 
   /*! \brief Moves P(D) over to output variable inside getPD */
   void unwrapPD(unsigned int n, PD& pd) const;

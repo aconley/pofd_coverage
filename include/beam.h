@@ -5,6 +5,7 @@
 #ifndef __beam__
 #define __beam__
 
+#include "../include/global_settings.h"
 #include "../include/hipassFilter.h"
 
 /*!
@@ -114,8 +115,8 @@ class beamHist {
   double getFiltScale() const { return filtscale; } //!< Get filtering scale
 
   // Min/max values
-  std::pair<double, double> getMinMaxPos() const; //!< Get min/max pos beam
-  std::pair<double, double> getMinMaxNeg() const; //!< Get min/max neg beam
+  dblpair getMinMaxPos() const; //!< Get min/max pos beam
+  dblpair getMinMaxNeg() const; //!< Get min/max neg beam
 
   /*!\brief Fill from beam*/
   void fill(const beam& bm, double nfwhm, double pixsize,

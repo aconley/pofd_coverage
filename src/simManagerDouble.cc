@@ -11,7 +11,7 @@
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
-const unsigned int simManagerDouble::nbeambins = 500; 
+const unsigned int simManagerDouble::nbeambins = 250; 
 const double simManagerDouble::nfwhm_nofilt = 4.5;
 const unsigned int simManagerDouble::nnoisetrials = 9;
 
@@ -38,7 +38,7 @@ static double minfunc(double x, void* params) {
     throw pofdExcept("", "minfunc", errmsg.str(), 1);
   }
 
-  pdfac->getPD(x, *pd, true, true);
+  pdfac->getPD(x, *pd, true);
   double loglike = pd->getLogLike(*im, sparcity);
 
   return -loglike; //Remember -- we want to minimize this
@@ -335,7 +335,7 @@ void simManagerDouble::doSims(bool verbose=false) {
 #ifdef TIMING
 	starttime = std::clock();
 #endif
-	pdfac.getPD(curr_n0, pd, true, true);
+	pdfac.getPD(curr_n0, pd, true);
 #ifdef TIMING
 	getTime += std::clock() - starttime;
 #endif

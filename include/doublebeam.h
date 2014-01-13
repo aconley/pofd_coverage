@@ -5,6 +5,7 @@
 #ifndef __doublebeam__
 #define __doublebeam__
 
+#include "../include/global_settings.h"
 #include "../include/hipassFilter.h"
 
 /*!
@@ -34,13 +35,13 @@ class doublebeam {
 
   void setFWHM(double, double); //!< Set the FWHM values
 
-  std::pair<double, double> getFWHM() const { return std::make_pair(fwhm1, fwhm2); }
-  std::pair<double, double> getRhoSq() const {return std::make_pair(rhosq1, rhosq2);}
+  dblpair getFWHM() const { return std::make_pair(fwhm1, fwhm2); }
+  dblpair getRhoSq() const {return std::make_pair(rhosq1, rhosq2);}
 
   /*! \brief Get effective areas of beam in sq deg*/
-  std::pair<double, double> getEffectiveArea() const; 
+  dblpair getEffectiveArea() const; 
   /*! \brief Get effective areas of beam^2 in sq deg*/
-  std::pair<double, double> getEffectiveAreaSq() const;
+  dblpair getEffectiveAreaSq() const;
 
   /*! \brief Get factorized beam*/
   void getBeamFac(unsigned int band, unsigned int n, 
@@ -106,13 +107,12 @@ class doublebeamHist {
   bool hasData() const { return has_data; }
   bool isInverse() const { return inverse; }
   unsigned int getNbins() const { return nbins; }
-  std::pair<double, double> getFWHM() const { 
-    return std::make_pair(fwhm1, fwhm2); }
+  dblpair getFWHM() const { return std::make_pair(fwhm1, fwhm2); }
   double getNFWHM() const { return nfwhm; }
   double getPixsize() const { return pixsize; }
   unsigned int getOversamp() const { return oversamp; }
-  std::pair<double, double> getEffectiveArea() const { 
-    return std::make_pair(eff_area1, eff_area2); }
+  dblpair getEffectiveArea() const { return std::make_pair(eff_area1, eff_area2); }
+  bool hasSign(unsigned int idx) const { return n[idx] > 0; }
   unsigned int getN(unsigned int idx) const { return n[idx]; }
 
   // This is very bad, but also very, very useful for speed purposes
@@ -124,8 +124,8 @@ class doublebeamHist {
   double getFiltScale() const { return filtscale; } //!< Get filtering scale
 
   // Min/max values
-  std::pair<double, double> getMinMax1(unsigned int) const; //!< Get min/max band 1
-  std::pair<double, double> getMinMax2(unsigned int) const; //!< Get min/max band 2
+  dblpair getMinMax1(unsigned int) const; //!< Get min/max band 1
+  dblpair getMinMax2(unsigned int) const; //!< Get min/max band 2
 
   /*!\brief Fill from beam*/
   void fill(const doublebeam& bm, double nfwhm, double pixsize,

@@ -12,8 +12,8 @@
 #include<gsl/gsl_interp.h>
 #include<gsl/gsl_integration.h>
 
-#include "../include/doublebeam.h"
 #include "../include/global_settings.h"
+#include "../include/doublebeam.h"
 
 /*!
   \brief Spline times log normal number counts
@@ -130,7 +130,7 @@ class numberCountsDouble {
   double getBaseFluxSqPerArea2() const;
 
   /*! \brief Crude estimate of maximum flux from model */
-  std::pair<double, double> getMaxFluxEstimate() const;
+  dblpair getMaxFluxEstimate() const;
 
   /*!\brief Get differential number counts for base model*/
   double getdNdS(double, double) const;
@@ -175,7 +175,7 @@ class numberCountsDouble {
 	    const doublebeamHist& bm, double* const R) const;
 
   /*! \brief Generate a source flux from model */
-  std::pair<double, double> genSource(double udev, double gdev) const;
+  dblpair genSource(double udev, double gdev) const;
 
   bool writeToStream(std::ostream& os) const; //!< Output to stream
 };

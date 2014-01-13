@@ -4,6 +4,7 @@
 #include<vector>
 #include<string>
 #include<cmath>
+#include<utility>
 
 /*!
   \brief Global convenience variables
@@ -37,4 +38,8 @@ namespace pofd_coverage {
 			     262144, 524288, 1048576, 2097152, 4194304,
 			     8388608, 16777216}; //!< Powers of 2
 }
+
+// Typedefs
+typedef std::pair<double, double> dblpair;
+
 #endif

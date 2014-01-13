@@ -1,5 +1,6 @@
 //PD.cc
 #include<limits>
+#include<cstring>
 
 #include<fitsio.h>
 #include<fftw3.h>
@@ -40,7 +41,7 @@ void PD::resize(unsigned int N) {
  */
 void PD::shrink() {
   unsigned int newcap = n;
-  if ( newcap < capacity ) {
+  if (newcap < capacity) {
     if (newcap > 0) {
       double* tmp = (double*) fftw_malloc( sizeof(double)*newcap );
       for (unsigned int i = 0; i < newcap; ++i)
@@ -230,8 +231,6 @@ void PD::getMean(double& mean, bool donorm) const {
   mean += minflux;
 }
 
-/////////////////// STOP ////////////////////
-
 /*!
   \param[out] mean mean value
   \param[out] var  variance
@@ -304,24 +303,23 @@ void PD::fill(unsigned int N, double MINFLUX, double DFLUX,
   resize(N);
   minflux = MINFLUX;
   dflux = DFLUX;
-  if (n > 0)
-    for (unsigned int i = 0; i < n; ++i)
-      pd_[i] = PD[i];
+  if (n > 0) std::memcpy(pd_, PD, n * sizeof(double));
 }
 
 double PD::getPDVal(double x) const {
   if (pd_ == NULL) return std::numeric_limits<double>::quiet_NaN();
 
   //look up the effective indexes
-  int idx = static_cast<int>( (x-minflux)/dflux );
+  double idflux = 1.0 / dflux;
+  int idx = static_cast<int>((x - minflux) * idflux);
 
-  double maxflux = minflux + static_cast<double>(n-1)*dflux;
+  double maxflux = minflux + static_cast<double>(n - 1) * dflux;
 
-  if ( x < minflux ) return pd_[0];
-  if ( x > maxflux-dflux ) return pd_[n-1]; 
+  if (x < minflux) return pd_[0];
+  if (x > maxflux - dflux) return pd_[n-1]; 
   double p0 = pd_[idx];
-  double dx = x - (minflux+static_cast<double>(idx)*dflux);
-  return p0 + dx/dflux*(pd_[idx+1]-p0);
+  double dx = x - (minflux + static_cast<double>(idx) * dflux);
+  return p0 + dx * idflux * (pd_[idx+1]-p0);
 }
 
 
@@ -361,25 +359,25 @@ int PD::writeToFits( const std::string& outputfile ) const {
   //Add "WCS" info to hdr
   float crpix = 1;
   double tmpval;
-  fits_write_key( fp, TSTRING, const_cast<char*>("CTYPE1"),
-		  const_cast<char*>("FLUX"),
-		  const_cast<char*>("Type of Data axis 1"),&status);
-  fits_write_key( fp, TFLOAT, const_cast<char*>("CRPIX1"), &crpix, 
-		  const_cast<char*>("Ref pix of axis 1"), &status );
+  fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE1"),
+		 const_cast<char*>("FLUX"),
+		 const_cast<char*>("Type of Data axis 1"), &status);
+  fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX1"), &crpix, 
+		 const_cast<char*>("Ref pix of axis 1"), &status);
   tmpval = minflux;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
-		  const_cast<char*>("val at ref pix"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
+		 const_cast<char*>("val at ref pix"), &status);
   tmpval = dflux;
-  fits_write_key( fp, TDOUBLE, const_cast<char*>("CDELT1"), &tmpval,
-		  const_cast<char*>("delta along axis 1"), &status );
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("CDELT1"), &tmpval,
+		 const_cast<char*>("delta along axis 1"), &status);
 
   int lg = static_cast<int>(logflat);
-  fits_write_key( fp, TLOGICAL, const_cast<char*>("LOG"),&lg,
-		  const_cast<char*>("Is log P(D) stored?"), &status);
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("LOG"),&lg,
+		 const_cast<char*>("Is log P(D) stored?"), &status);
 
   //Do data writing.  
   long fpixel[1] = { 1 };
-  fits_write_pix( fp, TDOUBLE, fpixel, n, pd_, &status );
+  fits_write_pix(fp, TDOUBLE, fpixel, n, pd_, &status);
 
   fits_close_file(fp,&status);
 
@@ -397,11 +395,11 @@ int PD::writeToFits( const std::string& outputfile ) const {
   \returns Log Likelihood of data with respect to P(D)
 */
 double PD::getLogLike(const simImage& data, unsigned int sparcity) const {
-  if (pd_ == NULL) throw pofdExcept("PD","getLogLike",
-                                    "pd not filled before likelihood calc",1);
-  unsigned int ndata = data.getN1()*data.getN2();
-  if (ndata == 0) throw pofdExcept("PD","getLogLike",
-				   "No data present",2);
+  if (pd_ == NULL) throw pofdExcept("PD", "getLogLike",
+                                    "pd not filled before likelihood calc", 1);
+  unsigned int ndata = data.getN1() * data.getN2();
+  if (ndata == 0) throw pofdExcept("PD", "getLogLike",
+				   "No data present", 2);
   if (data.isBinned()) return getLogLikeBinned(data, sparcity);
   else return getLogLikeUnbinned(data, sparcity);
 }
@@ -416,7 +414,7 @@ double PD::getLogLikeBinned(const simImage& data, unsigned int sparcity) const {
 		     "Sparcity of binning doesn't match request", 2);
       
   //Quantities for edge test
-  double maxflux = minflux + static_cast<double>(n-1)*dflux;
+  double maxflux = minflux + static_cast<double>(n - 1) * dflux;
 
   int idx; //!< Index look up
   const unsigned int* bins;

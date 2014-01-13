@@ -9,6 +9,18 @@
 #include "../include/global_settings.h"
 #include "../include/pofdExcept.h"
 
+/* Given two flux densities, tell which sign component they match */
+unsigned int signComp(double x1, double x2) {
+  if (x1 >= 0) {
+    if (x2 >= 0) return 0;
+    else return 1;
+  } else {
+    if (x2 >= 0) return 2;
+    else return 3;
+  }
+}
+
+
 //Function to pass to GSL integrator
 /*! \brief Evaluates flux1^power1 * exp(const1*mu + const2*sigma^2) dN/dS1 */
 static double evalPowfNDoubleLogNormal(double, void*); 
@@ -421,7 +433,7 @@ double numberCountsDouble::getBaseFluxSqPerArea2() const {
   return base_fluxsq2; 
 }
 
-std::pair<double, double> numberCountsDouble::getMaxFluxEstimate() const {
+dblpair numberCountsDouble::getMaxFluxEstimate() const {
   if (!isValid())
     throw pofdExcept("numberCountsDouble", "getMaxFluxEstimate",
 		     "Invalid model", 1);
@@ -523,6 +535,7 @@ double numberCountsDouble::powerInt(double alpha, double beta) const {
   \param[in] x1   Source response, band 1
   \param[in] x2   Source response, band 2
   \param[in] bm   The histogrammed inverse beam
+
   \returns R(x1, x2) computed for the base input model.
 */
 double numberCountsDouble::getR(double x1, double x2, 
@@ -540,24 +553,25 @@ double numberCountsDouble::getR(double x1, double x2,
 
   //Do actual R computation
   unsigned int curr_n;
-  double ieta1, ieta2, retval;
+  double ieta1, ieta2, retval, ax1, ax2;
   const unsigned int* wtptr;
   const double* ibmptr1;
   const double* ibmptr2;
   retval = 0.0;
-  for (unsigned int sgn = 0; sgn < 4; ++sgn) {
-    curr_n = bm.getN(sgn);
-    if (curr_n == 0) continue;  // None of that sign component
-    wtptr = bm.getWt(sgn);
-    ibmptr1 = bm.getBm1(sgn);
-    ibmptr2 = bm.getBm2(sgn);
-    for (unsigned int i = 0; i < curr_n; ++i) {
-      ieta1 = ibmptr1[i];
-      ieta2 = ibmptr2[i];
-      retval += wtptr[i] * ieta1 * ieta2 * 
-	getNumberCountsInner(x1 * ieta1, x2 * ieta2);
-    } 
-  }
+  unsigned int sgn = signComp(x1, x2);
+  curr_n = bm.getN(sgn);
+  if (curr_n == 0) return 0;  // None of that sign component, so there
+  wtptr = bm.getWt(sgn);
+  ibmptr1 = bm.getBm1(sgn);
+  ibmptr2 = bm.getBm2(sgn);
+  ax1 = fabs(x1);
+  ax2 = fabs(x2);
+  for (unsigned int i = 0; i < curr_n; ++i) {
+    ieta1 = ibmptr1[i];
+    ieta2 = ibmptr2[i];
+    retval += wtptr[i] * ieta1 * ieta2 * 
+      getNumberCountsInner(ax1 * ieta1, ax2 * ieta2);
+  } 
 
   double prefac = bm.getPixsize() / 3600.0;
   return prefac * prefac * retval;
@@ -588,40 +602,39 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
   //Do R computation
   // It is possible to do this computation much more efficiently
   // by tabulating and saving information.  However, for this code,
-  // where this will likely be a very sub-dominant cost, we go
+  // where this will be a very sub-dominant cost because we re-use it, we go
   // for brute simplicity
+  for (unsigned int i = 0; i < n1 * n2; ++i) R[i] = 0.0;
 
-  unsigned int curr_n;
-  double ieta1, ieta2, cx1, cx2, Rsum;
+  unsigned int sgn, curr_n;
+  double ieta1, ieta2, cx1, cx2, ax1, ax2, Rsum;
   const unsigned int* wtptr;
   const double* ibmptr1;
   const double* ibmptr2;
   double *rowptr; // Points into rows of R
-  for (unsigned int i = 0; i < n1 * n2; ++i) R[i] = 0.0;
-  for (unsigned int sgn = 0; sgn < 4; ++sgn) {
-    curr_n = bm.getN(sgn);
-    if (curr_n == 0) continue;  // None of that sign component
-    wtptr = bm.getWt(sgn);
-    ibmptr1 = bm.getBm1(sgn);
-    ibmptr2 = bm.getBm2(sgn);
-    for (unsigned int j = 0; j < n1; ++j) {
-      cx1 = x1[j];
-      if (cx1 <= 0.0) continue; // Avoid comp out of model range
-      rowptr = R + j * n2;
-      for (unsigned int k = 0; k < n2; ++k) {
-	cx2 = x2[k];
-	if (cx2 > 0.0) {
-	  //x1, x2 are in bounds, must do full sum over beams
-	  Rsum = 0.0;
-	  for (unsigned int i = 0; i < curr_n; ++i) {
-	    ieta1 = ibmptr1[i];
-	    ieta2 = ibmptr2[i];
-	    Rsum += wtptr[i] * ieta1 * ieta2 * 
-	      getNumberCountsInner(cx1 * ieta1, cx2 * ieta2);
-	  }
-	  rowptr[k] += Rsum;
-	}
+  bool hasNegX1 = bm.hasSign(2) || bm.hasSign(3); // If not, skip all x1 < 0
+  for (unsigned int j = 0; j < n1; ++j) {
+    cx1 = x1[j];
+    if ((x1 <= 0) && (!hasNegX1)) continue; //R will be zero for this x1
+    rowptr = R + j * n2;
+    ax1 = fabs(cx1);
+    for (unsigned int k = 0; k < n2; ++k) {
+      cx2 = x2[k];
+      sgn = signComp(cx1, cx2);  // Which beam component
+      curr_n = bm.getN(sgn);
+      if (curr_n == 0) continue;  // None of that sign component, move on
+      ax2 = fabs(cx2);
+      wtptr = bm.getWt(sgn);
+      ibmptr1 = bm.getBm1(sgn);
+      ibmptr2 = bm.getBm2(sgn);
+      Rsum = 0.0;
+      for (unsigned int i = 0; i < curr_n; ++i) {
+	ieta1 = ibmptr1[i];
+	ieta2 = ibmptr2[i];
+	Rsum += wtptr[i] * ieta1 * ieta2 * 
+	  getNumberCountsInner(ax1 * ieta1, ax2 * ieta2);
       }
+      rowptr[k] += Rsum;
     }
   }
 
@@ -639,8 +652,7 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
   so screwy things will happen if you provide an invalid one.
   The model is also not checked for validity.
 */
-std::pair<double, double> 
-numberCountsDouble::genSource(double udev, double gdev) const {
+dblpair numberCountsDouble::genSource(double udev, double gdev) const {
 
   double f1, f2of1;
 

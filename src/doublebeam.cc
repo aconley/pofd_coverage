@@ -5,7 +5,6 @@
 #include<fitsio.h>
 
 #include "../include/doublebeam.h"
-#include "../include/global_settings.h"
 #include "../include/pofdExcept.h"
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
@@ -29,12 +28,12 @@ void doublebeam::setFWHM(double FWHM1, double FWHM2) {
   rhosq2 = pofd_coverage::rhofac / (FWHM2 * FWHM2);
 }
 
-std::pair<double, double> doublebeam::getEffectiveArea() const {
+dblpair doublebeam::getEffectiveArea() const {
   return std::make_pair(pofd_coverage::pi/rhosq1,
 			pofd_coverage::pi/rhosq2);
 }
 
-std::pair<double, double> doublebeam::getEffectiveAreaSq() const {
+dblpair doublebeam::getEffectiveAreaSq() const {
   return std::make_pair(0.5 * pofd_coverage::pi/rhosq1,
 			0.5 * pofd_coverage::pi/rhosq2);
 }
@@ -514,7 +513,7 @@ doublebeamHist::~doublebeamHist() {
     component.  If this is the inverse beam, then the minimum/maximum 
     of the inverse positive beam are returned.
 */
-std::pair<double, double> doublebeamHist::getMinMax1(unsigned int sgn) const {
+dblpair doublebeamHist::getMinMax1(unsigned int sgn) const {
   if (!has_data) 
     return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			  std::numeric_limits<double>::quiet_NaN());
@@ -542,7 +541,7 @@ std::pair<double, double> doublebeamHist::getMinMax1(unsigned int sgn) const {
     component.  If this is the inverse beam, then the minimum/maximum 
     of the inverse positive beam are returned.
 */
-std::pair<double, double> doublebeamHist::getMinMax2(unsigned int sgn) const {
+dblpair doublebeamHist::getMinMax2(unsigned int sgn) const {
   if (!has_data) 
     return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			  std::numeric_limits<double>::quiet_NaN());
@@ -589,7 +588,7 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
   for (unsigned int i = 0; i < 4; ++i)
     if (bm2[i] != NULL) { delete[] bm2[i]; bm2[i] = NULL; }
 
-  std::pair<double, double> tmp;
+  dblpair tmp;
   inverse = inv;
   pixsize = pixsz;
   tmp = bm.getFWHM();

@@ -1,7 +1,7 @@
 #include<ctime>
 #include<cmath>
 #include<limits>
-
+#include<cstring>
 #include<fstream>
 
 #include<fitsio.h>
@@ -321,7 +321,7 @@ void simImage::convolveWithBeam(unsigned int ni1, unsigned int ni2,
 
 void simImage::convolveWithAdd() {
   //This can only be done to data
-  if (! is_full )
+  if (!is_full)
     throw pofdExcept("simImage", "convolveWithAdd",
 		     "Trying to convolve empty image", 1);
 
@@ -488,7 +488,7 @@ void simImage::realize(const numberCounts& model, double n0,
   //Inject sources
   if (oversample > 1) {
     //Generate in oversampled gen_image
-    for (unsigned int i = 0; i < ngen1 * ngen2; ++i) gen_image[i] = 0.0;
+    std::memset(gen_image, 0, ngen1 * ngen2 * sizeof(double));
     if (nsrcs > 0) {
       unsigned int idx1, idx2;
       if (use_clustered_pos) {
@@ -515,8 +515,7 @@ void simImage::realize(const numberCounts& model, double n0,
     }
   } else {
     //Generate in data
-    for (unsigned int i = 0; i < n1 * n2; ++i)
-      data[i] = 0.0;
+    std::memset(data, 0, n1 * n2 * sizeof(double));
 
     //Inject sources, much like above except no downsampling
     if (nsrcs > 0) {
@@ -588,8 +587,7 @@ void simImage::applyBinning(unsigned int sparsebin) {
   //There is no way to change nbins after initialization
   if (binval == NULL)
     binval = new unsigned int[nbins];
-  for (unsigned int i = 0; i < nbins; ++i)
-    binval[i] = 0;
+  std::memset(binval, 0, nbins * sizeof(unsigned int));
 
   //First, we need the minimum and maximum
   double minval, maxval;

@@ -39,12 +39,12 @@ class PDFactoryDouble {
   double sigma2; //!< Current supported instrumental \f$\sigma\f$, band 2
   double max_n0; //!< Current maximum supported model \f$N_0\f$
   double base_n0; //!< Model base \f$N_0\f$
-  double mn1; //!< Expected mean, band 1
-  double mn2; //!< Expected mean, band 2
-  double var_noi1; //!< Expected variance without instrumental noise, band 1
-  double var_noi2; //!< Expected variance without instrumental noise, band 2
-  double sg1; //!< Expected sigma (inc instrument noise), band 1
-  double sg2; //!< Expected sigma (inc instrument noise), band 2
+  double mn1; //!< Expected mean, band 1 for max n0 supported
+  double mn2; //!< Expected mean, band 2 for max n0 supported
+  double varnoi1; //!< Expected variance for band1 max n0 model
+  double varnoi2; //!< Expected variance for band2 max n0 model
+  double sg1; //!< Expected sigma (inc instrument noise), band 1, max n0 model
+  double sg2; //!< Expected sigma (inc instrument noise), band 2, max n0 model
 
   unsigned int plan_size; //!< Size of currently computed plans
   fftw_plan plan;     //!< Holds forward transformation plan
@@ -115,7 +115,7 @@ class PDFactoryDouble {
 					  bool setEdge=true);
 
   /*! \brief Moves P(D) over to output variable inside getPD */
-  void unwrapPD(unsigned int n, PDDouble& pd) const;
+  void unwrapPD(double n0, unsigned int n, PDDouble& pd) const;
 
 #ifdef TIMING
   std::clock_t RTime, p0Time, fftTime, posTime, copyTime;

@@ -202,8 +202,8 @@ void simManagerDouble::doSims(bool verbose=false) {
   // But that means making an informed guess about the maximum flux
   // to ask for.
   maxflux = model.getMaxFluxEstimate();
-  maxflux.first *= max_n0ratio;
-  maxflux.second *= max_n0ratio;
+  maxflux.first *= 1.05 * max_n0ratio;
+  maxflux.second *= 1.05 * max_n0ratio;
 #ifdef TIMING
   starttime = std::clock();
 #endif
@@ -406,14 +406,16 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
     char* tform2 = new char[ndigits+5];
     sprintf(tform2, "%uE", nlike); //E is the format code for 32 bit float
     tform[4] = tform2;
-    fits_create_tbl(fp, BINARY_TBL, 0, 5, ttype, tform, NULL, NULL, &status);
+    fits_create_tbl(fp, BINARY_TBL, 0, 5, ttype, tform, NULL, "RESULTS", 
+		    &status);
     delete[] tform2;
   } else {
     char* ttype[] = {"BEST_N0", "BEST_LOGLIKE"};
     char* tform[2];
     char* tform0 = "1D";
     tform[0] = tform0; tform[1] = tform0;
-    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, NULL, &status);
+    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, "RESULTS", 
+		    &status);
   }
 
   //Write header stuff

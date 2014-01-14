@@ -229,7 +229,7 @@ int runSimSingle(int argc, char **argv) {
       printf("   Pixel size:         %0.1f\n",pixsize);
       printf("   Number of pixels:   %u x %u\n",n1,n2);
       printf("   Area:               %0.2f\n",area);
-      printf("   N0:                 %0.5e\n",n0);
+      printf("   N0:                 %0.3e\n",n0);
       printf("   sigma:              %0.4f\n",sigma);
       printf("   fftsize:            %u\n",fftsize);
       if (esmooth > 0) 
@@ -491,7 +491,7 @@ int runSimDouble(int argc, char **argv) {
       printf("   Pixel size:         %0.1f\n",pixsize);
       printf("   Number of pixels:   %u x %u\n",n1,n2);
       printf("   Area:               %0.2f\n",area);
-      printf("   N0:                 %0.5e\n",n0);
+      printf("   N0:                 %0.3e\n",n0);
       printf("   sigma1:             %0.4f\n",sigma1);
       printf("   sigma2:             %0.4f\n",sigma2);
       printf("   fftsize:            %u by %u\n", fftsize, fftsize);

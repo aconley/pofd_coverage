@@ -12,10 +12,7 @@
 namespace pofd_coverage {
   const char version[] = "0.3.0"; //Version number
 
-  const double n_sigma_shift = 6.0; //!< Shift amount
-  const double n_sigma_pad = 10.0; //!< Noise padding size in sigma
-  const double n_sigma_shift2d = 4.0; //!< Shift amount
-  const double n_sigma_pad2d = 6.0; //!< Noise padding size in sigma, 2D
+  const double n_zero_pad = 7.5; //!< Zero padding size in sigma
   const double pi = 3.141592653589793238462643383279502884197; //!< \f$\pi\f$
   const double two_pi = 2.0*pi; //!< \f$2 \pi \f$
   const double sqrt_pi_over_two = sqrt(pi / 2.0); //!< \f$\sqrt{\pi/2}\f$

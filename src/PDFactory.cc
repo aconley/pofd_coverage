@@ -2,6 +2,7 @@
 #include<cmath>
 #include<cstring>
 #include<fstream>
+#include<limits>
 
 #include "../include/global_settings.h"
 #include "../include/PDFactory.h"
@@ -54,8 +55,10 @@ void PDFactory::init() {
   has_wisdom = false;
   fftw_plan_style = FFTW_MEASURE;
 
-  sigma = 0.0;
-  max_n0 = 0.0;
+  mn = sg = varnoi = std::numeric_limits<double>::quiet_NaN();
+
+  sigma = std::numeric_limits<double>::quiet_NaN();
+  max_n0 = std::numeric_limits<double>::quiet_NaN();
   initialized = false;
 }
 
@@ -267,6 +270,7 @@ void PDFactory::initR(unsigned int n, double minflux, double maxflux,
 
 
 /*!
+  \param[in] n0 Value of n0 used
   \param[in] n Number of elements
   \param[out] pd Holds P(D) on output, normalized, mean subtracted,
                  and with positivity enforced.
@@ -275,7 +279,7 @@ void PDFactory::initR(unsigned int n, double minflux, double maxflux,
 */
 // This should only ever be called by getPD, so we don't really
 // check the inputs
-void PDFactory::unwrapPD(unsigned int n, PD& pd) const {
+void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
   
   const double nsig = 3.0; // Number of sigma out break point must be from mn
 
@@ -310,20 +314,24 @@ void PDFactory::unwrapPD(unsigned int n, PD& pd) const {
   unsigned int minidx = static_cast<unsigned>(mdx);
 
   // Make sure this is sane!
+  //  Recall that varnoi was computed for max_n0, not this one
+  double curr_sigma = sqrt(n0 * varnoi / max_n0 + sigma * sigma);
   double fwrap = RFlux[minidx]; // Wrap in pos flux
-  if (fwrap <= nsig * sg) {
+  if (fwrap <= nsig * curr_sigma) {
     std::stringstream errstr;
     errstr << "Top wrapping problem; wrapping point at "
 	   << fwrap << " which is only " << fwrap / sg
-	   << " sigma away from expected (0) mean";
+	   << " sigma away from expected (0) mean with sigma "
+	   << curr_sigma << " at n0 " << n0;
     throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 1);
   }
   fwrap = - static_cast<double>(n - minidx) * dflux; // Wrap in bot flux
-  if (-fwrap <= nsig * sg) {
+  if (-fwrap <= nsig * curr_sigma) {
     std::stringstream errstr;
     errstr << "Bottom wrapping problem; wrapping point at "
-	   << fwrap << " which is only " << -fwrap / sg
-	   << " sigma away from expected (0) mean";
+	   << fwrap << " which is only " << -fwrap / curr_sigma
+	   << " sigma away from expected (0) mean with sigma "
+	   << curr_sigma << " at n0 " << n0;
     throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 2);
   }
   
@@ -411,6 +419,11 @@ dblpair PDFactory::getMinMaxR(const numberCounts& model,
 dblpair PDFactory::getRMoments(unsigned int n, const numberCounts& model, 
 			       const beamHist& bm, dblpair range) {
 
+  // Recall that the formulae for the mean and central 2nd moment
+  // (not including instrumental noise) are
+  //  <x> = \int x R dx
+  //  <(x - <x>)^2> = \int x^2 R dx
+
   //We are totally going to screw things up, so mark as unclean
   initialized = false;  
   if (n == 0)
@@ -436,8 +449,6 @@ dblpair PDFactory::getRMoments(unsigned int n, const numberCounts& model,
   prod = 0.5 * cf * rvals[n-1];
   mean += prod;
   var += cf * prod;
-
-  var -= mean * mean; // Centralize moment
 
   return std::make_pair(mean, var);
 }
@@ -529,7 +540,6 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   base_n0 = model.getBaseN0();
   double n0ratio = maxn0 / base_n0;
 
-
   //Estimate the mean and standard deviation of the resulting P(D) using R.
   //Since the usage model for pofd_coverage is to call initPD once and then
   // re-use it a bunch of times, we can afford to compute R twice to get
@@ -544,17 +554,13 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   // Note we compute these for the maximum n0
   dblpair mom; // Mean, var
   mom = getRMoments(n, model, bm, rangeR);
-  mn = n0ratio * mom.first; // mean goes as n0
-  sg = sqrt(n0ratio * mom.second + inst_sigma * inst_sigma); // var goes as n0
+  mn = n0ratio * mom.first; // mean goes as n0 -- so this is for maxn0 model
+  varnoi = n0ratio * mom.second;
+  sg = sqrt(varnoi + inst_sigma * inst_sigma); // for maxn0
 
   // Now compute the range we will ask for R over in the actual
-  // computation.  This is rather messy, even if there is no neg beam.
-  // We want to ensure there is enough padding at the top.  In general,
-  // this is likely because maxflux is probably large enough.  But
-  // it's good to check
-  double maxflux_R = maxflux;
-  double altval = rangeR.second + pofd_coverage::n_sigma_pad * sg;
-  if (altval > maxflux_R) maxflux_R = altval;
+  // computation.  Ensure zero padding at the top.
+  double maxflux_R = maxflux + pofd_coverage::n_zero_pad * sg;
 
   //Now prepare final R.  Note this uses the base model, even
   // though we computed the maximum R value based on the maximum n0 value
@@ -710,7 +716,7 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog) {
 
   // Copy into output variable, also normalizing, mean subtracting, 
   // making positive
-  unwrapPD(n, pd);
+  unwrapPD(n0, n, pd);
 
   //Turn PD to log for more efficient log computation of likelihood
 #ifdef TIMING

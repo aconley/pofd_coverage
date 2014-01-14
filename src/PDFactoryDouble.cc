@@ -117,8 +117,8 @@ void PDFactoryDouble::init(unsigned int NEDGE) {
   fftw_plan_style = FFTW_MEASURE;
 
   sigma1 = sigma2 = std::numeric_limits<double>::quiet_NaN();
-  mn1 = mn2 = var_noi1 = var_noi2 = sg1 = sg2 = 
-    std::numeric_limits<double>::quiet_NaN();
+  varnoi1 = varnoi2 = std::numeric_limits<double>::quiet_NaN();
+  mn1 = mn2 = sg1 = sg2 = std::numeric_limits<double>::quiet_NaN();
   initialized = false;
 }
 
@@ -569,6 +569,13 @@ std::pair<dblpair, dblpair>
 			       const std::pair<dblpair, dblpair>& minmaxR,
 			       bool setEdge) {
 
+  // Recall that the formulae for the mean and central 2nd moment
+  // along each axis (not including instrumental noise) are
+  //  <x> = \int x R dx dy
+  //  <y> = \int y R dx dy
+  //  <(x - <x>)^2> = \int x^2 R dx dy
+  //  <(y - <y>)^2> = \int y^2 R dx dy
+
   if (n == 0)
     throw pofdExcept("PDFactoryDouble", "getRMoments",
 		     "Invalid n (== 0)", 1);
@@ -617,8 +624,10 @@ std::pair<dblpair, dblpair>
   var2 += cf2 * prod2;
 
   // Do middle rows
+  // Note that, while R is allocated to rsize by rsize, we only fill up
+  // to n by n
   for (unsigned int i = 1; i < n-1; ++i) {
-    rowptr = rvals + i * rsize; // R has logical size rsize*rsize, not n!
+    rowptr = rvals + i * n; 
     cf1 = RFlux1[i];
     cR = rowptr[0]; // No 0.5 any more -- we are in the middle
     prod1 = 0.5 * cf1 * cR; // 0.5 for first col
@@ -649,7 +658,7 @@ std::pair<dblpair, dblpair>
   }
 
   // And final row, has an extra 0.5 factor again
-  rowptr = rvals + (n - 1) * rsize;
+  rowptr = rvals + (n - 1) * n;
   cf1 = RFlux1[n-1];
   cR = 0.5 * rowptr[0]; 
   prod1 = 0.5 * cf1 * cR;
@@ -678,16 +687,12 @@ std::pair<dblpair, dblpair>
   mean2 += prod2;
   var2 += cf2 * prod2;
 
-  // Convert variances to central
-  var1 -= mean1 * mean1;
-  var2 -= mean2 * mean2;
-
   return std::make_pair(std::make_pair(mean1, var1),
 			std::make_pair(mean2, var2));
-
 }
   
 /*!
+  \param[in] n0 Value of n0 in use
   \param[in] n Number of elements
   \param[out] pd Holds P(D) on output, normalized, mean subtracted,
                  and with positivity enforced.
@@ -696,8 +701,21 @@ std::pair<dblpair, dblpair>
 */
 // This should only ever be called by getPD, so we don't really
 // check the inputs
-void PDFactoryDouble::unwrapPD(unsigned int n, PDDouble& pd) const {
-  const double nsig = 3.0; // Number of sigma out break point must be from mn
+void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
+  // Our acceptance testing is a bit complicated.
+  // If the minimum point is more than nsig1 away from the expected mean (0)
+  //  then we just accept it.  If it is more than nsig2 away, we make sure
+  //  that the min/max ratio of the P(D) along that axis is more than
+  //  maxminratio.  If it is less than nsig2, we just flat out reject.
+  const double nsig1 = 4.0; 
+  const double nsig2 = 2.0;
+  const double maxminratio = 1e5;
+
+  // Recall that varnoi1, varnoi2 were computed for the max n0, not the 
+  // current one.  So fix that internally
+  double n0ratio = n0 / max_n0;
+  double curr_sigma1 = sqrt(n0ratio * varnoi1 + sigma1 * sigma1);
+  double curr_sigma2 = sqrt(n0ratio * varnoi2 + sigma2 * sigma2);
 
   //Enforce positivity
 #ifdef TIMING
@@ -715,18 +733,20 @@ void PDFactoryDouble::unwrapPD(unsigned int n, PDDouble& pd) const {
   // Start from the top and move down -- if there is a tie for
   //  some reason we prefer the index be high because that is more
   //  likely to be right in practice
-  // Start with min along the first index
+  // Start with min along the first index.  We also find the max, but
+  // don't keep track of its index
 #ifdef TIMING
   starttime = std::clock();
 #endif
   int nm1 = static_cast<int>(n - 1);
   int mdx = nm1; // Curr min index
-  double cval, minval, *rowptr; 
+  double cval, minval, maxval, *rowptr; 
   // Initialize minval to last col
   rowptr = pofd + nm1 * n;
   minval = 0.5 * rowptr[0];
   for (unsigned int j = 1; j < n - 1; ++j) minval += rowptr[j];
   minval += 0.5 * rowptr[n - 1];
+  maxval = minval;
   // Now do others
   for (int i = n - 2; i >= 0; --i) {
     rowptr = pofd + i * n;
@@ -736,10 +756,46 @@ void PDFactoryDouble::unwrapPD(unsigned int n, PDDouble& pd) const {
     if (cval < minval) {
       minval = cval;
       mdx = i;
-    }
+    } else if (cval > maxval) maxval = cval;
   }
   unsigned int minidx1 = static_cast<unsigned>(mdx);
 
+  // Sanity check
+  double fwrap_plus = RFlux1[minidx1]; // Wrap in pos flux
+  double fwrap_minus = static_cast<double>(n - minidx1) * dflux1; // Abs neg wrap
+  double cs1, cs2;
+  cs1 = nsig1 * curr_sigma1;
+  cs2 = nsig2 * curr_sigma1;
+  if ((fwrap_plus > cs1) || (fwrap_minus > cs1)) {
+    // Worth further investigation
+    if (fwrap_plus < cs2) {
+      std::stringstream errstr;
+      errstr << "Top wrapping problem dim 1; wrapping point at "
+	     << fwrap_plus << " which is only " << fwrap_plus / curr_sigma1
+	     << " sigma away from expected (0) mean with sigma "
+	     << curr_sigma1 << " at n0: " << n0;
+      throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 1);
+    }
+    if (fwrap_minus < cs2) {
+      std::stringstream errstr;
+      errstr << "Bottom wrapping problem dim 1; wrapping point at "
+	     << -fwrap_minus << " which is only " << fwrap_minus / curr_sigma1
+	     << " sigma away from expected (0) mean, with sigma "
+	     << curr_sigma1 << " at n0: " << n0;
+      throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 2);
+    } 
+    // Min/max ratio test
+    if (maxval / minval < maxminratio) {
+      std::stringstream errstr;
+      errstr << "Dim 1 wrapping problem with wrapping fluxes: "
+	     << fwrap_plus << " and " << -fwrap_minus << " with min/max ratio: "
+	     << maxval / minval << " and sigma: " << curr_sigma1
+	     << " with n0: " << n0;
+      throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 3);
+
+    }
+  }
+  
   // Now second dimension.  This one is slower due to stride issues.
   // That could be improved with an auxilliary array, but it doesn't
   // seem worth it, frankly
@@ -747,6 +803,7 @@ void PDFactoryDouble::unwrapPD(unsigned int n, PDDouble& pd) const {
   minval = 0.5 * pofd[nm1];
   for (unsigned int i = 1; i < n-1; ++i) minval += pofd[i * n + nm1];
   minval += 0.5 * pofd[nm1 * n + nm1];
+  maxval = minval;
   for (int j = n - 2; j >= 0; --j) {
     cval = 0.5 * pofd[j];
     for (unsigned int i = 1; i < n-1; ++i) cval += pofd[i * n + j];
@@ -754,42 +811,43 @@ void PDFactoryDouble::unwrapPD(unsigned int n, PDDouble& pd) const {
     if (cval < minval) {
       minval = cval;
       mdx = j;
-    }
+    } else if (cval > maxval) maxval = cval;
   }
   unsigned int minidx2 = static_cast<unsigned>(mdx);
 
-  // Make sure these are sane
-  double fwrap = RFlux1[minidx1]; // Wrap in pos flux
-  if (fwrap <= nsig * sg1) {
-    std::stringstream errstr;
-    errstr << "Top wrapping problem dim 1; wrapping point at "
-	   << fwrap << " which is only " << fwrap / sg1
-	   << " sigma away from expected (0) mean";
-    throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 1);
-  }
-  fwrap = - static_cast<double>(n - minidx1) * dflux1; // Wrap in bot flux
-  if (-fwrap <= nsig * sg1) {
-    std::stringstream errstr;
-    errstr << "Bottom wrapping problem dim 1; wrapping point at "
-	   << fwrap << " which is only " << -fwrap / sg1
-	   << " sigma away from expected (0) mean";
-    throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 2);
-  }
-  fwrap = RFlux2[minidx2];
-  if (fwrap <= nsig * sg2) {
-    std::stringstream errstr;
-    errstr << "Top wrapping problem dim 2; wrapping point at "
-	   << fwrap << " which is only " << fwrap / sg2
-	   << " sigma away from expected (0) mean";
-    throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 3);
-  }
-  fwrap = - static_cast<double>(n - minidx2) * dflux2; 
-  if (-fwrap <= nsig * sg2) {
-    std::stringstream errstr;
-    errstr << "Bottom wrapping problem dim 2; wrapping point at "
-	   << fwrap << " which is only " << -fwrap / sg2
-	   << " sigma away from expected (0) mean";
-    throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 4);
+  // Same sanity check
+  fwrap_plus = RFlux2[minidx2]; 
+  fwrap_minus = static_cast<double>(n - minidx2) * dflux2;
+  cs1 = nsig1 * curr_sigma2;
+  cs2 = nsig2 * curr_sigma2;
+  if ((fwrap_plus > cs1) || (fwrap_minus > cs1)) {
+    // Worth further investigation
+    if (fwrap_plus < cs2) {
+      std::stringstream errstr;
+      errstr << "Top wrapping problem dim 2; wrapping point at "
+	     << fwrap_plus << " which is only " << fwrap_plus / curr_sigma2
+	     << " sigma away from expected (0) mean with sigma "
+	     << curr_sigma2 << " at n0: " << n0;
+      throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 4);
+    }
+    if (fwrap_minus < cs2) {
+      std::stringstream errstr;
+      errstr << "Bottom wrapping problem dim 2; wrapping point at "
+	     << -fwrap_minus << " which is only " << fwrap_minus / curr_sigma2
+	     << " sigma away from expected (0) mean, with sigma "
+	     << curr_sigma2 << " at n0: " << n0;
+      throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 5);
+    } 
+    // Min/max ratio test
+    if (maxval / minval < maxminratio) {
+      std::stringstream errstr;
+      errstr << "Dim 2 wrapping problem with wrapping fluxes: "
+	     << fwrap_plus << " and " << -fwrap_minus << " with min/max ratio: "
+	     << maxval / minval << " and sigma: " << curr_sigma2
+	     << " with n0: " << n0;
+      throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 6);
+
+    }
   }
 
   // Now the actual copying, which is an exercise in index gymnastics
@@ -856,7 +914,7 @@ void PDFactoryDouble::unwrapPD(unsigned int n, PDDouble& pd) const {
         << tmn2 << std::endl;
     str << "At length: " << n << " with noise: " << sigma1 << " "
         << sigma2;
-    throw pofdExcept("PDFactoryDouble", "unwrapPD", str.str(), 5);
+    throw pofdExcept("PDFactoryDouble", "unwrapPD", str.str(), 7);
   }
   pd.minflux1 = -tmn1;
   pd.minflux2 = -tmn2;
@@ -971,7 +1029,7 @@ void PDFactoryDouble::initPD(unsigned int n,
   // Figure out the min/max nonzero R values in each band.
   std::pair<dblpair, dblpair> minmaxR = getMinMaxR(model, bm);
 
-  double n0ratio = maxn0 / base_n0;
+  double n0ratio = maxn0 / base_n0; 
 
   //Estimate the mean and standard deviation of the resulting P(D) using R.
   //Since the usage model for pofd_coverage is to call initPD once and then
@@ -980,52 +1038,46 @@ void PDFactoryDouble::initPD(unsigned int n,
   std::pair<dblpair, dblpair> moments;
   moments = getRMoments(n, model, bm, minmaxR, setEdge);
   mn1 = n0ratio * moments.first.first;
-  sg1 = sqrt(n0ratio * moments.first.second + inst_sigma1 * inst_sigma1);
+  varnoi1 = n0ratio * moments.first.second;
+  sg1 = sqrt(varnoi1 + inst_sigma1 * inst_sigma1);
   mn2 = n0ratio * moments.second.first;
-  sg2 = sqrt(n0ratio * moments.second.second + inst_sigma2 * inst_sigma2);
+  varnoi2 = n0ratio * moments.second.second;
+  sg2 = sqrt(varnoi2 + inst_sigma2 * inst_sigma2);
 
   // Now that we have that estimate, figure out what range we will
   // as R to be computed over for the actual computation we will use
   // to form P(D).  This is rather messy, as it happens.
-  // We want to ensure there is enough padding at the top.  In general,
-  // this is likely because maxflux is probably large enough.  But
-  // it's good to check
-
-  double altval, maxfluxR_1, maxfluxR_2;
-  maxfluxR_1 = maxflux1;
-  altval = minmaxR.first.second + pofd_coverage::n_sigma_pad2d * sg1;
-  if (altval > maxfluxR_1) maxfluxR_1 = altval;
-  maxfluxR_2 = maxflux2;
-  altval = minmaxR.second.second + pofd_coverage::n_sigma_pad2d * sg2;
-  if (altval > maxfluxR_2) maxfluxR_2 = altval;
+  // We want to ensure there is enough padding at the top.
+  double maxfluxR_1, maxfluxR_2;
+  maxfluxR_1 = maxflux1 + pofd_coverage::n_zero_pad * sg1;
+  maxfluxR_2 = maxflux2 + pofd_coverage::n_zero_pad * sg2;
 
   //Get final R for base model.  
   initR(n, minfluxR_1, maxfluxR_1, minfluxR_2, maxfluxR_2, model, bm, setEdge);
   
-
   //Decide if we will shift, and if so by how much
   // The idea is to shift the mean to zero -- but we only
-  // do the shift if the sigma is larger than one actual step size
+  // do the shift if the step is larger than one actual step size
   // because otherwise we can't represent it well.
-  //Only do shifts if the noise is larger than one actual step size
-  doshift1 = (sg1 > dflux1) && (fabs(mn1) > dflux1);
-  doshift2 = (sg2 > dflux2) && (fabs(mn2) > dflux2);
+  doshift1 = fabs(mn1) >= dflux1;
+  doshift2 = fabs(mn2) >= dflux2;
   if (doshift1) shift1 = - mn1; else shift1 = 0.0;
   if (doshift2) shift2 = - mn2; else shift2 = 0.0;
 
   if (verbose) {
-    std::cout << " Initial mean estimate band1: " << mn1 << " band2: "
+    std::cout << " For max_n0: " << max_n0 << std::endl;
+    std::cout << "  Initial mean estimate band1: " << mn1 << " band2: "
 	      << mn2 << std::endl;
-    std::cout << " Initial stdev estimate band1: " << sg1 << " band2: "
+    std::cout << "  Initial stdev estimate band1: " << sg1 << " band2: "
 	      << sg2 << std::endl;
     if (doshift1)
-      std::cout << " Additional shift applied in band 1: " 
+      std::cout << "  Additional shift applied in band 1: " 
 		<< shift1 << std::endl;
     else std::cout << " Not applying additional shift in band 1" << std::endl;
     if (doshift2)
-      std::cout << " Additional shift applied in band 2: " 
+      std::cout << "  Additional shift applied in band 2: " 
 		<< shift2 << std::endl;
-    else std::cout << " Not applying additional shift in band 2" << std::endl;
+    else std::cout << "  Not applying additional shift in band 2" << std::endl;
   }
 
   //Compute forward transform of this r value, store in rtrans
@@ -1180,7 +1232,7 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog) {
 
   // Copy into output variable, also normalizing, mean subtracting, 
   // making positive
-  unwrapPD(n, pd);
+  unwrapPD(n0, n, pd);
 
   //Turn PD to log for more efficient log computation of likelihood
 #ifdef TIMING
@@ -1210,7 +1262,7 @@ void PDFactoryDouble::writeRToFile(const std::string& filename) const {
     throw pofdExcept("PDFactoryDouble","writeRToFile",
 		     "Couldn't open output file",2);
 
-  //Recall after initR we are storing R * dflux1 * dflux2
+  //Recall rvals is R * dflux1 * dflux2
   double ifluxfac = 1.0 / (dflux1 * dflux2);
   ofs << rsize << std::endl;
   for (unsigned int i = 0; i < rsize; ++i)

@@ -191,7 +191,7 @@ void simManager::doSims(bool verbose=false) {
 #ifdef TIMING
   starttime = std::clock();
 #endif
-  maxflux = max_n0ratio * model.getMaxKnotPosition();
+  maxflux = 1.05 * max_n0ratio * model.getMaxKnotPosition();
   pdfac.initPD(fftsize, sigval, maxflux, init_b, model,
 	       inv_bmhist);
 #ifdef TIMING

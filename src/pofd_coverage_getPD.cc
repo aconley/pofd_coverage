@@ -28,17 +28,16 @@ static struct option long_options[] = {
   {"nfwhm", required_argument, 0, 'N'},
   {"nbins", required_argument, 0, '0'},
   {"oversamp", required_argument, 0, 'o'},
-  {"pixsize", required_argument, 0, 'p'},
   {"rfile", required_argument, 0, 'r'},
   {"sigma", required_argument, 0, 's'},
-  {"sigma1",required_argument,0,'3'},
-  {"sigma2",required_argument,0,'4'},
+  {"sigma1", required_argument, 0, '3'},
+  {"sigma2", required_argument, 0, '4'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'},
   {"wisdom", required_argument, 0, 'w'},
   {0,0,0,0}
 };
-char optstring[] = "dhe:fF:ln:N:0:o:p:r:s:3:4:vVw:";
+char optstring[] = "dhe:fF:ln:N:0:o:r:s:3:4:vVw:";
 
 ///////////////////////////////
 
@@ -50,7 +49,7 @@ int getPDSingle(int argc, char **argv) {
   double sigma; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins;
-  bool has_wisdom, verbose, return_log, write_fits, has_user_pixsize, write_r;
+  bool has_wisdom, verbose, return_log, write_fits, write_r;
   std::string wisdom_file, r_file;
   unsigned int oversample;
 
@@ -63,8 +62,6 @@ int getPDSingle(int argc, char **argv) {
   verbose             = false;
   return_log          = false;
   write_fits          = false;
-  has_user_pixsize    = false;
-  pixsize             = 3.0;
   write_r             = false;
   oversample          = 1;
   filterscale         = 0.0;
@@ -96,10 +93,6 @@ int getPDSingle(int argc, char **argv) {
     case 'o':
       oversample = static_cast<unsigned int>(atoi(optarg));
       break;
-    case 'p':
-      has_user_pixsize = true;
-      pixsize = atof(optarg);
-      break;
     case 'r':
       write_r = true;
       r_file = std::string(optarg);
@@ -118,7 +111,7 @@ int getPDSingle(int argc, char **argv) {
       break;
     }
 
-  if (optind >= argc - 4) {
+  if (optind >= argc - 5) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
@@ -127,10 +120,9 @@ int getPDSingle(int argc, char **argv) {
   modelfile  = std::string(argv[optind]);
   n0         = atof(argv[optind + 1]);
   fwhm       = atof(argv[optind + 2]);
-  maxflux    = atof(argv[optind + 3]);
-  outputfile = std::string(argv[optind + 4]);
-
-  if (!has_user_pixsize) pixsize = fwhm / 3.0;
+  pixsize    = atof(argv[optind + 3]);
+  maxflux    = atof(argv[optind + 4]);
+  outputfile = std::string(argv[optind + 5]);
 
   //Input tests
   if (nflux == 0) {
@@ -166,7 +158,7 @@ int getPDSingle(int argc, char **argv) {
 	      << std::endl;
     return 1;
   }
-  if (pixsize >= fwhm/2.0) {
+  if (pixsize >= fwhm / 2.0) {
     std::cout << "Insufficient (FWHM/2) beam sampling based on pixel size"
 	      << std::endl;
     return 1;
@@ -278,7 +270,7 @@ int getPDDouble(int argc, char **argv) {
   double sigma1, sigma2; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins, oversample;
-  bool has_wisdom, verbose, return_log, write_fits, has_user_pixsize, write_r;
+  bool has_wisdom, verbose, return_log, write_fits,  write_r;
   std::string wisdom_file, r_file;
 
   //Defaults
@@ -292,8 +284,6 @@ int getPDDouble(int argc, char **argv) {
   verbose             = false;
   return_log          = false;
   write_fits          = false;
-  has_user_pixsize    = false;
-  pixsize             = 3.0;
   write_r             = false;
   oversample          = 1;
 
@@ -324,13 +314,10 @@ int getPDDouble(int argc, char **argv) {
     case 'o':
       oversample = static_cast<unsigned int>(atoi(optarg));
       break;
-    case 'p':
-      has_user_pixsize = true;
-      pixsize = atof(optarg);
-      break;
     case 'r':
       write_r = true;
       r_file = std::string(optarg);
+      break;
     case '3' :
       sigma1 = atof(optarg);
       break;
@@ -348,7 +335,7 @@ int getPDDouble(int argc, char **argv) {
       break;
     }
 
-  if (optind >= argc - 6) {
+  if (optind >= argc - 7) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
@@ -358,12 +345,10 @@ int getPDDouble(int argc, char **argv) {
   n0         = atof(argv[optind + 1]);
   fwhm1      = atof(argv[optind + 2]);
   fwhm2      = atof(argv[optind + 3]);
-  maxflux1   = atof(argv[optind + 4]);
-  maxflux2   = atof(argv[optind + 5]);
-  outputfile = std::string(argv[optind + 6]);
-
-  if (!has_user_pixsize)
-    pixsize = fwhm1 < fwhm2 ? fwhm1 / 3.0 : fwhm2 / 3.0;
+  pixsize    = atof(argv[optind + 4]);
+  maxflux1   = atof(argv[optind + 5]);
+  maxflux2   = atof(argv[optind + 6]);
+  outputfile = std::string(argv[optind + 7]);
 
   //Input tests
   if (nflux == 0) {
@@ -542,13 +527,15 @@ int main( int argc, char** argv ) {
       std::cout << std::endl;
       std::cout << "SYNOPSIS" << std::endl;
       std::cout << "\t One-dimensional case:" << std::endl;
-      std::cout << "\t  pofd_coverage_getPD [options] modelfile n0 fwhm maxflux"
-		<< " outfile" << std::endl; 
+      std::cout << "\t  pofd_coverage_getPD [options] modelfile n0 fwhm pixsize"
+		<< std::endl;
+      std::cout << "\t                      maxflux outfile" << std::endl;
       std::cout << std::endl;
       std::cout << "\t Two-dimensional case:" << std::endl;
       std::cout << "\t  pofd_coverage_getPD [options] -d modelfile n0 fwhm1"
 		<< " fwhm2" << std::endl;
-      std::cout << "\t    maxflux1 maxflux2 outfile" << std::endl; 
+      std::cout << "\t                      pixsize maxflux1 maxflux2 outfile" 
+		<< std::endl; 
       std::cout << std::endl;
       std::cout << "DESCRIPTION" << std::endl;
       std::cout << "\tEvaluates P(D) for the specified model and writes it to" 
@@ -597,7 +584,9 @@ int main( int argc, char** argv ) {
       std::cout << "\tof the sigma and mu splines." << std::endl;
       std::cout << std::endl;
       std::cout << "\tfwhm is the beam FWHM in arcsec.  The beam is assumed "
-		<< "Gaussian. " << std::endl;
+		<< "Gaussian." << std::endl;
+      std::cout << "\tThe pixel size, in arcsec, is specified by pixsize." 
+		<< std::endl;
       std::cout << "\tIn the 2D case, fwhm1 and fwhm2 are the values for each"
 		<< " band." << std::endl;
       std::cout << std::endl;
@@ -607,7 +596,9 @@ int main( int argc, char** argv ) {
 		<< std::endl;
       std::cout << "\tin the 2D case maxflux1 and maxflux2 are the values in"
 		<< " each" << std::endl;
-      std::cout << "\tband." << std::endl;
+      std::cout << "\tband.  Pixsize has the same meaning; a single size must" 
+		<< std::endl;
+      std::cout << "\tbe used for both bands." << std::endl;
       std::cout << std::endl;
       std::cout << "OPTIONS" << std::endl;
       std::cout << "\t-d, --twod" << std::endl;
@@ -640,8 +631,6 @@ int main( int argc, char** argv ) {
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount to oversample the beam; must be odd integer."
 		<< " (def: 1)" << std::endl;
-      std::cout << "\t-p, --pixsize value" << std::endl;
-      std::cout << "\t\tPixel size in arcsec. (def: FWHM/3.0)" << std::endl;
       std::cout << "\t-r, --rfile FILENAME" << std::endl;
       std::cout << "\t\tWrite the R used to this file as text." << std::endl;
       std::cout << "\t-v, --verbose" << std::endl;

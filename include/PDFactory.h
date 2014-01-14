@@ -26,8 +26,9 @@ class PDFactory {
   double sigma; //!< Current supported instrumental \f$\sigma\f$
   double max_n0; //!< Current maximum supported model \f$N_0\f$
   double base_n0; //!< Model base \f$N_0\f$
-  double mn; //!< Expected mean, base model
-  double sg; //!< Expected sigma, inc instrument noise, base model
+  double mn; //!< Expected mean for max n0 supported
+  double varnoi; //!< Expected variance for max_n0 without instrument noise
+  double sg; //!< Expected sigma, inc instrument noise, max n0 model
 
   //Working variables for transformation
   unsigned int plan_size; //!< Size of plans
@@ -72,7 +73,7 @@ class PDFactory {
 		      dblpair range);
 
   /*! \brief Moves P(D) over to output variable inside getPD */
-  void unwrapPD(unsigned int n, PD& pd) const;
+  void unwrapPD(double n0, unsigned int n, PD& pd) const;
 
 #ifdef TIMING
   std::clock_t RTime, p0Time, fftTime, posTime, copyTime, normTime;

@@ -201,12 +201,14 @@ void simManagerDouble::doSims(bool verbose=false) {
   // That is, we call pdfactory.initPD once and re-use it forever.
   // But that means making an informed guess about the maximum flux
   // to ask for.
-  maxflux = model.getMaxFluxEstimate();
-  maxflux.first *= 1.05 * max_n0ratio;
-  maxflux.second *= 1.05 * max_n0ratio;
+  if (verbose)
+    std::cout << "Initializing P(D)" << std::endl;
 #ifdef TIMING
   starttime = std::clock();
 #endif
+  maxflux = model.getMaxFluxEstimate();
+  maxflux.first *= 1.05 * max_n0ratio;
+  maxflux.second *= 1.05 * max_n0ratio;
   pdfac.initPD(fftsize, sigval1, sigval2, maxflux.first, maxflux.second, 
 	       init_b, model, inv_bmhist, true);
 #ifdef TIMING

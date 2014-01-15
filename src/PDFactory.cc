@@ -281,7 +281,14 @@ void PDFactory::initR(unsigned int n, double minflux, double maxflux,
 // check the inputs
 void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
   
-  const double nsig = 3.0; // Number of sigma out break point must be from mn
+  // Our acceptance testing is a bit complicated.
+  // If the minimum point is more than nsig1 away from the expected mean (0)
+  //  then we just accept it.  If it is more than nsig2 away, we make sure
+  //  that the min/max ratio of the P(D) along that axis is more than
+  //  maxminratio.  If it is less than nsig2, we just flat out reject.
+  const double nsig1 = 4.0; 
+  const double nsig2 = 2.0;
+  const double maxminratio = 1e5;
 
   // First, Enforce positivity
 #ifdef TIMING
@@ -296,45 +303,59 @@ void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
   // This is slightly tricky -- we may (probably do) have wrapping issues
   // so we need to un-wrap.  We do this by scanning from the top to
   // find the minimum in the P(D), then split the array there.
-  // We do need to do some sanity checks
-  // Recall that pofd is physical size currsize, logical size n
+  // We also find the maximum, but don't keep track of its index
 #ifdef TIMING
   starttime = std::clock();
 #endif
   int mdx = static_cast<int>(n - 1);
-  double cval, minval;
-  minval = pofd[mdx];
+  double cval, minval, maxval;
+  minval = maxval = pofd[mdx];
   for (int i = n - 2; i >= 0; --i) {
     cval = pofd[i];
     if (cval < minval) {
       minval = cval;
       mdx = i;
-    }
+    } else if (cval > maxval) maxval = cval;
   }
   unsigned int minidx = static_cast<unsigned>(mdx);
 
   // Make sure this is sane!
   //  Recall that varnoi was computed for max_n0, not this one
   double curr_sigma = sqrt(n0 * varnoi / max_n0 + sigma * sigma);
-  double fwrap = RFlux[minidx]; // Wrap in pos flux
-  if (fwrap <= nsig * curr_sigma) {
-    std::stringstream errstr;
-    errstr << "Top wrapping problem; wrapping point at "
-	   << fwrap << " which is only " << fwrap / sg
-	   << " sigma away from expected (0) mean with sigma "
-	   << curr_sigma << " at n0 " << n0;
-    throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 1);
+  double fwrap_plus = RFlux[minidx]; // Wrap in pos flux
+  double fwrap_minus = static_cast<double>(n - minidx) * dflux; // Abs neg wrap
+  double cs1, cs2;
+  cs1 = nsig1 * curr_sigma;
+  cs2 = nsig2 * curr_sigma;
+  if ((fwrap_plus > cs1) || (fwrap_minus > cs1)) {
+    // Worth further investigation
+    if (fwrap_plus < cs2) {
+      std::stringstream errstr;
+      errstr << "Top wrapping problem; wrapping point at "
+	     << fwrap_plus << " which is only " << fwrap_plus / curr_sigma
+	     << " sigma away from expected (0) mean with sigma "
+	     << curr_sigma << " at n0: " << n0;
+      throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 1);
+    }
+    if (fwrap_minus < cs2) {
+      std::stringstream errstr;
+      errstr << "Bottom wrapping problem; wrapping point at "
+	     << -fwrap_minus << " which is only " << fwrap_minus / curr_sigma
+	     << " sigma away from expected (0) mean, with sigma "
+	     << curr_sigma << " at n0: " << n0;
+      throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 2);
+    } 
+    // Min/max ratio test
+    if (maxval / minval < maxminratio) {
+      std::stringstream errstr;
+      errstr << "Wrapping problem with wrapping fluxes: "
+	     << fwrap_plus << " and " << -fwrap_minus << " with min/max ratio: "
+	     << maxval / minval << " and sigma: " << curr_sigma
+	     << " with n0: " << n0;
+      throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 3);
+    }
   }
-  fwrap = - static_cast<double>(n - minidx) * dflux; // Wrap in bot flux
-  if (-fwrap <= nsig * curr_sigma) {
-    std::stringstream errstr;
-    errstr << "Bottom wrapping problem; wrapping point at "
-	   << fwrap << " which is only " << -fwrap / curr_sigma
-	   << " sigma away from expected (0) mean with sigma "
-	   << curr_sigma << " at n0 " << n0;
-    throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 2);
-  }
-  
+
   // Copy over.  Things above minidx in pofd go into the bottom of
   // pd.pd_, then the stuff below that in pofd goes above that in pd.pd_
   // in the same order.

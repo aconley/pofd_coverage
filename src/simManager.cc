@@ -188,6 +188,8 @@ void simManager::doSims(bool verbose=false) {
   // That is, we call pdfactory.initPD once and re-use it forever.
   // But that means making an informed guess about the maximum flux
   // to ask for.
+  if (verbose)
+    std::cout << "Initializing P(D)" << std::endl;
 #ifdef TIMING
   starttime = std::clock();
 #endif
@@ -204,10 +206,9 @@ void simManager::doSims(bool verbose=false) {
   // 3) Optionally, map out the likelihood around that
   for (unsigned int i = 0; i < nsims; ++i) {
 
-    if (verbose) {
+    if (verbose)
       std::cout << "Doing simulation " << i + 1 << " of " << nsims 
 		<< std::endl;
-    }
 
     //Make simulated image (mean subtracted, possibly with filtering)
     simim.realize(model, n0, true, use_binning, like_sparcity);

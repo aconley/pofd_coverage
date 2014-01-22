@@ -98,6 +98,8 @@ class doublebeamHist {
   double *bm1[4]; //!< Beam elements in each bin, band 1
   double *bm2[4]; //!< Beam elements in each bin, band 2
 
+  dblpair minmax1[4]; //!< Min/max beam (not inverse beam!) in each sign component, band 1
+  dblpair minmax2[4]; //!< Min/max beam (not inverse beam!) in each sign component, band 2
  public:
 
   doublebeamHist(unsigned int NBINS, double FILTSCALE=0.0,
@@ -124,8 +126,10 @@ class doublebeamHist {
   double getFiltScale() const { return filtscale; } //!< Get filtering scale
 
   // Min/max values
-  dblpair getMinMax1(unsigned int) const; //!< Get min/max band 1
-  dblpair getMinMax2(unsigned int) const; //!< Get min/max band 2
+  /*!\brief Get min/max band 1 (non-inverse beam)*/
+  dblpair getMinMax1(unsigned int i) const {return minmax1[i];} 
+  /*!\brief Get min/max band 2 (non-inverse beam)*/
+  dblpair getMinMax2(unsigned int i) const {return minmax2[i];}
 
   /*!\brief Fill from beam*/
   void fill(const doublebeam& bm, double nfwhm, double pixsize,

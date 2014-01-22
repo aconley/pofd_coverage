@@ -2,6 +2,8 @@
 
 #include<getopt.h>
 
+#include "hdf5.h"
+
 #include "../include/global_settings.h"
 #include "../include/utility.h"
 #include "../include/beam.h"
@@ -18,6 +20,7 @@ static struct option long_options[] = {
   {"help", no_argument, 0, 'h'},
   {"double", no_argument, 0, 'd'},
   {"filterscale", required_argument, 0, 'F'},
+  {"hdf5", no_argument, 0, 'H'},
   {"nbins", required_argument, 0, 'n'},
   {"nfwhm", required_argument, 0, 'N'},
   {"oversamp", required_argument, 0, 'o'},
@@ -26,14 +29,14 @@ static struct option long_options[] = {
   {0,0,0,0}
 };
 
-char optstring[] = "hdF:n:N:o:vV";
+char optstring[] = "hdF:Hn:N:o:vV";
 
 //One-D version
 int getRSingle(int argc, char** argv) {
 
   std::string modelfile; //Init file (having model we want)
   std::string outfile; //File to write to
-  bool verbose;
+  bool verbose, write_to_hdf5;
   double n0, nfwhm, pixsize, minflux, maxflux, filterscale, fwhm;
   unsigned int nflux, nbins, oversamp;
 
@@ -43,6 +46,7 @@ int getRSingle(int argc, char** argv) {
   nbins = 120;
   filterscale = 0.0;
   oversamp = 1;
+  write_to_hdf5 = false;
 
   int c;
   int option_index = 0;
@@ -52,6 +56,9 @@ int getRSingle(int argc, char** argv) {
     switch(c) {
     case 'F':
       filterscale = atof(optarg);
+      break;
+    case 'H':
+      write_to_hdf5 = true;
       break;
     case 'n':
       nbins = atoi(optarg);
@@ -68,7 +75,7 @@ int getRSingle(int argc, char** argv) {
     }
 
   if (optind >= argc - 7) {
-    std::cerr << "Required arguments missing" << std::endl;
+    std::cerr << "Required arguments missing; run with --help" << std::endl;
     return 1;
   }
   modelfile = std::string(argv[optind]);
@@ -157,17 +164,63 @@ int getRSingle(int argc, char** argv) {
       for (unsigned int i = 0; i < nflux; ++i)
 	R[i] *= n0fac;
 
-    // Write
-    FILE *fp;
-    fp = fopen(outfile.c_str(), "w");
-    if (!fp) {
-      std::cerr << "Failed to open output file" << std::endl;
-      return 128;
+    // Write.  
+    if (write_to_hdf5) {
+      if (verbose) std::cout << "Writing as HDF5" << std::endl;
+      hid_t file_id;
+      file_id = H5Fcreate(outfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
+			  H5P_DEFAULT);
+      if (H5Iget_ref(file_id) < 0) {
+	H5Fclose(file_id);
+	throw pofdExcept("pofd_coverge_getR", "pofd_coverage_getR",
+			 "Failed to open HDF5 file to write", 1);
+      }
+      hsize_t adims;
+      hid_t mems_id, att_id, dat_id;
+      
+      // Properties
+      adims = 1;
+      mems_id = H5Screate_simple(1, &adims, NULL);
+      att_id = H5Acreate2(file_id, "dflux", H5T_NATIVE_DOUBLE,
+			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
+      H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux);
+      H5Aclose(att_id);
+      att_id = H5Acreate2(file_id, "N0", H5T_NATIVE_DOUBLE,
+			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
+      H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0);
+      H5Aclose(att_id);
+      H5Sclose(mems_id);
+
+      // Rflux
+      adims = nflux;
+      mems_id = H5Screate_simple(1, &adims, NULL);
+      dat_id = H5Dcreate2(file_id, "RFlux", H5T_NATIVE_DOUBLE,
+			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	       H5P_DEFAULT, flux);
+      H5Dclose(dat_id);
+
+      dat_id = H5Dcreate2(file_id, "R", H5T_NATIVE_DOUBLE, mems_id,
+			  H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	       H5P_DEFAULT, R);
+      H5Dclose(dat_id);
+      H5Sclose(mems_id);
+
+      H5Fclose(file_id);
+    } else {
+      if (verbose) std::cout << "Writing as text" << std::endl;
+      FILE *fp;
+      fp = fopen(outfile.c_str(), "w");
+      if (!fp) {
+	std::cerr << "Failed to open output file" << std::endl;
+	return 128;
+      }
+      fprintf(fp, "#%-11s   %-12s\n", "Flux", "R");
+      for (unsigned int i = 0; i < nflux; ++i) 
+	fprintf(fp, "%12.6e   %15.9e\n", flux[i], R[i]);
+      fclose(fp);
     }
-    fprintf(fp, "#%-11s   %-12s\n", "Flux", "R");
-    for (unsigned int i = 0; i < nflux; ++i) 
-      fprintf(fp, "%12.6e   %15.9e\n", flux[i], R[i]);
-    fclose(fp);
 
     delete[] flux;    
     delete[] R;
@@ -191,9 +244,10 @@ int getRDouble(int argc, char** argv) {
 
   std::string modelfile; //Init file (having model we want)
   std::string outfile; //File to write to
-  bool verbose;
-  double n0, nfwhm, pixsize, maxflux1, maxflux2, filterscale, fwhm1, fwhm2;
-  unsigned int nflux, nbins, oversamp;
+  bool verbose, write_to_hdf5;
+  double minflux1, maxflux1, minflux2, maxflux2;
+  double n0, nfwhm, pixsize, filterscale, fwhm1, fwhm2;
+  unsigned int nflux1, nflux2, nbins, oversamp;
 
   // Defaults
   verbose = false;
@@ -211,6 +265,9 @@ int getRDouble(int argc, char** argv) {
     case 'F':
       filterscale = atof(optarg);
       break;
+    case 'H':
+      write_to_hdf5 = true;
+      break;
     case 'n':
       nbins = atoi(optarg);
       break;
@@ -225,22 +282,30 @@ int getRDouble(int argc, char** argv) {
       break;
     }
 
-  if (optind >= argc - 8) {
-    std::cerr << "Required arguments missing" << std::endl;
+  if (optind >= argc - 11) {
+    std::cerr << "Required arguments missing; run with --help" << std::endl;
     return 1;
   }
   modelfile = std::string(argv[optind]);
-  n0 = atof(argv[optind+1]);
-  fwhm1 = atof(argv[optind+2]);
-  fwhm2 = atof(argv[optind+3]);
-  pixsize = atof(argv[optind+4]);
-  maxflux1 = atof(argv[optind+5]);
-  maxflux2 = atof(argv[optind+6]);
-  nflux = static_cast<unsigned int>(atoi(argv[optind+7]));
-  outfile = std::string(argv[optind+8]);
+  n0 = atof(argv[optind + 1]);
+  fwhm1 = atof(argv[optind + 2]);
+  fwhm2 = atof(argv[optind + 3]);
+  pixsize = atof(argv[optind + 4]);
+  minflux1 = atof(argv[optind + 5]);
+  maxflux1 = atof(argv[optind + 6]);
+  minflux2 = atof(argv[optind + 7]);
+  maxflux2 = atof(argv[optind + 8]);
+  nflux1 = static_cast<unsigned int>(atoi(argv[optind + 9]));
+  nflux2 = static_cast<unsigned int>(atoi(argv[optind + 10]));
+  outfile = std::string(argv[optind + 11]);
 
-  if (nflux == 0) {
-    std::cout << "Error -- number of fluxes requested is zero."
+  if (nflux1 == 0) {
+    std::cout << "Error -- number of fluxes requested is zero in dim 1."
+	      << std::endl;
+    return 1;
+  }
+  if (nflux2 == 0) {
+    std::cout << "Error -- number of fluxes requested is zero in dim 2."
 	      << std::endl;
     return 1;
   }
@@ -270,10 +335,12 @@ int getRDouble(int argc, char** argv) {
     std::cout << "Invalid (non-odd) oversampling " << oversamp << std::endl;
     return 1;
   }
+  if (minflux1 > maxflux1) std::swap(minflux1, maxflux1);
   if (maxflux1 <= 0.0) {
     std::cout << "Invalid (non-positive) maxflux1 " << maxflux1 << std::endl;
     return 1;
   }
+  if (minflux2 > maxflux2) std::swap(minflux1, maxflux1);
   if (maxflux2 <= 0.0) {
     std::cout << "Invalid (non-positive) maxflux1 " << maxflux2 << std::endl;
     return 1;
@@ -282,8 +349,6 @@ int getRDouble(int argc, char** argv) {
     std::cout << "Invalid (non-positive) n0 " << n0 << std::endl;
     return 1;
   }
-
-  // Minflux is 0
 
   double *R = NULL;
   double *flux1 = NULL;
@@ -320,51 +385,114 @@ int getRDouble(int argc, char** argv) {
 
     // Set up fluxes
     double dflux1, dflux2;
-    if (nflux > 1) {
-      dflux1 = maxflux1 / static_cast<double>(nflux - 1);
-      dflux2 = maxflux2 / static_cast<double>(nflux - 1);
-    } else {
+    if (nflux1 > 1) 
+      dflux1 = (maxflux1 - minflux1) / static_cast<double>(nflux1 - 1);
+    else
       dflux1 = 0.0;
+    if (nflux2 > 1)
+      dflux2 = (maxflux2 - minflux2)/ static_cast<double>(nflux2 - 1);
+    else
       dflux2 = 0.0;
-    }
-    flux1 = new double[nflux];
-    for (unsigned int i = 0; i < nflux; ++i)
-      flux1[i] = dflux1 * static_cast<double>(i);
-    flux2 = new double[nflux];
-    for (unsigned int i = 0; i < nflux; ++i)
-      flux2[i] = dflux2 * static_cast<double>(i);
+
+    flux1 = new double[nflux1];
+    for (unsigned int i = 0; i < nflux1; ++i)
+      flux1[i] = dflux1 * static_cast<double>(i) + minflux1;
+    flux2 = new double[nflux2];
+    for (unsigned int i = 0; i < nflux2; ++i)
+      flux2[i] = dflux2 * static_cast<double>(i) + minflux2;
 
     // Get R
-    R = new double[nflux * nflux];
-    model.getR(nflux, flux1, nflux, flux2, inv_bmhist, R);
-    delete[] flux1;
-    delete[] flux2;
+    R = new double[nflux1 * nflux2];
+    model.getR(nflux1, flux1, nflux2, flux2, inv_bmhist, R);
 
     // Adjust for N0
     double n0fac = n0 / model.getBaseN0();
-    if (n0fac != 1)
-      for (unsigned int i = 0; i < nflux * nflux; ++i)
+    if (fabs(n0fac - 1.0) > 1e-5)
+      for (unsigned int i = 0; i < nflux1 * nflux2; ++i)
 	R[i] *= n0fac;
 
     // Write
+    if (write_to_hdf5) {
+      if (verbose) std::cout << "Writing as HDF5" << std::endl;
+      hid_t file_id;
+      file_id = H5Fcreate(outfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
+			  H5P_DEFAULT);
+      if (H5Iget_ref(file_id) < 0) {
+	H5Fclose(file_id);
+	throw pofdExcept("pofd_coverge_getR", "pofd_coverage_getR",
+			 "Failed to open HDF5 file to write", 1);
+      }
+      hsize_t adims;
+      hid_t mems_id, att_id, dat_id;
+      
+      // Properties
+      adims = 1;
+      mems_id = H5Screate_simple(1, &adims, NULL);
+      att_id = H5Acreate2(file_id, "dflux1", H5T_NATIVE_DOUBLE,
+			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
+      H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux1);
+      H5Aclose(att_id);
+      att_id = H5Acreate2(file_id, "dflux2", H5T_NATIVE_DOUBLE,
+			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
+      H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux2);
+      H5Aclose(att_id);
+      att_id = H5Acreate2(file_id, "N0", H5T_NATIVE_DOUBLE,
+			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
+      H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0);
+      H5Aclose(att_id);
+      H5Sclose(mems_id);
 
-    FILE *fp;
-    fp = fopen(outfile.c_str(), "w");
-    if (!fp) {
-      std::cerr << "Failed to open output file" << std::endl;
-      return 128;
-    }
-    fprintf(fp,"#%4u %4u\n", nflux, nflux);
-    fprintf(fp,"#minflux1: %12.6e dflux1: %12.6e\n", 0., dflux1);
-    fprintf(fp,"#minflux2: %12.6e dflux2: %12.6e\n", 0., dflux2);
-    for (unsigned int i = 0; i < nflux; ++i) {
-      for (unsigned int j = 0; j < nflux - 1; ++j)
-        fprintf(fp,"%13.7e ",R[nflux * i + j]);
-      fprintf(fp,"%13.7e\n",R[nflux * i + nflux - 1]);
-    }
-    fclose(fp);
+      // Rfluxes
+      adims = nflux1;
+      mems_id = H5Screate_simple(1, &adims, NULL);
+      dat_id = H5Dcreate2(file_id, "RFlux1", H5T_NATIVE_DOUBLE,
+			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	       H5P_DEFAULT, flux1);
+      H5Dclose(dat_id);
+      H5Sclose(mems_id);
+      adims = nflux2;
+      mems_id = H5Screate_simple(1, &adims, NULL);
+      dat_id = H5Dcreate2(file_id, "RFlux2", H5T_NATIVE_DOUBLE,
+			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	       H5P_DEFAULT, flux2);
+      H5Dclose(dat_id);
+      H5Sclose(mems_id);
 
-    delete[] R; 
+      // R, which is 2D
+      hsize_t dims_steps[2] = {nflux1, nflux2};
+      mems_id = H5Screate_simple(2, dims_steps, NULL);
+      dat_id = H5Dcreate2(file_id, "R", H5T_NATIVE_DOUBLE, mems_id,
+			  H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	       H5P_DEFAULT, R);			  
+      H5Dclose(dat_id);
+      H5Sclose(mems_id);
+
+      H5Fclose(file_id);
+    } else {
+      if (verbose) std::cout << "Writing as text" << std::endl;
+      FILE *fp;
+      fp = fopen(outfile.c_str(), "w");
+      if (!fp) {
+	std::cerr << "Failed to open output file" << std::endl;
+	return 128;
+      }
+      fprintf(fp,"#%4u %4u\n", nflux1, nflux2);
+      fprintf(fp,"#minflux1: %12.6e dflux1: %12.6e\n", 0., dflux1);
+      fprintf(fp,"#minflux2: %12.6e dflux2: %12.6e\n", 0., dflux2);
+      for (unsigned int i = 0; i < nflux1; ++i) {
+	for (unsigned int j = 0; j < nflux2 - 1; ++j)
+	  fprintf(fp,"%13.7e ",R[nflux2 * i + j]);
+	fprintf(fp,"%13.7e\n",R[nflux2 * i + nflux2 - 1]);
+      }
+      fclose(fp);
+    }
+
+    delete[] R;
+    delete[] flux1;
+    delete[] flux2;
   } catch (const pofdExcept& ex) {
     std::cerr << "Error encountered" << std::endl;
     std::cerr << ex << std::endl;
@@ -415,7 +543,8 @@ int main(int argc, char** argv) {
       std::cerr << std::endl;
       std::cerr << "\t pofd_coverage_getR -d [options] modelfile n0 fwhm1 fwhm2 "
 		<< "pixsize" << std::endl;
-      std::cerr << "\t\tmaxflux1 maxflux2 nflux outfile" << std::endl;
+      std::cerr << "\t\tminflux1 maxflux1 minflux2 maxflux2 nflux outfile" 
+		<< std::endl;
       std::cerr << std::endl;
       std::cerr << "\tfor the 2D case." << std::endl;
       std::cerr << std::endl;
@@ -491,6 +620,9 @@ int main(int argc, char** argv) {
       std::cerr << "\t\tHigh-pass filter scale, in arcsec.  Zero means no"
 		<< " filtering" << std::endl;
       std::cerr << "\t\tis applied (def: 0)" << std::endl;
+      std::cerr << "\t-H, --hdf5" << std::endl;
+      std::cerr << "\t\tWrite the output as an HDF5 file rather than as text."
+		<< std::endl;
       std::cerr << "\t-n, --nbins VALUE" << std::endl;
       std::cerr << "\t\tNumber of beam histogram bins (def: 120)" << std::endl;
       std::cerr << "\t-N, --nfwhm VALUE" << std::endl;

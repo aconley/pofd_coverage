@@ -32,9 +32,10 @@ class PDFactoryDouble {
   static const bool use_edge_log_x; //!< Integrate Rx in x log space
   static const bool use_edge_log_y; //!< Integrate Ry in y log space
 
+  bool rinitialized; //!< R, Rflux are filled
   bool initialized; //!< forward transformed R is filled
 
-  unsigned int currsize; //!< Current memory allocation
+  unsigned int currsize; //!< Current variable sizes
   double sigma1; //!< Current supported instrumental \f$\sigma\f$, band 1
   double sigma2; //!< Current supported instrumental \f$\sigma\f$, band 2
   double max_n0; //!< Current maximum supported model \f$N_0\f$
@@ -46,18 +47,17 @@ class PDFactoryDouble {
   double sg1; //!< Expected sigma (inc instrument noise), band 1, max n0 model
   double sg2; //!< Expected sigma (inc instrument noise), band 2, max n0 model
 
-  unsigned int plan_size; //!< Size of currently computed plans
+  bool plans_valid;   //!< Do we have valid plans?
   fftw_plan plan;     //!< Holds forward transformation plan
   fftw_plan plan_inv; //!< Holds inverse transformation plan
 
   //Working variables for transformation
   bool rvars_allocated; //!< Are R variables (rest of this block) allocated
-  bool is_r_set; //!< Has R been set to something?
-  unsigned int rsize; //!< Size of R fill along each dimension
   double *RFlux1; //!< Holds R flux values for fill
   double *RFlux2; //!< Holds R flux values for fill
   double minfluxR_1; //!< Minimum flux in RFlux1
   double minfluxR_2; //!< Minimum flux in RFlux2
+  bool rdflux; //!< If yes, rvals has been multiplied by dflux1 * dflux2
   double* rvals; //!< Working space for R computation, row major order
   fftw_complex *rtrans; //!< Holds FFTed rvals 
   fftw_complex* pval; //!< Working variable holding p = exp( stuff )
@@ -91,17 +91,11 @@ class PDFactoryDouble {
 
   void init(unsigned int); //!< Initializes memory
   bool resize(unsigned int); //!< Sets transform size arrays
-  void strict_resize(unsigned int); //!< Sets transform size arrays
   void free(); //!< Frees memory
 
   /*! \brief Sets RFlux1, Rflux2, with wrapping */
   void initRFlux(unsigned int n, double minflux1, double maxflux1,
 		 double minflux2, double maxflux2);
-
-  /*! \brief Initializes R */
-  void initR(unsigned int n, double minflux1, double maxflux1, 
-	     double minflux2, double maxflux2, const numberCountsDouble& model,
-	     const doublebeamHist& bm, bool setEdge=true);
 
   /*! \brief Figure out min/max flux densities where R is non-zero */
   std::pair<dblpair, dblpair> getMinMaxR(const numberCountsDouble&,
@@ -111,7 +105,7 @@ class PDFactoryDouble {
   std::pair<dblpair, dblpair> getRMoments(unsigned int n, 
 					  const numberCountsDouble&,
 					  const doublebeamHist&,
-					  const std::pair<dblpair, dblpair>&,
+					  std::pair<dblpair, dblpair>&,
 					  bool setEdge=true);
 
   /*! \brief Moves P(D) over to output variable inside getPD */
@@ -133,15 +127,17 @@ class PDFactoryDouble {
 
   double getMaxN0() const { return max_n0; }
 
-  /*! \brief Get size of last FFT */
-  unsigned int getPlanSize() const { return plan_size; }
-
   /*! \brief Returns edge integration length */
   unsigned int getNEdge() const { return nedge; }
   void setNEdge(unsigned int); //!< Set nedge
 
   /*! \brief Adds FFTW wisdom file*/
   bool addWisdom(const std::string& filename);
+
+  /*! \brief Initializes R */
+  void initR(unsigned int n, double minflux1, double maxflux1, 
+	     double minflux2, double maxflux2, const numberCountsDouble& model,
+	     const doublebeamHist& bm, bool setEdge=true, bool muldflux=false);
 
   /*! \brief Initializes P(D) by computing R and forward transforming it*/
   void initPD(unsigned int n, double inst_sigma1, double inst_sigma2, 
@@ -152,7 +148,8 @@ class PDFactoryDouble {
   /*! \brief Gets P(D) with specified noise levels */
   void getPD(double, PDDouble&, bool setLog=true);
 
-  void writeRToFile(const std::string&) const;
+  void writeRToFile(const std::string&) const; //!< Write to text file
+  void writeRToHDF5(const std::string&) const; //!< Write to HDF5 file
   
 #ifdef TIMING
   void resetTime(); //!< Reset timing information

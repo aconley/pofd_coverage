@@ -199,7 +199,44 @@ if test $usetest; then
        fi ] )
 fi
 
+dnl HDF5
+AC_LANG_C
+AC_ARG_WITH(hdfinc,
+        [AC_HELP_STRING([--with-hdfinc=VAL],
+                        [VAL=-IVAL, has HDF5 include files ]) ], 
+        [hdfinc="$withval/" CPPFLAGS="$CPPFLAGS -I$hdfinc"],
+        [hdfinc=] )
+AC_ARG_WITH(hdflib,
+	[AC_HELP_STRING([--with-hdflib=DIR],
+			[DIR=-LDIR, has libhdf5])],
+	hdflib="$withval/", hdflib= )
 
+dnl HDF5 Header
+AC_MSG_RESULT( Checking HDF5 Headers )
+AC_CHECK_HEADERS([hdf5.h],,
+  [ if test $hdfinc; then
+   AC_MSG_ERROR("hdf5 headers not in location specified by --with-hdfinc")
+   elif test $hdflib; then
+    AC_CHECK_HEADER($hdflib/../include/hdf5.h,
+     [hdfinc="$hdflib/../include/" CPPFLAGS="$CPPFLAGS -I$hdfinc"],
+      AC_MSG_ERROR("Can't find HDF5 includes in user specified location; use --with-hdfinc"))
+    else
+      AC_MSG_ERROR("Can't find HDF5 includes; use --with-hdf5inc")
+   fi ] )
+dnl HDF5 lib
+if test $hdflib; then
+  AC_MSG_RESULT( Checking User specified HDF5 )
+  LDFLAGS="$LDFLAGS -L$hdflib"
+  LIBS="$LIBS -lhdf5"
+  AC_CHECK_LIB( hdf5, main, ,
+      AC_MSG_ERROR("libhdf5 not in location specified by --with-hdflib: $hdflib"),
+      [ -lhdf5 -L$hdflib ] )
+
+else
+  AC_MSG_RESULT( Checking HDF5 )
+  AC_CHECK_LIB( hdf5, main, ,
+      AC_MSG_ERROR("libhdf5 not found; use --with-hdflib"), )
+fi
 
 # Checks for header files.
 AC_HEADER_STDC

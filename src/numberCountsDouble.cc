@@ -3,6 +3,7 @@
 #include<sstream> 
 #include<fstream>
 #include<limits>
+#include<cstring>
 
 #include "../include/utility.h"
 #include "../include/numberCountsDouble.h"
@@ -440,10 +441,14 @@ dblpair numberCountsDouble::getMaxFluxEstimate() const {
   //Easy in band one. 
   double mflux1 = knotpos[nknots-1];
 
-  //In band 2 take some number of sigma out
+  //In band 2 take some number of sigma out (in real space) using the
+  // mean/var relationships for a log normal
   double sig = getSigmaInner(mflux1);
   double off = getOffsetInner(mflux1);
-  double mflux2 = mflux1 * exp(off + 3.0 * sig); //3 sigma
+  double var = sig*sig;
+  double mnratio = exp(off + 0.5 * var);
+  double varratio = exp(2*off + var) * (exp(var) - 1.0);
+  double mflux2 = mflux1 * (mnratio + 3.0 * sqrt(varratio));
   return std::make_pair(mflux1, mflux2);
 }
 
@@ -553,7 +558,7 @@ double numberCountsDouble::getR(double x1, double x2,
 
   //Do actual R computation
   unsigned int curr_n;
-  double ieta1, ieta2, retval, ax1, ax2;
+  double ieta1, ieta2, retval, ax1, ax2, cts;
   const unsigned int* wtptr;
   const double* ibmptr1;
   const double* ibmptr2;
@@ -569,8 +574,8 @@ double numberCountsDouble::getR(double x1, double x2,
   for (unsigned int i = 0; i < curr_n; ++i) {
     ieta1 = ibmptr1[i];
     ieta2 = ibmptr2[i];
-    retval += wtptr[i] * ieta1 * ieta2 * 
-      getNumberCountsInner(ax1 * ieta1, ax2 * ieta2);
+    cts = getNumberCountsInner(ax1 * ieta1, ax2 * ieta2);
+    if (cts > 0) retval += wtptr[i] * ieta1 * ieta2 * cts;
   } 
 
   double prefac = bm.getPixsize() / 3600.0;
@@ -604,37 +609,53 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
   // by tabulating and saving information.  However, for this code,
   // where this will be a very sub-dominant cost because we re-use it, we go
   // for brute simplicity
-  for (unsigned int i = 0; i < n1 * n2; ++i) R[i] = 0.0;
+  std::memset(R, 0, n1 * n2 * sizeof(double));
 
-  unsigned int sgn, curr_n;
-  double ieta1, ieta2, cx1, cx2, ax1, ax2, Rsum;
+  // Load beam sign components into local arrays to avoid
+  // inner loop function call overhead
+  unsigned int nsgn[4];
+  for (unsigned int i = 0; i < 4; ++i) nsgn[i] = bm.getN(i);
+  const unsigned int *wtptr4[4];
+  for (unsigned int i = 0; i < 4; ++i) 
+    if (nsgn[i] > 0) wtptr4[i] = bm.getWt(i); else wtptr4[i] = NULL;
+  const double *ibmptr14[4];
+  for (unsigned int i = 0; i < 4; ++i) 
+    if (nsgn[i] > 0) ibmptr14[i] = bm.getBm1(i); else ibmptr14[i] = NULL;
+  const double *ibmptr24[4];
+  for (unsigned int i = 0; i < 4; ++i) 
+    if (nsgn[i] > 0) ibmptr24[i] = bm.getBm2(i); else ibmptr24[i] = NULL;
+
+  unsigned int sgn, sgn1, curr_n;
+  double ieta1, ieta2, cx1, cx2, ax1, ax2, Rsum, cts;
   const unsigned int* wtptr;
   const double* ibmptr1;
   const double* ibmptr2;
   double *rowptr; // Points into rows of R
-  bool hasNegX1 = bm.hasSign(2) || bm.hasSign(3); // If not, skip all x1 < 0
+  bool hasNegX1 = (nsgn[2] > 0) || (nsgn[3] > 0);
   for (unsigned int j = 0; j < n1; ++j) {
     cx1 = x1[j];
-    if ((x1 <= 0) && (!hasNegX1)) continue; //R will be zero for this x1
+    if ((cx1 <= 0) && (!hasNegX1)) continue; //R will be zero for this x1
     rowptr = R + j * n2;
     ax1 = fabs(cx1);
+    sgn1 = cx1 >= 0 ? 0 : 2; // Beam sign component when combined below
     for (unsigned int k = 0; k < n2; ++k) {
       cx2 = x2[k];
-      sgn = signComp(cx1, cx2);  // Which beam component
-      curr_n = bm.getN(sgn);
-      if (curr_n == 0) continue;  // None of that sign component, move on
-      ax2 = fabs(cx2);
-      wtptr = bm.getWt(sgn);
-      ibmptr1 = bm.getBm1(sgn);
-      ibmptr2 = bm.getBm2(sgn);
-      Rsum = 0.0;
-      for (unsigned int i = 0; i < curr_n; ++i) {
-	ieta1 = ibmptr1[i];
-	ieta2 = ibmptr2[i];
-	Rsum += wtptr[i] * ieta1 * ieta2 * 
-	  getNumberCountsInner(ax1 * ieta1, ax2 * ieta2);
+      sgn = sgn1 + (cx2 >= 0 ? 0 : 1); // Beam sign component
+      curr_n = nsgn[sgn]; // Number of beam elements for matching component
+      if (curr_n > 0) {
+	ax2 = fabs(cx2);
+	wtptr = wtptr4[sgn];
+	ibmptr1 = ibmptr14[sgn];
+	ibmptr2 = ibmptr24[sgn];
+	Rsum = 0.0;
+	for (unsigned int i = 0; i < curr_n; ++i) {
+	  ieta1 = ibmptr1[i];
+	  ieta2 = ibmptr2[i];
+	  cts = getNumberCountsInner(ax1 * ieta1, ax2 * ieta2);
+	  if (cts > 0) Rsum += wtptr[i] * ieta1 * ieta2 * cts;
+	}
+	rowptr[k] += Rsum;
       }
-      rowptr[k] += Rsum;
     }
   }
 

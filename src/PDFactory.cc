@@ -4,6 +4,8 @@
 #include<fstream>
 #include<limits>
 
+#include<hdf5.h>
+
 #include "../include/global_settings.h"
 #include "../include/PDFactory.h"
 #include "../include/pofdExcept.h"
@@ -31,7 +33,6 @@ PDFactory::~PDFactory() {
 }
 
 void PDFactory::init() {
-  plan_size = 0;
   currsize = 0;
 
 #ifdef TIMING
@@ -41,7 +42,6 @@ void PDFactory::init() {
   RFlux = NULL;
   rvals = NULL;
   rtrans = NULL;
-  isRTransAllocated = false;
   pofd = NULL;
   pval = NULL;
 
@@ -59,7 +59,9 @@ void PDFactory::init() {
 
   sigma = std::numeric_limits<double>::quiet_NaN();
   max_n0 = std::numeric_limits<double>::quiet_NaN();
+  rinitialized = false;
   initialized = false;
+  rdflux = false;
 }
 
 #ifdef TIMING
@@ -93,29 +95,15 @@ void PDFactory::summarizeTime(unsigned int nindent) const {
 
 
 /*
-  Doesn't force resize if there is already enough room available
-
   \param[in] NSIZE new size
-  \returns True if a resize was needed
- */
-bool PDFactory::resize(unsigned int NSIZE) {
-  if (NSIZE > currsize) {
-    strict_resize(NSIZE);
-    return true;
-  } else return false;
-}
-
-/*!
-  Forces a resize
-
-  \param[in] NSIZE new size (must be > 0)
- */
+  \returns True if there was actually a resize
+*/
 //I don't check for 0 NSIZE because that should never happen
 // in practice, and it isn't worth the idiot-proofing
 // rtrans always gets nulled in here, then refilled when you
 //  call initPD
-void PDFactory::strict_resize(unsigned int NSIZE) {
-  if (NSIZE == currsize) return;
+bool PDFactory::resize(unsigned int NSIZE) {
+  if (NSIZE == currsize) return false;
 
   if (RFlux != NULL) fftw_free(RFlux);
   RFlux = NULL;
@@ -123,7 +111,6 @@ void PDFactory::strict_resize(unsigned int NSIZE) {
   rvals = NULL;
   if (rtrans != NULL) fftw_free(rtrans);
   rtrans = NULL;
-  isRTransAllocated = false;
   if (pval != NULL) fftw_free(pval);
   pval = NULL;
   if (pofd != NULL) fftw_free(pofd);
@@ -154,7 +141,9 @@ void PDFactory::strict_resize(unsigned int NSIZE) {
   plans_valid = false;
 
   currsize = NSIZE;
+  rinitialized = false;
   initialized = false;
+  return true;
 }
 
 /*!
@@ -170,7 +159,7 @@ bool PDFactory::addWisdom(const std::string& filename) {
   }
   if (fftw_import_wisdom_from_file(fp) == 0) {
     std::stringstream str;
-    str << "Error reading wisdom file: " << wisdom_file;
+    str << "Error reading wisdom file: " << filename;
     throw pofdExcept("PDFactory","addWisdom",str.str(),1);
   }
   fclose(fp);
@@ -204,7 +193,7 @@ void PDFactory::initRFlux(unsigned int n, double minflux, double maxflux) {
   resize(n);
 
   if (n == 0)
-    throw pofdExcept("PDFactory", "initR", "Invalid (0) n", 1);
+    throw pofdExcept("PDFactory", "initRFlux", "Invalid (0) n", 1);
   if (n == 1) {
     dflux = 0.1;
     RFlux[0] = minflux;
@@ -239,20 +228,28 @@ void PDFactory::initRFlux(unsigned int n, double minflux, double maxflux) {
       RFlux[i] = static_cast<double>(i) * dflux + wrapval;
     minflux_R = RFlux[maxpos + 1];
   }
+  initialized = false; // If there was a P(D), it's no longer valid
+  rinitialized = false;
 }
 
 /*!
-  \param[in] n       Size of transform 
-  \param[in] minflux Minimum flux to use in R
-  \param[in] maxflux Maximum flux to use in R
-  \param[in] model   number counts model to use for fill.  Params must be set
-  \param[in] bm      Histogrammed inverse beam
+  \param[in] n        Size of transform 
+  \param[in] minflux  Minimum flux to use in R
+  \param[in] maxflux  Maximum flux to use in R
+  \param[in] model    number counts model to use for fill.  Params must be set
+  \param[in] bm       Histogrammed inverse beam
+  \param[in] muldflux Multiply R by dflux
 
-  The R value that is set is actually R * dflux for convenience.
-  dflux is also set, as well as Rflux
+  dflux is also set, as well as Rflux.
+
+  This is called by initPD, so you don't need to call this to compute
+  the P(D).  The reason to use this is if you just want R, but not the P(D).
+
+  The computed R is for the base model.
 */
 void PDFactory::initR(unsigned int n, double minflux, double maxflux, 
-		      const numberCounts& model, const beamHist& bm) {
+		      const numberCounts& model, const beamHist& bm,
+		      bool muldflux) {
 
   //Fill in Rflux values, set dflux.  Also resizes.
   initRFlux(n, minflux, maxflux);
@@ -262,10 +259,15 @@ void PDFactory::initR(unsigned int n, double minflux, double maxflux,
   std::clock_t starttime = std::clock();
 #endif
   model.getR(n, RFlux, bm, rvals);
-  for (unsigned int i = 1; i < n; ++i) rvals[i] *= dflux;
+  if (muldflux) {
+    for (unsigned int i = 0; i < n; ++i) rvals[i] *= dflux;
+    rdflux = true;
+  } else rdflux = false;
 #ifdef TIMING
   RTime += std::clock() - starttime;
 #endif
+  initialized = false; // If there was a P(D), it's no longer valid
+  rinitialized = true;
 }
 
 
@@ -274,7 +276,7 @@ void PDFactory::initR(unsigned int n, double minflux, double maxflux,
   \param[in] n Number of elements
   \param[out] pd Holds P(D) on output, normalized, mean subtracted,
                  and with positivity enforced.
-
+  
   This does the unwrapping of the internal P(D) into pd.
 */
 // This should only ever be called by getPD, so we don't really
@@ -289,7 +291,7 @@ void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
   const double nsig1 = 4.0; 
   const double nsig2 = 2.0;
   const double maxminratio = 1e5;
-
+  
   // First, Enforce positivity
 #ifdef TIMING
   starttime = std::clock();
@@ -417,8 +419,8 @@ dblpair PDFactory::getMinMaxR(const numberCounts& model,
 
   double minFRnonzero, maxFRnonzero;
   double maxknot = model.getMaxKnotPosition();
-  maxFRnonzero = maxknot / bm.getMinMaxPos().first; 
-  if (bm.hasNeg()) minFRnonzero = -maxknot / bm.getMinMaxNeg().first;
+  maxFRnonzero = 1.01 * maxknot * bm.getMinMaxPos().second; 
+  if (bm.hasNeg()) minFRnonzero = -1.01 * maxknot * bm.getMinMaxNeg().second;
   else minFRnonzero = 0.0;
   
   return std::make_pair(minFRnonzero, maxFRnonzero);
@@ -446,13 +448,12 @@ dblpair PDFactory::getRMoments(unsigned int n, const numberCounts& model,
   //  <(x - <x>)^2> = \int x^2 R dx
 
   //We are totally going to screw things up, so mark as unclean
-  initialized = false;  
+  initialized = rinitialized = false;  
   if (n == 0)
     throw pofdExcept("PDFactory", "getRMoments",
 		     "n must be positive", 1);
 
-  //Set R, Rflux, and dflux.  Note that rvals is actually filled
-  // with R * dflux
+  //Set R, Rflux, and dflux. 
   initR(n, range.first, range.second, model, bm); 
 
   //We use the trap rule. 
@@ -470,6 +471,10 @@ dblpair PDFactory::getRMoments(unsigned int n, const numberCounts& model,
   prod = 0.5 * cf * rvals[n-1];
   mean += prod;
   var += cf * prod;
+
+  // Include step size
+  mean *= dflux;
+  var *= dflux;
 
   return std::make_pair(mean, var);
 }
@@ -510,16 +515,14 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
 
   //Allocate/resize internal arrays
   resize(n);
-  if (!isRTransAllocated) {
+  if (rtrans == NULL) {
     //This has to be done before we plan 
-    if (rtrans != NULL) fftw_free(rtrans);
     unsigned int fsize = n / 2 + 1;
     void* alc;
     alc = fftw_malloc(sizeof(fftw_complex) * fsize);
     if (alc == NULL)
       throw pofdExcept("PDFactory", "initPD", "Failed to alloc rtrans", 4);
     rtrans = (fftw_complex*) alc;
-    isRTransAllocated = true;
   }
   
   //Make the plans, or keep the old ones if possible
@@ -534,7 +537,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   //If we resized, we must make the new plans because the
   // addresses changed
   int intn = static_cast<int>(n);
-  if ((!plans_valid) || (plan_size != n)) {
+  if (!plans_valid) {
     if (plan != NULL) fftw_destroy_plan(plan);
     plan = fftw_plan_dft_r2c_1d(intn, rvals, rtrans,
 				fftw_plan_style);
@@ -585,10 +588,10 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
 
   //Now prepare final R.  Note this uses the base model, even
   // though we computed the maximum R value based on the maximum n0 value
-  // The returned value is R * dflux, and dflux is set
   // We go from the smallest non-zero R to the value we just found.
   // Note that this automatically pads R with zeros as needed!
-  initR(n, rangeR.first, maxflux_R, model, bm);
+  // We actually ask for R * dflux, because that's what we want to transform
+  initR(n, rangeR.first, maxflux_R, model, bm, true);
 
   //Decide if we will shift, and if so by how much
   // The idea is to shift the mean to zero -- but we only
@@ -617,7 +620,6 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   
   max_n0 = maxn0;
   sigma = inst_sigma;
-  plan_size = n;
   initialized = true;
 }
 
@@ -655,7 +657,7 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog) {
   double n0ratio = n0 / base_n0;
   
   //Output array from 2D FFT is n/2+1
-  unsigned int n = plan_size;
+  unsigned int n = currsize;
   unsigned int ncplx = n/2 + 1;
       
   //Calculate p(omega) = exp(r(omega) - r(0)),
@@ -750,26 +752,97 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog) {
 }
  
 /*!
-  Writes out current R
+  Writes out current R to a text file
  
   \param[in] filename File to write to
 
-  You must call initPD first, or bad things will probably happen.
+  You must call initPD or initR first, or bad things will probably happen.
 */
 void PDFactory::writeRToFile(const std::string& filename) const {
-  if (! initialized )
-    throw pofdExcept("PDFactory","writeRToFile",
-		     "Must call initPD first",1);
+  if (!rinitialized )
+    throw pofdExcept("PDFactory", "writeRToFile",
+		     "Must call initPD or initR first", 1);
 
   std::ofstream ofs(filename.c_str());
   if (!ofs)
-    throw pofdExcept("PDFactory","writeRToFile",
-		     "Couldn't open output file",2);
+    throw pofdExcept("PDFactory", "writeRToFile",
+		     "Couldn't open output file", 2);
 
-  //Recall after initPD we are storing R * dflux
-  ofs << plan_size << std::endl;
-  for (unsigned int i = 0; i < plan_size; ++i)
-    ofs << RFlux[i] << " " << rvals[i] / dflux << std::endl;
+  ofs << currsize << std::endl;
+  if (rdflux) {
+    double idflux = 1.0 / dflux;
+    for (unsigned int i = 0; i < currsize; ++i)
+      ofs << RFlux[i] << " " << rvals[i] * idflux << std::endl;
+  } else {
+    for (unsigned int i = 0; i < currsize; ++i)
+      ofs << RFlux[i] << " " << rvals[i] << std::endl;
+  }
 
   ofs.close();
+}
+
+/*!
+  Writes out current R to a HDF5 file
+ 
+  \param[in] filename File to write to
+
+  You must call initPD or initR first, or bad things will probably happen.
+*/
+void PDFactory::writeRToHDF5(const std::string& filename) const {
+  if (!rinitialized )
+    throw pofdExcept("PDFactory", "writeRToHDF5",
+		     "Must call initPD or initR first", 1);
+
+  hid_t file_id;
+  file_id = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
+		      H5P_DEFAULT);
+
+  if (H5Iget_ref(file_id) < 0) {
+    H5Fclose(file_id);
+    throw pofdExcept("PDFactory", "writeToHDF5",
+		     "Failed to open HDF5 file to write", 2);
+  }
+
+  // Write it as one dataset -- Rflux, R. 
+  hsize_t adims;
+  hid_t mems_id, att_id, dat_id;
+  
+  // Properties
+  adims = 1;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  att_id = H5Acreate2(file_id, "dflux", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux);
+  H5Aclose(att_id);
+  att_id = H5Acreate2(file_id, "N0", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &base_n0);
+  H5Aclose(att_id);
+  H5Sclose(mems_id);
+
+  // Rflux
+  adims = currsize;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  dat_id = H5Dcreate2(file_id, "RFlux", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	   H5P_DEFAULT, RFlux);
+  H5Dclose(dat_id);
+
+  // R -- which we may need to copy to remove the dflux
+  dat_id = H5Dcreate2(file_id, "R", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (rdflux) {
+    double* tmp = new double[currsize];
+    double idflux = 1.0 / dflux;
+    for (unsigned int i = 0; i < currsize; ++i) tmp[i] = rvals[i] * idflux;
+    H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,  H5P_DEFAULT, tmp);
+    delete[] tmp;
+  } else
+    H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,  H5P_DEFAULT, rvals);
+  H5Dclose(dat_id);
+  H5Sclose(mems_id);
+
+  // Done
+  H5Fclose(file_id);
 }

@@ -79,7 +79,7 @@ class PD {
   std::ostream& writeToStream(std::ostream& os) const; //!< Write summary
 
   int writeToFits(const std::string& file) const; //!< Write as fits file
-  
+  void writeToHDF5(const std::string& file) const; //!< Write as HDF5
 };
 
 std::ostream& operator<<(std::ostream& os, const PD&);

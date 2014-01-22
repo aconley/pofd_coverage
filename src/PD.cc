@@ -2,6 +2,7 @@
 #include<limits>
 #include<cstring>
 
+#include<hdf5.h>
 #include<fitsio.h>
 #include<fftw3.h>
 
@@ -338,7 +339,7 @@ std::ostream& PD::writeToStream(std::ostream& os) const {
   \param[in] outputfile File to write to
   \returns 0 on success, an error code (!=0) for anything else
  */
-int PD::writeToFits( const std::string& outputfile ) const {
+int PD::writeToFits(const std::string& outputfile) const {
 
   //Make the fits file
   int status = 0;
@@ -348,8 +349,8 @@ int PD::writeToFits( const std::string& outputfile ) const {
 
   if (status) {
     fits_report_error(stderr,status);
-    throw pofdExcept("PD","writeToFits",
-		     "Error creating FITS output file",1);
+    throw pofdExcept("PD", "writeToFits",
+		     "Error creating FITS output file", 1);
   }
 
   long axissize[1];
@@ -372,7 +373,7 @@ int PD::writeToFits( const std::string& outputfile ) const {
 		 const_cast<char*>("delta along axis 1"), &status);
 
   int lg = static_cast<int>(logflat);
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("LOG"),&lg,
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("LOG"), &lg,
 		 const_cast<char*>("Is log P(D) stored?"), &status);
 
   //Do data writing.  
@@ -383,10 +384,65 @@ int PD::writeToFits( const std::string& outputfile ) const {
 
   if (status) {
     fits_report_error(stderr,status);
-    throw pofdExcept("PD","writeToFits",
-		     "Error doing FITS write",2);
+    throw pofdExcept("PD", "writeToFits", "Error doing FITS write", 2);
   }
   return status;
+}
+
+/*!
+  \param[in] outputfile File to write to
+ */
+void PD::writeToHDF5(const std::string& outputfile) const {
+  hid_t file_id;
+  file_id = H5Fcreate(outputfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
+		      H5P_DEFAULT);
+  if (H5Iget_ref(file_id) < 0) {
+    H5Fclose(file_id);
+    throw pofdExcept("PD", "writeToHDF5",
+		     "Failed to open HDF5 file to write", 1);
+  }
+
+  hsize_t adims;
+  hid_t mems_id, att_id, dat_id;
+  
+  // Properties
+  adims = 1;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  att_id = H5Acreate2(file_id, "isLog", H5T_NATIVE_HBOOL,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_HBOOL, &logflat);
+  H5Aclose(att_id);
+  att_id = H5Acreate2(file_id, "dflux", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux);
+  H5Aclose(att_id);
+  att_id = H5Acreate2(file_id, "minflux", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &minflux);
+  H5Aclose(att_id);
+  H5Sclose(mems_id);
+  
+  // Rflux -- by making temporary array
+  double *flux = new double[n];
+  for (unsigned int i = 0; i < n; ++i) 
+    flux[i] = static_cast<double>(i) * dflux + minflux;
+  adims = n;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  dat_id = H5Dcreate2(file_id, "flux", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	   H5P_DEFAULT, flux);
+  H5Dclose(dat_id);
+  delete[] flux;
+
+  dat_id = H5Dcreate2(file_id, "PD", H5T_NATIVE_DOUBLE, mems_id,
+		      H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	   H5P_DEFAULT, pd_);
+  H5Dclose(dat_id);
+  H5Sclose(mems_id);
+
+  H5Fclose(file_id);
 }
 
 /*!

@@ -397,6 +397,11 @@ beamHist::beamHist(unsigned int NBINS, double FILTSCALE,
   wt_neg = new unsigned int[nbins];
   bm_neg = new double[nbins];
 
+  minmax_pos = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			      std::numeric_limits<double>::quiet_NaN());
+  minmax_neg = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			      std::numeric_limits<double>::quiet_NaN());
+
   keep_filt = KEEP_FILT_INMEM;
   filtscale = FILTSCALE;
   if (filtscale > 0.0 && KEEP_FILT_INMEM)
@@ -411,50 +416,6 @@ beamHist::~beamHist() {
   delete[] wt_neg;
   delete[] bm_neg;
   if (filt != NULL) delete filt;
-}
-
-/*!
-  \returns Minimum/Maximum values of positive beam.  If this is the 
-  inverse beam, then the minimum/maximum of the inverse positive beam
-  are returned.
-*/
-dblpair beamHist::getMinMaxPos() const {
-  if (!has_data) 
-    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			  std::numeric_limits<double>::quiet_NaN());
-  if (n_pos == 0) 
-    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			  std::numeric_limits<double>::quiet_NaN());
-
-  double min, max, val;
-  min = max = bm_pos[0];
-  for (unsigned int i = 1; i < n_pos; ++i) {
-    val = bm_pos[i];
-    if (val > max) max = val; else if (val < min) min = val;
-  }
-  return std::make_pair(min, max);
-}
-
-/*!
-  \returns Minimum/Maximum values of negative beam.  If this is the 
-  inverse beam, then the minimum/maximum of the inverse negative beam
-  are returned.
-*/
-dblpair beamHist::getMinMaxNeg() const {
-  if (!has_data) 
-    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			  std::numeric_limits<double>::quiet_NaN());
-  if (n_neg == 0) 
-    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			  std::numeric_limits<double>::quiet_NaN());
-
-  double min, max, val;
-  min = max = bm_neg[0];
-  for (unsigned int i = 1; i < n_neg; ++i) {
-    val = bm_neg[i];
-    if (val > max) max = val; else if (val < min) min = val;
-  }
-  return std::make_pair(min, max);
 }
 
 /*!
@@ -495,6 +456,10 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
     delete filt;
     filt = NULL;
   }
+  minmax_pos = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			      std::numeric_limits<double>::quiet_NaN());
+  minmax_neg = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			      std::numeric_limits<double>::quiet_NaN());
 
   // Histogram
   // Find minimum and maximum non-zero parts for neg/pos histograms
@@ -517,6 +482,9 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
       if (val < minbinval_neg) minbinval_neg = val;
     }
   }
+
+  if (has_pos) minmax_pos = std::make_pair(minbinval_pos, maxbinval_pos);
+  if (has_pos) minmax_neg = std::make_pair(minbinval_neg, maxbinval_neg);
 
   // Set bin size
   double histstep_pos, histstep_neg;

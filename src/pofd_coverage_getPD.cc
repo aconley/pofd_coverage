@@ -19,8 +19,9 @@
 
 static struct option long_options[] = {
   {"double", no_argument, 0, 'd'},
-  {"edgeinterp",required_argument,0,'e'},
+  {"edgeinterp", required_argument, 0, 'e'},
   {"help", no_argument, 0, 'h'},
+  {"hdf5", no_argument, 0, 'H'},
   {"fits", no_argument, 0, 'f'},
   {"filterscale", required_argument, 0, 'F'},
   {"log", no_argument, 0, 'l'},
@@ -37,7 +38,7 @@ static struct option long_options[] = {
   {"wisdom", required_argument, 0, 'w'},
   {0,0,0,0}
 };
-char optstring[] = "dhe:fF:ln:N:0:o:r:s:3:4:vVw:";
+char optstring[] = "dhe:fF:Hln:N:0:o:r:s:3:4:vVw:";
 
 ///////////////////////////////
 
@@ -49,7 +50,7 @@ int getPDSingle(int argc, char **argv) {
   double sigma; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins;
-  bool has_wisdom, verbose, return_log, write_fits, write_r;
+  bool has_wisdom, verbose, return_log, write_fits, write_r, write_as_hdf5;
   std::string wisdom_file, r_file;
   unsigned int oversample;
 
@@ -62,6 +63,7 @@ int getPDSingle(int argc, char **argv) {
   verbose             = false;
   return_log          = false;
   write_fits          = false;
+  write_as_hdf5       = false;
   write_r             = false;
   oversample          = 1;
   filterscale         = 0.0;
@@ -77,6 +79,9 @@ int getPDSingle(int argc, char **argv) {
       break;
     case 'F' :
       filterscale = atof(optarg);
+      break;
+    case 'H' :
+      write_as_hdf5 = true;
       break;
     case 'l' :
       return_log = true;
@@ -171,6 +176,9 @@ int getPDSingle(int argc, char **argv) {
     std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
     return 1;
   }
+  if (write_as_hdf5 && write_fits) {
+    std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
+  }
 
   try {
     numberCounts model(modelfile);
@@ -205,10 +213,10 @@ int getPDSingle(int argc, char **argv) {
       printf("   sigma:              %0.4f\n", sigma);
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.1f\n", filterscale);
-      if (return_log) 
-	printf("  Returning log(P(D)) rather than P(D)\n");
       if (oversample != 1)
-	printf("oversamp:              %u\n", oversample);
+	printf("   oversamp:           %u\n", oversample);
+      if (return_log) 
+	printf("   Returning log(P(D)) rather than P(D)\n");
     }
 
     // Get histogrammed inverse beam
@@ -224,18 +232,30 @@ int getPDSingle(int argc, char **argv) {
 		    model, inv_bmhist);
 
     if (write_r) {
-      if (verbose) std::cout << "Writing R to " << r_file << std::endl;
-      pfactory.writeRToFile(r_file);
+      if (verbose) {
+	std::cout << "  Writing R to " << r_file;
+	if (write_as_hdf5) std::cout << " as HDF5" << std::endl;
+	else std::cout << std::endl;
+      }
+      if (write_as_hdf5) pfactory.writeRToHDF5(r_file);
+      else pfactory.writeRToFile(r_file);
     }
-    
+   
     pfactory.getPD(n0, pd, return_log);
     
     //Write it
-    if (verbose) std::cout << "Writing P(D) to " << outputfile 
-			   << std::endl;
-    if (verbose && write_fits)
-      std::cout << " Writing as FITS file" << std::endl;
-    if (write_fits) {
+    if (verbose) {
+      std::cout << "Writing P(D) to " << outputfile;
+      if (write_as_hdf5)
+	std::cout << " as HDF5 file";
+      else if (write_fits)
+	std::cout << " as FITS file";
+      std::cout << std::endl;
+    }
+
+    if (write_as_hdf5) {
+      pd.writeToHDF5(outputfile);
+    } else if (write_fits) {
       pd.writeToFits(outputfile);
     } else {
       std::ofstream ofs(outputfile.c_str());
@@ -270,7 +290,7 @@ int getPDDouble(int argc, char **argv) {
   double sigma1, sigma2; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins, oversample;
-  bool has_wisdom, verbose, return_log, write_fits,  write_r;
+  bool has_wisdom, verbose, return_log, write_fits,  write_r, write_as_hdf5;
   std::string wisdom_file, r_file;
 
   //Defaults
@@ -284,6 +304,7 @@ int getPDDouble(int argc, char **argv) {
   verbose             = false;
   return_log          = false;
   write_fits          = false;
+  write_as_hdf5       = false;
   write_r             = false;
   oversample          = 1;
 
@@ -298,6 +319,9 @@ int getPDDouble(int argc, char **argv) {
       break;
     case 'F' :
       filterscale = atof(optarg);
+      break;
+    case 'H' :
+      write_as_hdf5 = true;
       break;
     case 'l' :
       return_log = true;
@@ -406,6 +430,9 @@ int getPDDouble(int argc, char **argv) {
     std::cout << "Invalid (non-odd) oversampling " << oversample << std::endl;
     return 1;
   }
+  if (write_as_hdf5 && write_fits) {
+    std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
+  }
 
   try {
     numberCountsDouble model(modelfile);
@@ -448,10 +475,10 @@ int getPDDouble(int argc, char **argv) {
       printf("   sigma2:             %0.4f\n", sigma2);
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.1f\n", filterscale);
+      if (oversample != 1)
+	printf("  oversamp:            %u\n", oversample);
       if (return_log) 
 	printf("  Returning log(P(D)) rather than P(D)\n");
-      if (oversample != 1)
-	printf("oversamp:              %u\n", oversample);
     }
 
     // Get histogrammed inverse beam
@@ -464,21 +491,33 @@ int getPDDouble(int argc, char **argv) {
 			   << maxflux1 << " " << maxflux2 << std::endl;
     double base_n0 = model.getBaseN0();
     pfactory.initPD(nflux, sigma1, sigma2, maxflux1, maxflux2, 
-		    base_n0 > n0 ? base_n0 : n0, model, inv_bmhist);
+		    base_n0 > n0 ? base_n0 : n0, model, inv_bmhist, true);
 
     if (write_r) {
-      if (verbose) std::cout << "Writing R to " << r_file << std::endl;
-      pfactory.writeRToFile(r_file);
+      if (verbose) {
+	std::cout << "  Writing R to " << r_file;
+	if (write_as_hdf5) std::cout << " as HDF5" << std::endl;
+	else std::cout << std::endl;
+      }
+      if (write_as_hdf5) pfactory.writeRToHDF5(r_file);
+      else pfactory.writeRToFile(r_file);
     }
-
+   
     pfactory.getPD(n0, pd, return_log);
     
     //Write it
-    if (verbose) std::cout << "Writing P(D) to " << outputfile 
-			   << std::endl;
-    if (verbose && write_fits)
-      std::cout << " Writing as FITS file" << std::endl;
-    if (write_fits) {
+    if (verbose) {
+      std::cout << "Writing P(D) to " << outputfile;
+      if (write_fits)
+	std::cout << " as FITS file";
+      else if (write_as_hdf5)
+	std::cout << " as HDF5 file";
+      std::cout << std::endl;
+    }
+
+    if (write_as_hdf5) {
+      pd.writeToHDF5(outputfile);
+    } else if (write_fits) {
       pd.writeToFits(outputfile);
     } else {
       std::ofstream ofs(outputfile.c_str());
@@ -613,6 +652,10 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
 		<< std::endl;
       std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
+      std::cout << "\t-H, --hdf5" << std::endl;
+      std::cout << "\t\tWrite the output (PD and R, if specified) as a HDF5"
+		<< " file" << std::endl;
+      std::cout << "\t\trather than text or FITS." << std::endl;
       std::cout << "\t-l, --log" << std::endl;
       std::cout << "\t\tReturn the log P(D) rather than the P(D)."
 		<< std::endl;
@@ -626,7 +669,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tNumber of beam FWHM out to go when computing beam."
 		<< "(def: 3.5)" << std::endl;
       std::cout << "\t--nbins value" << std::endl;
-      std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 80)"
+      std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 120)"
 		<< std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount to oversample the beam; must be odd integer."

@@ -95,7 +95,7 @@ class PDDouble {
   std::ostream& writeToStream(std::ostream& os) const; //!< Write summary
 
   int writeToFits(const std::string& file) const; //!< Write as fits file
-  
+  void writeToHDF5(const std::string& outputfile) const; //!< Write as hdf5
 };
 
 /*! \brief Output to stream operator */

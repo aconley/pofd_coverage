@@ -87,6 +87,10 @@ class beamHist {
   unsigned int n_neg; //!< Number of negative beam histogram elements filled
   unsigned int* wt_neg; //!< Negative weights
   double *bm_neg; //!< Beam elements in each bin.
+
+  dblpair minmax_pos; //!< Min/max value of pos beam (not inverse beam!)
+  dblpair minmax_neg; //!< Min/max value of |neg| beam (not inverse beam!)
+
  public:
   beamHist(unsigned int NBINS, double FILTSCALE=0.0,
 	   bool KEEP_FILT_INMEM=true); //!< Constructor
@@ -114,9 +118,9 @@ class beamHist {
   bool isFiltered() const { return filtscale>0; } //!< Is the beam filtered
   double getFiltScale() const { return filtscale; } //!< Get filtering scale
 
-  // Min/max values
-  dblpair getMinMaxPos() const; //!< Get min/max pos beam
-  dblpair getMinMaxNeg() const; //!< Get min/max neg beam
+  // Min/max values of real beam (not inverse)
+  dblpair getMinMaxPos() const {return minmax_pos;} //!< Get min/max pos beam
+  dblpair getMinMaxNeg() const {return minmax_neg;} //!< Get min/max neg beam
 
   /*!\brief Fill from beam*/
   void fill(const beam& bm, double nfwhm, double pixsize,

@@ -20,9 +20,10 @@
 
 class PDFactory {
  private :
+  bool rinitialized; //!< R is filled
   bool initialized; //!< forward transformed R is filled
 
-  unsigned int currsize; //!< Current memory allocation
+  unsigned int currsize; //!< Current variable sizes 
   double sigma; //!< Current supported instrumental \f$\sigma\f$
   double max_n0; //!< Current maximum supported model \f$N_0\f$
   double base_n0; //!< Model base \f$N_0\f$
@@ -31,14 +32,13 @@ class PDFactory {
   double sg; //!< Expected sigma, inc instrument noise, max n0 model
 
   //Working variables for transformation
-  unsigned int plan_size; //!< Size of plans
   fftw_plan plan, plan_inv; //!< Hold plans
   bool plans_valid; //!< Are the current plans valid
   double* rvals; //!< Working space for R computation
+  bool rdflux; //!< Is rvals R or R*dflux?
   fftw_complex *rtrans; //!< Holds forward transformed base R
   fftw_complex* pval; //!< Working variable holding p = exp( stuff )
   double* pofd; //!< Internal P(D) variable.
-  bool isRTransAllocated; //!< Is rtrans allocated
 
   double dflux; //!< Flux size step of last computation
   bool doshift; //!< Apply shifting
@@ -55,15 +55,10 @@ class PDFactory {
   double minflux_R; //!< Minimum flux in RFlux; it wraps, so good to keep track fo
 
   void init(); //!< Initializes memory
-  bool resize(unsigned int); //!< Sets transform size arrays
-  void strict_resize(unsigned int); //!< Sets transform size arrays
+  bool resize(unsigned int); //!< Sets internal storage to specified size
   
   /*! \brief Sets RFlux, with wrapping */
   void initRFlux(unsigned int n, double minflux, double maxflux);
-
-  /*! \brief Initializes R*/
-  void initR(unsigned int n, double minflux, double maxflux, 
-	     const numberCounts& model, const beamHist& bm);
 
   /*! \brief Figure out non-zero range of R */
   dblpair getMinMaxR(const numberCounts& model, const beamHist& bm) const;
@@ -88,7 +83,6 @@ class PDFactory {
   void setVerbose() { verbose = true; } //!< Sets verbose mode
   void unsetVerbose() { verbose = false; } //!< Unset verbose mode
 
-  unsigned int getPlanSize() const { return plan_size; }
   double getMaxN0() const { return max_n0; }
   unsigned int getCurrSize() const { return currsize; }
   double getSigma() const { return sigma; }
@@ -96,6 +90,11 @@ class PDFactory {
   
   /*! \brief Adds wisdom file*/
   bool addWisdom(const std::string& filename);
+
+  /*! \brief Initializes R*/
+  void initR(unsigned int n, double minflux, double maxflux, 
+	     const numberCounts& model, const beamHist& bm,
+	     bool muldflux=false);
 
   /*! \brief Initializes P(D) by computing R */
   void initPD(unsigned int n, double inst_sigma, double maxflux, 
@@ -106,6 +105,9 @@ class PDFactory {
 
   /*! \brief Write out current R to text file*/
   void writeRToFile(const std::string&) const;
+
+  /*! \brief Write out current R to HDF5 file*/
+  void writeRToHDF5(const std::string&) const;
 
 #ifdef TIMING
   void resetTime();

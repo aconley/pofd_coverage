@@ -3,6 +3,7 @@
 #include<sstream>
 #include<cstring>
 
+#include<hdf5.h>
 #include<fitsio.h>
 #include<fftw3.h>
 
@@ -665,9 +666,87 @@ void PDDouble::fill(unsigned int N1, double MINFLUX1, double DFLUX1,
 }
 
 /*!
+  \param[in] outputfile File to write to
+ */
+void PDDouble::writeToHDF5(const std::string& outputfile) const {
+  hid_t file_id;
+  file_id = H5Fcreate(outputfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
+		      H5P_DEFAULT);
+  if (H5Iget_ref(file_id) < 0) {
+    H5Fclose(file_id);
+    throw pofdExcept("PDDouble", "writeToHDF5",
+		     "Failed to open HDF5 file to write", 1);
+  }
+
+  hsize_t adims;
+  hid_t mems_id, att_id, dat_id;
+  
+  // Properties
+  adims = 1;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  att_id = H5Acreate2(file_id, "isLog", H5T_NATIVE_HBOOL,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_HBOOL, &logflat);
+  H5Aclose(att_id);
+  att_id = H5Acreate2(file_id, "dflux1", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux1);
+  H5Aclose(att_id);
+  att_id = H5Acreate2(file_id, "dflux2", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux2);
+  H5Aclose(att_id);
+  att_id = H5Acreate2(file_id, "minflux1", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &minflux1);
+  H5Aclose(att_id);
+  att_id = H5Acreate2(file_id, "minflux2", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &minflux2);
+  H5Aclose(att_id);
+  H5Sclose(mems_id);
+  
+  // Rfluxes -- by making temporary array
+  unsigned int maxn = n1 > n2 ? n1 : n2;
+  double *flux = new double[maxn];
+  for (unsigned int i = 0; i < n1; ++i) 
+    flux[i] = static_cast<double>(i) * dflux1 + minflux1;
+  adims = n1;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  dat_id = H5Dcreate2(file_id, "flux1", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	   H5P_DEFAULT, flux);
+  H5Dclose(dat_id);
+  for (unsigned int i = 0; i < n2; ++i) 
+    flux[i] = static_cast<double>(i) * dflux2 + minflux2;
+  adims = n2;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  dat_id = H5Dcreate2(file_id, "flux2", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	   H5P_DEFAULT, flux);
+  delete[] flux;
+  H5Dclose(dat_id);
+  H5Sclose(mems_id);
+
+  hsize_t dims_steps[2] = {n1, n2};
+  mems_id = H5Screate_simple(2, dims_steps, NULL);
+  dat_id = H5Dcreate2(file_id, "PD", H5T_NATIVE_DOUBLE, mems_id,
+		      H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	   H5P_DEFAULT, pd_);
+  H5Dclose(dat_id);
+  H5Sclose(mems_id);
+
+  H5Fclose(file_id);
+}
+
+
+/*!
   This doesn't interpolate the same way as getLogLike, returning
   the interpolation in whatever way the PD is stored.
- */
+*/
 double PDDouble::getPDVal(double x, double y,bool logval) const {
   if (pd_ == NULL) return std::numeric_limits<double>::quiet_NaN();
 

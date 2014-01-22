@@ -489,6 +489,11 @@ doublebeamHist::doublebeamHist(unsigned int NBINS, double FILTSCALE,
   for (unsigned int i = 0; i < 4; ++i) bm1[i] = NULL;
   for (unsigned int i = 0; i < 4; ++i) bm2[i] = NULL;
 
+  dblpair nan = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			       std::numeric_limits<double>::quiet_NaN());
+  for (unsigned int i = 0; i < 4; ++i) minmax1[i] = nan;
+  for (unsigned int i = 0; i < 4; ++i) minmax2[i] = nan;
+
   keep_filt = KEEP_FILT_INMEM;
   filtscale = FILTSCALE;
   if (filtscale > 0.0 && keep_filt)
@@ -506,63 +511,6 @@ doublebeamHist::~doublebeamHist() {
     if (bm2[i] != NULL) delete[] bm2[i];
   if (filt != NULL) delete filt;
 }
-
-/*!
-  \param[in] sgn Sign component index; pp=0, pn=1, np=2, nn=3
-  \returns Minimum/Maximum values of band1 beam of specified sign
-    component.  If this is the inverse beam, then the minimum/maximum 
-    of the inverse positive beam are returned.
-*/
-dblpair doublebeamHist::getMinMax1(unsigned int sgn) const {
-  if (!has_data) 
-    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			  std::numeric_limits<double>::quiet_NaN());
-  if (sgn > 3)
-    throw pofdExcept("doublebeamHist", "getMinMax1",
-		     "Invalid component", 1);
-  unsigned int nelem = n[sgn];
-  if (nelem == 0) 
-    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			  std::numeric_limits<double>::quiet_NaN());
-
-  double min, max, val;
-  double *bmcomp = bm1[sgn];
-  min = max = bmcomp[0];
-  for (unsigned int i = 1; i < nelem; ++i) {
-    val = bmcomp[i];
-    if (val > max) max = val; else if (val < min) min = val;
-  }
-  return std::make_pair(min, max);
-}
-
-/*!
-  \param[in] sgn Sign component index; pp=0, pn=1, np=2, nn=3
-  \returns Minimum/Maximum values of band2 beam of specified sign
-    component.  If this is the inverse beam, then the minimum/maximum 
-    of the inverse positive beam are returned.
-*/
-dblpair doublebeamHist::getMinMax2(unsigned int sgn) const {
-  if (!has_data) 
-    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			  std::numeric_limits<double>::quiet_NaN());
-  if (sgn > 3)
-    throw pofdExcept("doublebeamHist", "getMinMax1",
-			"Invalid component", 1);
-  unsigned int nelem = n[sgn];
-  if (nelem == 0) 
-    return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			  std::numeric_limits<double>::quiet_NaN());
-
-  double min, max, val;
-  double *bmcomp = bm2[sgn];
-  min = max = bmcomp[0];
-  for (unsigned int i = 1; i < nelem; ++i) {
-    val = bmcomp[i];
-    if (val > max) max = val; else if (val < min) min = val;
-  }
-  return std::make_pair(min, max);
-}
-
 
 /*!
   \param[in] bm Beam we are getting the histogram for
@@ -587,6 +535,10 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
     if (bm1[i] != NULL) { delete[] bm1[i]; bm1[i] = NULL; }
   for (unsigned int i = 0; i < 4; ++i)
     if (bm2[i] != NULL) { delete[] bm2[i]; bm2[i] = NULL; }
+  dblpair nan = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+			       std::numeric_limits<double>::quiet_NaN());
+  for (unsigned int i = 0; i < 4; ++i) minmax1[i] = nan;
+  for (unsigned int i = 0; i < 4; ++i) minmax2[i] = nan;
 
   dblpair tmp;
   inverse = inv;
@@ -668,6 +620,12 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
     if (fval2 > maxbinval2[comp]) maxbinval2[comp] = fval2;
     else if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
   }
+
+  for (unsigned int i = 0; i < 4; ++i)
+    if (ninbm[i] > 0) {
+      minmax1[i] = std::make_pair(minbinval1[i], maxbinval1[i]);
+      minmax2[i] = std::make_pair(minbinval2[i], maxbinval2[i]);
+    }
 
   // Set bin sizes for each
   double ihiststep1[4], ihiststep2[4];

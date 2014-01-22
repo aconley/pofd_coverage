@@ -369,7 +369,6 @@ int main( int argc, char** argv ) {
 		<< std::endl;
       std::cout << "\t-V, --version" << std::endl;
       std::cout << "\t\tOutput version number and exit" << std::endl;
-      std::cout << "ONE-DIMENSIONAL OPTIONS" << std::endl;
       return 0;
       break;
     case 'd' :

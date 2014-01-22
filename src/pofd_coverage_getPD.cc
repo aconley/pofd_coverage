@@ -684,10 +684,10 @@ int main( int argc, char** argv ) {
       std::cout << "\t-w, --wisdom wisdomfile" << std::endl;
       std::cout << "\t\tName of wisdom file (prepared with fftw-wisdom)." 
 		<< std::endl;
-      std::cout << "\tONE-D MODEL OPTIONS" << std::endl;
+      std::cout << "ONE-D MODEL OPTIONS" << std::endl;
       std::cout << "\t-s, --sigma VALUE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (def: 0.002)" << std::endl;
-      std::cout << "\tTWO-D MODEL OPTIONS" << std::endl;
+      std::cout << "TWO-D MODEL OPTIONS" << std::endl;
       std::cout << "\t--sigma1 NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise, band 1 (def: 0.002)." 
 		<< std::endl;

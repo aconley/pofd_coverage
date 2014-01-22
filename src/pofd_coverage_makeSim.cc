@@ -440,7 +440,7 @@ int main( int argc, char** argv ) {
 		<< std::endl;
       std::cout << "\t-V, --version" << std::endl;
       std::cout << "\t\tOutput version number and exit" << std::endl;
-      std::cout << "\tONE-D MODEL OPTIONS" << std::endl;
+      std::cout << "ONE-D MODEL OPTIONS" << std::endl;
       std::cout << "\t-e, --extra_smooth FWHM" << std::endl;
       std::cout << "\t\tApply additional smoothing with a Gaussian of this"
 		<< " FWHM" << std::endl;
@@ -448,7 +448,7 @@ int main( int argc, char** argv ) {
 		<< std::endl;
       std::cout << "\t-s, --sigma NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (def: 0)." << std::endl;
-      std::cout << "\tTWO-D MODEL OPTIONS" << std::endl;
+      std::cout << "TWO-D MODEL OPTIONS" << std::endl;
       std::cout << "\t--extra_smooth1 FWHM" << std::endl;
       std::cout << "\t\tApply additional smoothing in band 1 with a Gaussian of"
 		<< std::endl;

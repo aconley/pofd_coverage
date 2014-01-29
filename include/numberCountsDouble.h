@@ -90,7 +90,6 @@ class numberCountsDouble {
   gsl_interp *gen_interp; //!< Linear interpolant function
   gsl_interp_accel *gen_interp_acc; //!< Accelerator
  
-
   double base_flux1; //!< Flux density per area for base model, band 1
   double base_fluxsq1; //!< Flux density squared per area for base model, b1
   double base_flux2; //!< Flux density per area for base model, band 2

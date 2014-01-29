@@ -55,7 +55,7 @@ int getPDSingle(int argc, char **argv) {
   unsigned int oversample;
 
   //Defaults
-  sigma               = 2e-3;
+  sigma               = 0.0;
   has_wisdom          = false;
   nflux               = 131072;
   nbins               = 120;
@@ -190,8 +190,9 @@ int getPDSingle(int argc, char **argv) {
 
     bool success;
     if (has_wisdom) {
-      std::cout << "Reading in wisdom file: " << wisdom_file 
-		<< std::endl;
+      if (verbose)
+	std::cout << "Reading in wisdom file: " << wisdom_file 
+		  << std::endl;
       success = pfactory.addWisdom(wisdom_file);
       if (!success) {
 	std::cout << "Error reading wisdom file: " << wisdom_file << std::endl;
@@ -294,8 +295,8 @@ int getPDDouble(int argc, char **argv) {
   std::string wisdom_file, r_file;
 
   //Defaults
-  sigma1              = 2e-3;
-  sigma2              = 2e-3;
+  sigma1              = 0.0;
+  sigma2              = 0.0;
   has_wisdom          = false;
   nflux               = 2048;
   nbins               = 150;
@@ -444,8 +445,9 @@ int getPDDouble(int argc, char **argv) {
 
     bool success;
     if (has_wisdom) {
-      std::cout << "Reading in wisdom file: " << wisdom_file 
-		<< std::endl;
+      if (verbose)
+	std::cout << "Reading in wisdom file: " << wisdom_file 
+		  << std::endl;
       success = pfactory.addWisdom(wisdom_file);
       if (!success) {
 	std::cout << "Error reading wisdom file: " << wisdom_file << std::endl;
@@ -686,13 +688,13 @@ int main( int argc, char** argv ) {
 		<< std::endl;
       std::cout << "ONE-D MODEL OPTIONS" << std::endl;
       std::cout << "\t-s, --sigma VALUE" << std::endl;
-      std::cout << "\t\tThe assumed per-pixel noise (def: 0.002)" << std::endl;
+      std::cout << "\t\tThe assumed per-pixel noise (def: 0)" << std::endl;
       std::cout << "TWO-D MODEL OPTIONS" << std::endl;
       std::cout << "\t--sigma1 NOISE" << std::endl;
-      std::cout << "\t\tThe assumed per-pixel noise, band 1 (def: 0.002)." 
+      std::cout << "\t\tThe assumed per-pixel noise, band 1 (def: 0)." 
 		<< std::endl;
       std::cout << "\t--sigma2 NOISE" << std::endl;
-      std::cout << "\t\tThe assumed per-pixel noise, band 2 (def: 0.002)." 
+      std::cout << "\t\tThe assumed per-pixel noise, band 2 (def: 0)." 
 		<< std::endl;
       return 0;
       break;

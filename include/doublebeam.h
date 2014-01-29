@@ -103,7 +103,7 @@ class doublebeamHist {
  public:
 
   doublebeamHist(unsigned int NBINS, double FILTSCALE=0.0,
-	   bool KEEP_FILT_INMEM=true); //!< Constructor
+		 bool KEEP_FILT_INMEM=true); //!< Constructor
   ~doublebeamHist(); //!< Destructor
   
   bool hasData() const { return has_data; }

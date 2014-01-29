@@ -23,7 +23,7 @@
   Unlike the one band version, doesn't interpolate on R.  Two dimensional
   interpolation was either inaccurate or not faster than directly computing
   R in tests.
- */
+*/
 
 class PDFactoryDouble {
  private :

@@ -214,10 +214,10 @@ void PDFactory::initRFlux(unsigned int n, double minflux, double maxflux) {
     // RFlux = 0 included in the array.  Also, we are wrapping 
     // negative fluxes around to the top of the array.
     // We do this by tweaking minflux slightly
-    dflux = maxflux / (n - floor(-minflux / dflux) - 2.0);
+    dflux = maxflux / (n - floor(-minflux / dflux) - 1.0);
 
     // Figure out what index we go up to with positive fills
-    unsigned int maxpos = static_cast<unsigned int>(maxflux / dflux);
+    unsigned int maxpos = static_cast<unsigned int>(maxflux / dflux + 0.999999);
     RFlux[0] = 0.0;
     for (unsigned int i = 1; i < maxpos + 1; ++i) // Pos Rflux
       RFlux[i] = static_cast<double>(i) * dflux;
@@ -329,7 +329,7 @@ void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
   double cs1, cs2;
   cs1 = nsig1 * curr_sigma;
   cs2 = nsig2 * curr_sigma;
-  if ((fwrap_plus > cs1) || (fwrap_minus > cs1)) {
+  if ((fwrap_plus < cs1) || (fwrap_minus < cs1)) {
     // Worth further investigation
     if (fwrap_plus < cs2) {
       std::stringstream errstr;
@@ -412,7 +412,7 @@ void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
 /*!
   \param[in] model Number counts model
   \param[in] bm Inverse beam histogram
-  \returns Estimate of min/max flux values where R is non-zero
+  \returns Estimate of min/max flux densities where R is non-zero
 */
 dblpair PDFactory::getMinMaxR(const numberCounts& model,
 			      const beamHist& bm) const {

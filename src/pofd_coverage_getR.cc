@@ -1,8 +1,7 @@
 #include<iostream>
 
 #include<getopt.h>
-
-#include "hdf5.h"
+#include<hdf5.h>
 
 #include "../include/global_settings.h"
 #include "../include/utility.h"
@@ -156,6 +155,7 @@ int getRSingle(int argc, char** argv) {
     for (unsigned int i = 0; i < nflux; ++i)
       flux[i] = static_cast<double>(i) * dflux + minflux;
     R = new double[nflux];
+
     model.getR(nflux, flux, inv_bmhist, R);
     
     // Adjust for N0
@@ -293,9 +293,9 @@ int getRDouble(int argc, char** argv) {
   pixsize = atof(argv[optind + 4]);
   minflux1 = atof(argv[optind + 5]);
   maxflux1 = atof(argv[optind + 6]);
-  minflux2 = atof(argv[optind + 7]);
-  maxflux2 = atof(argv[optind + 8]);
-  nflux1 = static_cast<unsigned int>(atoi(argv[optind + 9]));
+  nflux1 = static_cast<unsigned int>(atoi(argv[optind + 7]));
+  minflux2 = atof(argv[optind + 8]);
+  maxflux2 = atof(argv[optind + 9]);
   nflux2 = static_cast<unsigned int>(atoi(argv[optind + 10]));
   outfile = std::string(argv[optind + 11]);
 
@@ -403,6 +403,7 @@ int getRDouble(int argc, char** argv) {
 
     // Get R
     R = new double[nflux1 * nflux2];
+
     model.getR(nflux1, flux1, nflux2, flux2, inv_bmhist, R);
 
     // Adjust for N0
@@ -543,8 +544,8 @@ int main(int argc, char** argv) {
       std::cerr << std::endl;
       std::cerr << "\t pofd_coverage_getR -d [options] modelfile n0 fwhm1 fwhm2 "
 		<< "pixsize" << std::endl;
-      std::cerr << "\t\tminflux1 maxflux1 minflux2 maxflux2 nflux outfile" 
-		<< std::endl;
+      std::cerr << "\t\tminflux1 maxflux1 nflux1 minflux2 maxflux2 nflux2"
+		<< " outfile" << std::endl;
       std::cerr << std::endl;
       std::cerr << "\tfor the 2D case." << std::endl;
       std::cerr << std::endl;

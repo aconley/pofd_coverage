@@ -121,13 +121,13 @@ int getBeamSingle(int argc, char **argv) {
     beam bm(fwhm);
     
     if (verbose) {
-      printf("   Beam fwhm:          %0.2f\n", bm.getFWHM());
+      printf("   Beam fwhm:          %0.1f\n", bm.getFWHM());
       printf("   Beam area:          %0.3e\n", bm.getEffectiveArea());
-      printf("   Pixel size:         %0.2f\n", pixsize);
+      printf("  Pixel size:          %0.2f\n", pixsize);
       if (filterscale > 0.0)
-	printf("   filter scale:       %0.4f\n", filterscale);
+	printf(" filter scale:         %0.2f\n", filterscale);
       if (oversamp != 1)
-	printf("oversamp:              %u\n", oversamp);
+	printf("     oversamp:         %u\n", oversamp);
       if (inverse) printf("Returning inverse beam\n");
       if (histogram) printf("Returning histogrammed beam\n");
     }
@@ -245,16 +245,16 @@ int getBeamDouble(int argc, char **argv) {
     if (verbose) {
       std::pair<double, double> dpr;
       dpr = bm.getFWHM();
-      printf("   Beam fwhm1:         %0.2f\n", dpr.first);
-      printf("   Beam fwhm2:         %0.2f\n", dpr.second);
+      printf("   Beam fwhm1:         %0.1f\n", dpr.first);
+      printf("   Beam fwhm2:         %0.1f\n", dpr.second);
       dpr = bm.getEffectiveArea();
       printf("   Beam area1:         %0.3e\n", dpr.first);
       printf("   Beam area2:         %0.3e\n", dpr.second);
       printf("   Pixel size:         %0.2f\n", pixsize);
       if (filterscale > 0.0)
-	printf("   filter scale:       %0.4f\n", filterscale);
+	printf(" filter scale:         %0.1f\n", filterscale);
       if (oversamp != 1)
-	printf("oversamp:              %u\n", oversamp);
+	printf("     oversamp:         %u\n", oversamp);
       if (inverse) printf("Returning inverse beam\n");
       if (histogram) printf("Returning histogrammed beam\n");
     }

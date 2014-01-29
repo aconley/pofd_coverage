@@ -28,9 +28,9 @@ double initRFluxInternal(unsigned int n, double minflux, double maxflux,
     // RFlux = 0 included in the array.  Also, we are wrapping 
     // negative fluxes around to the top of the array.
     // We do this by tweaking minflux slightly
-    dflux = maxflux / (n - floor(-minflux / dflux) - 2.0);
+    dflux = maxflux / (n - floor(-minflux / dflux) - 1.0);
     // Figure out what index we go up to with positive fills
-    unsigned int maxpos = static_cast<unsigned int>(maxflux / dflux);
+    unsigned int maxpos = static_cast<unsigned int>(maxflux / dflux + 0.999999);
     rflux[0] = 0.0;
     for (unsigned int i = 1; i < maxpos + 1; ++i) // Pos Rflux
       rflux[i] = static_cast<double>(i) * dflux;
@@ -321,8 +321,7 @@ void PDFactoryDouble::initRFlux(unsigned int n, double minflux1,
   \param[in] setEdge Set the edge of R using edge integration
   \param[in] muldflux Multiply R by dflux1 * dflux2
 
-  The R value that is set is actually R * dflux1 * dflux2 for convenience.
-  dflux1, dflux2 is also set, are are RFlux1, Rflux2
+  dflux1, dflux2 is also set, are are RFlux1, RFlux2 and the edge vars
 */
 void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1, 
 			    double minflux2, double maxflux2, 
@@ -332,16 +331,14 @@ void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1,
   
   // This version is much more complex than the 1D case because of the
   // edge bits
-
-  // Fill in R values
-  initRFlux(n, minflux1, maxflux1, minflux2, maxflux2);
-
-  //Now fill R.  Some setup is required first
   if (!rvars_allocated) allocateRvars();
 
-  //Now fill in R.  The edges require special care.  This
-  // first call will fill zero values into the lower edges, which
-  // we will later overwrite if we are doing setEdge
+  // Fill in RFlux values
+  initRFlux(n, minflux1, maxflux1, minflux2, maxflux2);
+
+  //Now fill in R.  The edges (e.g., between f=0 and the first element)
+  // require special care.  This first call will fill zero values into 
+  // the lower edges, which we will later overwrite if we are doing setEdge
   //Note that we do -not- multiply by dflux yet because of the edge stuff.
   double *rptr;  
 
@@ -778,12 +775,12 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
   unsigned int minidx1 = static_cast<unsigned>(mdx);
 
   // Sanity check
-  double fwrap_plus = RFlux1[minidx1]; // Wrap in pos flux
+  double fwrap_plus = static_cast<double>(minidx1) * dflux1; // Wrap in pos flux
   double fwrap_minus = static_cast<double>(n - minidx1) * dflux1; // Abs neg wrap
   double cs1, cs2;
   cs1 = nsig1 * curr_sigma1;
   cs2 = nsig2 * curr_sigma1;
-  if ((fwrap_plus > cs1) || (fwrap_minus > cs1)) {
+  if ((fwrap_plus < cs1) || (fwrap_minus < cs1)) {
     // Worth further investigation
     if (fwrap_plus < cs2) {
       std::stringstream errstr;
@@ -809,7 +806,6 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
 	     << maxval / minval << " and sigma: " << curr_sigma1
 	     << " with n0: " << n0;
       throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 3);
-
     }
   }
   
@@ -833,11 +829,11 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
   unsigned int minidx2 = static_cast<unsigned>(mdx);
 
   // Same sanity check
-  fwrap_plus = RFlux2[minidx2]; 
+  fwrap_plus = static_cast<double>(minidx2) * dflux2;
   fwrap_minus = static_cast<double>(n - minidx2) * dflux2;
   cs1 = nsig1 * curr_sigma2;
   cs2 = nsig2 * curr_sigma2;
-  if ((fwrap_plus > cs1) || (fwrap_minus > cs1)) {
+  if ((fwrap_plus < cs1) || (fwrap_minus < cs1)) {
     // Worth further investigation
     if (fwrap_plus < cs2) {
       std::stringstream errstr;
@@ -863,7 +859,6 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
 	     << maxval / minval << " and sigma: " << curr_sigma2
 	     << " with n0: " << n0;
       throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 6);
-
     }
   }
 
@@ -953,11 +948,7 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
   \param[in] model    number counts model to use for fill.  Params must be set
   \param[in] bm       Beam
   \param[in] setEdge  Use integral of mean values at the edges
-
-  Note that n is the transform size; the output array will generally
-  be smaller because of padding.  Furthermore, because of mean shifting,
-  the maximum flux often won't quite match the target values.
- */
+*/
 void PDFactoryDouble::initPD(unsigned int n, 
 			     double inst_sigma1, double inst_sigma2, 
 			     double maxflux1, double maxflux2, 
@@ -965,20 +956,20 @@ void PDFactoryDouble::initPD(unsigned int n,
 			     const doublebeamHist& bm, bool setEdge) {
 
   if (n == 0)
-    throw pofdExcept("PDFactoryDouble","initPD",
+    throw pofdExcept("PDFactoryDouble", "initPD",
 		     "Invalid (non-positive) n",1);  
 
   if (inst_sigma1 < 0.0)
-    throw pofdExcept("PDFactoryDouble","initPD",
+    throw pofdExcept("PDFactoryDouble", "initPD",
 		     "Invalid (negative) inst_sigma1",2);
   if (inst_sigma2 < 0.0)
-    throw pofdExcept("PDFactoryDouble","initPD",
+    throw pofdExcept("PDFactoryDouble", "initPD",
 		     "Invalid (negative) inst_sigma2",3);
   if (maxflux1 <= 0.0)
-    throw pofdExcept("PDFactoryDouble","initPD",
+    throw pofdExcept("PDFactoryDouble", "initPD",
 		     "Invalid (non-positive) maxflux1",4);
   if (maxflux2 <= 0.0)
-    throw pofdExcept("PDFactoryDouble","initPD",
+    throw pofdExcept("PDFactoryDouble", "initPD",
 		     "Invalid (non-positive) maxflux2",5);
   if (!model.isValid())
     throw pofdExcept("PDFactoryDouble", "initPD", "model not valid", 6);  
@@ -1015,7 +1006,7 @@ void PDFactoryDouble::initPD(unsigned int n,
 	  << " by " << intn;
       if (has_wisdom) str << std::endl << "Your wisdom file may not have"
 			  << " that size";
-      throw pofdExcept("PDFactoryDouble","initPD",str.str(),14);
+      throw pofdExcept("PDFactoryDouble", "initPD", str.str(), 14);
     }
 
     if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
@@ -1027,7 +1018,7 @@ void PDFactoryDouble::initPD(unsigned int n,
 	  << " by " << intn;
       if (has_wisdom) str << std::endl << "Your wisdom file may not have"
 			  << " that size";
-      throw pofdExcept("PDFactoryDouble","initPD",str.str(),15);
+      throw pofdExcept("PDFactoryDouble", "initPD", str.str(), 15);
     }
     plans_valid = true;
   }
@@ -1082,7 +1073,7 @@ void PDFactoryDouble::initPD(unsigned int n,
   if (doshift2) shift2 = - mn2; else shift2 = 0.0;
 
   if (verbose) {
-    std::cout << " For max_n0: " << max_n0 << std::endl;
+    std::cout << " For max_n0: " << maxn0 << std::endl;
     std::cout << "  Initial mean estimate band1: " << mn1 << " band2: "
 	      << mn2 << std::endl;
     std::cout << "  Initial stdev estimate band1: " << sg1 << " band2: "

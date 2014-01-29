@@ -252,7 +252,7 @@ double numberCounts::getR(double x, const beamHist& bm) const {
   //And now the actual computation
   const unsigned int* wtptr;
   const double* ibmptr;
-  double cval, cR, R, ibm;
+  double cval, cts, R, ibm;
   R = 0.0;
 
   if ((x > 0) && bm.hasPos()) {
@@ -264,8 +264,8 @@ double numberCounts::getR(double x, const beamHist& bm) const {
       cval = x * ibm;
       if (cval < s_min) continue;
       if (cval >= s_max) continue;
-      cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
-      R += wtptr[i] * cR * ibm;
+      cts= exp2(gsl_spline_eval(splinelog, log2(cval), acc));
+      R += wtptr[i] * cts * ibm;
     }
   } else if ((x < 0) && bm.hasNeg()) {
     unsigned nneg = bm.getNNeg();
@@ -276,8 +276,8 @@ double numberCounts::getR(double x, const beamHist& bm) const {
       cval = -x * ibm;
       if (cval < s_min) continue;
       if (cval >= s_max) continue;
-      cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
-      R += wtptr[i] * cR * ibm;
+      cts = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
+      R += wtptr[i] * cts * ibm;
     }
   } else return 0.0;
 

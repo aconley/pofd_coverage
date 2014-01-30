@@ -26,8 +26,9 @@ static struct option long_options[] = {
   {"filterscale", required_argument, 0, 'F'},
   {"log", no_argument, 0, 'l'},
   {"nflux", required_argument, 0, 'n'},
-  {"nfwhm", required_argument, 0, 'N'},
   {"nbins", required_argument, 0, '0'},
+  {"nfwhm", required_argument, 0, 'N'},
+  {"nkeep", required_argument, 0, '1'},
   {"oversamp", required_argument, 0, 'o'},
   {"rfile", required_argument, 0, 'r'},
   {"sigma", required_argument, 0, 's'},
@@ -38,7 +39,7 @@ static struct option long_options[] = {
   {"wisdom", required_argument, 0, 'w'},
   {0,0,0,0}
 };
-char optstring[] = "dhe:fF:Hln:N:0:o:r:s:3:4:vVw:";
+char optstring[] = "dhe:fF:Hln:N:1:0:o:r:s:3:4:vVw:";
 
 ///////////////////////////////
 
@@ -46,7 +47,7 @@ int getPDSingle(int argc, char **argv) {
 
   std::string modelfile; //Knot parameters
   double n0; //Number of sources
-  double maxflux, fwhm, nfwhm, pixsize, filterscale; //Calculation params (req)
+  double maxflux, nkeep, fwhm, nfwhm, pixsize, filterscale;
   double sigma; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins;
@@ -60,6 +61,7 @@ int getPDSingle(int argc, char **argv) {
   nflux               = 131072;
   nbins               = 120;
   nfwhm               = 4.5;
+  nkeep               = 0.0;
   verbose             = false;
   return_log          = false;
   write_fits          = false;
@@ -89,11 +91,14 @@ int getPDSingle(int argc, char **argv) {
     case 'n' :
       nflux = static_cast<unsigned int>(atoi(optarg));
       break;
+    case '0':
+      nbins = static_cast<unsigned int>(atoi(optarg));
+      break;
     case 'N':
       nfwhm = atof(optarg);
       break;
-    case '0':
-      nbins = static_cast<unsigned int>(atoi(optarg));
+    case '1':
+      nkeep = atof(optarg);
       break;
     case 'o':
       oversample = static_cast<unsigned int>(atoi(optarg));
@@ -176,6 +181,10 @@ int getPDSingle(int argc, char **argv) {
     std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
     return 1;
   }
+  if (nkeep < 0.0) {
+    std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
+    return 1;
+  }
   if (write_as_hdf5 && write_fits) {
     std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
   }
@@ -222,7 +231,7 @@ int getPDSingle(int argc, char **argv) {
 
     // Get histogrammed inverse beam
     beamHist inv_bmhist(nbins, filterscale);
-    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, nkeep);
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 
@@ -287,7 +296,7 @@ int getPDDouble(int argc, char **argv) {
   std::string modelfile; //Knot parameters
   double n0; //Number of sources
   double maxflux1, maxflux2; //Maximum fluxes requested
-  double fwhm1, fwhm2, nfwhm, pixsize, filterscale; //Calculation params (req)
+  double fwhm1, fwhm2, nfwhm, pixsize, filterscale, nkeep;
   double sigma1, sigma2; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins, oversample;
@@ -301,6 +310,7 @@ int getPDDouble(int argc, char **argv) {
   nflux               = 2048;
   nbins               = 150;
   nfwhm               = 4.5;
+  nkeep               = 0.0;
   filterscale         = 0.0;
   verbose             = false;
   return_log          = false;
@@ -315,26 +325,29 @@ int getPDDouble(int argc, char **argv) {
   while ((c = getopt_long(argc,argv,optstring,long_options,
 			  &option_index)) != -1) 
     switch(c) {
-    case 'f' :
+    case 'f':
       write_fits = true;
       break;
-    case 'F' :
+    case 'F':
       filterscale = atof(optarg);
       break;
-    case 'H' :
+    case 'H':
       write_as_hdf5 = true;
       break;
-    case 'l' :
+    case 'l':
       return_log = true;
       break;
-    case 'n' :
+    case 'n':
       nflux = static_cast<unsigned int>(atoi(optarg));
+      break;
+    case '0':
+      nbins = static_cast<unsigned int>(atoi(optarg));
       break;
     case 'N':
       nfwhm = atof(optarg);
       break;
-    case '0':
-      nbins = static_cast<unsigned int>(atoi(optarg));
+    case '1':
+      nkeep = atof(optarg);
       break;
     case 'o':
       oversample = static_cast<unsigned int>(atoi(optarg));
@@ -343,18 +356,18 @@ int getPDDouble(int argc, char **argv) {
       write_r = true;
       r_file = std::string(optarg);
       break;
-    case '3' :
+    case '3':
       sigma1 = atof(optarg);
       break;
-    case '4' :
+    case '4':
       sigma2 = atof(optarg);
       break;
-    case 'v' :
+    case 'v':
       verbose = true;
       break;
       return 0;
       break;
-    case 'w' :
+    case 'w':
       has_wisdom = true;
       wisdom_file = std::string(optarg);
       break;
@@ -431,6 +444,10 @@ int getPDDouble(int argc, char **argv) {
     std::cout << "Invalid (non-odd) oversampling " << oversample << std::endl;
     return 1;
   }
+  if (nkeep < 0.0) {
+    std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
+    return 1;
+  }
   if (write_as_hdf5 && write_fits) {
     std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
   }
@@ -485,7 +502,7 @@ int getPDDouble(int argc, char **argv) {
 
     // Get histogrammed inverse beam
     doublebeamHist inv_bmhist(nbins, filterscale);
-    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, nkeep);
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 
@@ -667,11 +684,16 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tAlso sets the transform size used. (def: 131072 in 1D,)"
 		<< std::endl;
       std::cout << "\t\tand 2048 in 2D)." << std::endl;
+      std::cout << "\t--nbins value" << std::endl;
+      std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 120)"
+		<< std::endl;
       std::cout << "\t-N, --nfwhm value" << std::endl;
       std::cout << "\t\tNumber of beam FWHM out to go when computing beam."
 		<< "(def: 3.5)" << std::endl;
-      std::cout << "\t--nbins value" << std::endl;
-      std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 120)"
+      std::cerr << "\t--nkeep VALUE" << std::endl;
+      std::cerr << "\t\tNumber of FWHM out to keep after filtering in beam"
+		<< std::endl;
+      std::cerr << "\t\trepresentation.  The default is to keep all of it."
 		<< std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount to oversample the beam; must be odd integer."

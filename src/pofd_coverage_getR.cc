@@ -22,13 +22,14 @@ static struct option long_options[] = {
   {"hdf5", no_argument, 0, 'H'},
   {"nbins", required_argument, 0, 'n'},
   {"nfwhm", required_argument, 0, 'N'},
+  {"nkeep", required_argument, 0, '1'},
   {"oversamp", required_argument, 0, 'o'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'}, 
   {0,0,0,0}
 };
 
-char optstring[] = "hdF:Hn:N:o:vV";
+char optstring[] = "hdF:Hn:N:1:o:vV";
 
 //One-D version
 int getRSingle(int argc, char** argv) {
@@ -36,7 +37,7 @@ int getRSingle(int argc, char** argv) {
   std::string modelfile; //Init file (having model we want)
   std::string outfile; //File to write to
   bool verbose, write_to_hdf5;
-  double n0, nfwhm, pixsize, minflux, maxflux, filterscale, fwhm;
+  double n0, nfwhm, pixsize, minflux, maxflux, filterscale, fwhm, nkeep;
   unsigned int nflux, nbins, oversamp;
 
   // Defaults
@@ -46,6 +47,7 @@ int getRSingle(int argc, char** argv) {
   filterscale = 0.0;
   oversamp = 1;
   write_to_hdf5 = false;
+  nkeep = 0; // Means keep all
 
   int c;
   int option_index = 0;
@@ -64,6 +66,9 @@ int getRSingle(int argc, char** argv) {
       break;
     case 'N':
       nfwhm = atof(optarg);
+      break;
+    case '1':
+      nkeep = atof(optarg);
       break;
     case 'o':
       oversamp = atoi(optarg);
@@ -121,14 +126,18 @@ int getRSingle(int argc, char** argv) {
     std::cout << "Invalid (non-positive) n0 " << n0 << std::endl;
     return 1;
   }
-
+  if (nkeep < 0) {
+    std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
+    return 1;
+  }
+    
   double *R = NULL;
   double *flux = NULL;
   try {
     numberCounts model(modelfile);
     beam bm(fwhm);
     beamHist inv_bmhist(nbins, filterscale);
-    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, nkeep);
     
     if (n0 == 0)
       n0 = model.getBaseN0();
@@ -246,7 +255,7 @@ int getRDouble(int argc, char** argv) {
   std::string outfile; //File to write to
   bool verbose, write_to_hdf5;
   double minflux1, maxflux1, minflux2, maxflux2;
-  double n0, nfwhm, pixsize, filterscale, fwhm1, fwhm2;
+  double n0, nfwhm, pixsize, filterscale, fwhm1, fwhm2, nkeep;
   unsigned int nflux1, nflux2, nbins, oversamp;
 
   // Defaults
@@ -255,6 +264,7 @@ int getRDouble(int argc, char** argv) {
   nbins = 150;
   filterscale = 0.0;
   oversamp = 1;
+  nkeep = 0.0;
 
   int c;
   int option_index = 0;
@@ -273,6 +283,9 @@ int getRDouble(int argc, char** argv) {
       break;
     case 'N':
       nfwhm = atof(optarg);
+      break;
+    case '1':
+      nkeep = atof(optarg);
       break;
     case 'o':
       oversamp = atoi(optarg);
@@ -349,6 +362,10 @@ int getRDouble(int argc, char** argv) {
     std::cout << "Invalid (non-positive) n0 " << n0 << std::endl;
     return 1;
   }
+  if (nkeep < 0) {
+    std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
+    return 1;
+  }
 
   double *R = NULL;
   double *flux1 = NULL;
@@ -357,7 +374,7 @@ int getRDouble(int argc, char** argv) {
     numberCountsDouble model(modelfile);
     doublebeam bm(fwhm1, fwhm2);
     doublebeamHist inv_bmhist(nbins, filterscale);
-    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, nkeep);
 
     if (n0 == 0)
       n0 = model.getBaseN0();
@@ -629,6 +646,11 @@ int main(int argc, char** argv) {
       std::cerr << "\t-N, --nfwhm VALUE" << std::endl;
       std::cerr << "\t\tNumber of FWHM to go out in beam representation. "
 		<< "(def: 40.0)" << std::endl;
+      std::cerr << "\t--nkeep VALUE" << std::endl;
+      std::cerr << "\t\tNumber of FWHM out to keep after filtering in beam"
+		<< std::endl;
+      std::cerr << "\t\trepresentation.  The default is to keep all of it."
+		<< std::endl;
       std::cerr << "\t-o, --oversamp VALUE" << std::endl;
       std::cerr << "\t\tOversampling of pixels used to generate beam. One means"
 		<< std::endl;

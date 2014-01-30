@@ -23,31 +23,33 @@ static struct option long_options[] = {
   {"inverse", no_argument, 0, 'i'},
   {"filterscale", required_argument, 0, 'F'},
   {"nfwhm", required_argument, 0, 'N'},
+  {"nkeep", required_argument, 0, '1'},
   {"nbins", required_argument, 0, '0'},
   {"oversamp", required_argument, 0, 'o'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'},
   {0,0,0,0}
 };
-char optstring[] = "dhHiF:N:0:o:vV";
+char optstring[] = "dhHiF:N:1:0:o:vV";
 
 ///////////////////////////////
 
 int getBeamSingle(int argc, char **argv) {
 
   unsigned int nbins, oversamp;
-  double fwhm, nfwhm, pixsize, filterscale;
+  double fwhm, nfwhm, pixsize, filterscale, nkeep;
   bool verbose, histogram, inverse;
   std::string outputfile; // Output FITS file
 
   //Defaults
   nbins               = 120;
   nfwhm               = 3.5;
+  nkeep               = 0.0;
   verbose             = false;
   histogram           = false;
   oversamp            = 1;
   filterscale         = 0.0;
-  inverse = false;
+  inverse             = false;
 
   int c;
   int option_index = 0;
@@ -66,6 +68,9 @@ int getBeamSingle(int argc, char **argv) {
       break;
     case 'N':
       nfwhm = atof(optarg);
+      break;
+    case '1':
+      nkeep = atof(optarg);
       break;
     case '0':
       nbins = static_cast<unsigned int>(atoi(optarg));
@@ -103,6 +108,10 @@ int getBeamSingle(int argc, char **argv) {
 	      << std::endl;
     return 1;
   }
+  if (nkeep < 0) {
+    std::cout << "Invalid (negative) nkeep: " << nkeep << std::endl;
+    return 1;
+  }
   if (pixsize >= fwhm / 2.0) {
     std::cout << "Insufficient (FWHM/2) beam sampling based on pixel size"
 	      << std::endl;
@@ -135,7 +144,7 @@ int getBeamSingle(int argc, char **argv) {
     if (histogram) {
       // Get histogrammed beam
       beamHist bmhist(nbins, filterscale);
-      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp);
+      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp, nkeep);
       // Write
       bmhist.writeToFits(outputfile);
     } else {
@@ -162,7 +171,7 @@ int getBeamDouble(int argc, char **argv) {
 
   bool verbose, histogram, inverse;
   unsigned int nbins, oversamp;
-  double fwhm1, fwhm2, nfwhm, pixsize, filterscale;
+  double fwhm1, fwhm2, nfwhm, pixsize, filterscale, nkeep;
   std::string outputfile; //Ouput pofd option
 
   //Defaults
@@ -173,6 +182,7 @@ int getBeamDouble(int argc, char **argv) {
   filterscale         = 0.0;
   oversamp            = 1;
   inverse             = false;
+  nkeep               = 0;
 
   int c;
   int option_index = 0;
@@ -191,6 +201,9 @@ int getBeamDouble(int argc, char **argv) {
       break;
     case 'N':
       nfwhm = atof(optarg);
+      break;
+    case '1':
+      nkeep = atof(optarg);
       break;
     case '0':
       nbins = static_cast<unsigned int>(atoi(optarg));
@@ -233,6 +246,10 @@ int getBeamDouble(int argc, char **argv) {
 	      << std::endl;
     return 1;
   }
+  if (nkeep < 0) {
+    std::cout << "Invalid (negative) nkeep: " << nkeep << std::endl;
+    return 1;
+  }
   if (pixsize >= fwhm1 / 2.0 || pixsize >= fwhm2 / 2.0) {
     std::cout << "Insufficient (FWHM/2) beam sampling based on pixel size"
 	      << std::endl;
@@ -262,7 +279,7 @@ int getBeamDouble(int argc, char **argv) {
     if (histogram) {
       // Get histogrammed beam
       doublebeamHist bmhist(nbins, filterscale);
-      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp);
+      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp, nkeep);
       // Write
       bmhist.writeToFits(outputfile);
     } else {
@@ -331,12 +348,18 @@ int main( int argc, char** argv ) {
       std::cerr << "\t-i, --inverse" << std::endl;
       std::cout << "\t\tReturn the inverse beam rather than the beam."
 		<< std::endl;
-      std::cout << "\t-N, --nfwhm value" << std::endl;
-      std::cout << "\t\tNumber of beam FWHM out to go when computing beam."
-		<< "(def: 3.5)" << std::endl;
       std::cout << "\t--nbins value" << std::endl;
       std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 120)"
 		<< std::endl;
+      std::cout << "\t-N, --nfwhm VALUE" << std::endl;
+      std::cout << "\t\tNumber of beam FWHM out to go when computing beam."
+		<< "(def: 3.5)" << std::endl;
+      std::cout << "\t--nkeep VALUE" << std::endl;
+      std::cout << "\t\tNumber of FWHM to keep after histogramming.  Only"
+		<< " applies" << std::endl;
+      std::cout << "\t\tif the beam is histogrammed.  The default is to keep"
+		<< std::endl;
+      std::cout << "\t\tall of the beam specified by --nfwhm." << std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount to oversample the beam; must be odd integer."
 		<< " (def: 1)" << std::endl;

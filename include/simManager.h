@@ -29,8 +29,6 @@ class simManager {
 
  private:
 
-  static const unsigned int nbeambins; //!< Number of bins for beam histogram
-  static const double nfwhm_nofilt; //!< How far out to go on beam if no filtering for P(D) computation.
   static const unsigned int nnoisetrials; //!< Number of trials to carry out when computing filtered noise level
 
   unsigned int nsims; //!< Number of simulations to do
@@ -81,17 +79,19 @@ class simManager {
 #endif
 
  public:
-  simManager(const std::string& MODELFILE,
-	     unsigned int NSIMS=1000, double N0INITRANGE=0.3, 
-	     bool MAPLIKE=true, unsigned int NLIKE=401, 
-	     double N0RANGEFRAC=0.1, unsigned int FFTSIZE=262144, 
-	     unsigned int N1=720, unsigned int N2=720,
-	     double PIXSIZE=5.0, double FWHM=15.0, 
-	     double FILTSCALE=0.0, double SIGI=0.005, 
-	     double N0=2.6e3, double ESMOOTH=0.0,
-	     unsigned int OVERSAMPLE=1, const std::string& POWERSPECFILE="",
-	     unsigned int SPARCITY=1, bool USEBIN=false, 
-	     unsigned int NBINS=1000);
+  explicit simManager(const std::string& MODELFILE,
+		      unsigned int NSIMS=1000, double N0INITRANGE=0.3, 
+		      bool MAPLIKE=true, unsigned int NLIKE=401, 
+		      double N0RANGEFRAC=0.1, unsigned int FFTSIZE=262144, 
+		      unsigned int N1=720, unsigned int N2=720,
+		      double PIXSIZE=5.0, double FWHM=15.0, 
+		      double NFWHM=10.0, double FILTSCALE=0.0, 
+		      unsigned int NBEAMBINS=100, double SIGI=0.005, 
+		      double N0=2.6e3, double ESMOOTH=0.0,
+		      unsigned int OVERSAMPLE=1, 
+		      const std::string& POWERSPECFILE="",
+		      unsigned int SPARCITY=1, bool USEBIN=false, 
+		      unsigned int NBINS=1000);
   ~simManager();
 
   void setSeed(unsigned long long int seed) { simim.setSeed(seed); }

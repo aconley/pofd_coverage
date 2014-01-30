@@ -14,33 +14,35 @@
 
 static struct option long_options[] = {
   {"help", no_argument, 0, 'h'},
-  {"bin",no_argument,0,'b'},
+  {"bin", no_argument, 0, 'b'},
   {"double", no_argument, 0, 'd'},
-  {"esmooth",required_argument,0,'e'},
-  {"extra_smooth1",required_argument,0,'!'},
-  {"extra_smooth2",required_argument,0,'@'},
-  {"fftsize",required_argument,0,'f'},
+  {"esmooth", required_argument, 0, 'e'},
+  {"extra_smooth1", required_argument, 0, '!'},
+  {"extra_smooth2", required_argument, 0, '@'},
+  {"fftsize", required_argument, 0, 'f'},
   {"filtscale", required_argument, 0, 'F'},
-  {"nbins",required_argument,0,'1'},
-  {"nsims",required_argument,0,'n'},
-  {"nolike",no_argument,0,'N'},
-  {"nlike",required_argument,0,'2'},
-  {"n0initrange",required_argument,0,'3'},
-  {"n0rangefrac",required_argument,0,'4'},
-  {"oversample",required_argument,0,'o'},
+  {"nbeambins", required_argument, 0, '5'},
+  {"nbins", required_argument, 0, '1'},
+  {"nfwhm", required_argument, 0, '6'},
+  {"nlike", required_argument, 0, '2'},
+  {"nolike", no_argument, 0, 'N'},
+  {"nsims", required_argument, 0, 'n'},
+  {"n0initrange", required_argument, 0, '3'},
+  {"n0rangefrac", required_argument, 0, '4'},
+  {"oversample", required_argument, 0, 'o'},
   {"powspec", required_argument, 0, 'p'},
-  {"sigma",required_argument,0,'s'},
-  {"sigma1",required_argument,0,'#'},
-  {"sigma2",required_argument,0,'$'},
+  {"sigma", required_argument, 0, 's'},
+  {"sigma1", required_argument, 0, '#'},
+  {"sigma2", required_argument, 0, '$'},
   {"sparcity", required_argument, 0, '%'},
-  {"seed",required_argument,0,'S'},
-  {"verbose",no_argument,0,'v'},
-  {"version",no_argument,0,'V'},
-  {"wisdom",required_argument,0,'w'},
-  {0,0,0,0}
+  {"seed", required_argument, 0, 'S'},
+  {"verbose", no_argument, 0, 'v'},
+  {"version", no_argument, 0, 'V'},
+  {"wisdom", required_argument, 0, 'w'},
+  {0, 0, 0, 0}
 };
 
-char optstring[] = "hbde:!:@:f:F:1:n:N2:3:4:o:p:s:#:$:%:S:vVw:";
+char optstring[] = "hbde:!:@:f:F:1:n:5:6:N2:3:4:o:p:s:#:$:%:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -49,7 +51,8 @@ int runSimSingle(int argc, char **argv) {
   double fwhm; //Calculation params (req)
   double esmooth; //Extra smoothing amount
   unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample, sparcity;
-  double pixsize, filtscale, n0rangefrac, n0initrange;
+  unsigned int nbeambins;
+  double pixsize, filtscale, n0rangefrac, n0initrange, nfwhm;
   double sigma; //Instrument noise, unsmoothed
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; //Power spectrum file
@@ -76,6 +79,8 @@ int runSimSingle(int argc, char **argv) {
   use_binning         = false;
   map_like            = true;
   powerspecfile       = "";
+  nfwhm               = 10.0;
+  nbeambins           = 100;
 
   int c;
   int option_index = 0;
@@ -83,56 +88,62 @@ int runSimSingle(int argc, char **argv) {
   while ((c = getopt_long(argc,argv,optstring,long_options,
 			  &option_index)) != -1) 
     switch(c) {
-    case 'b' :
+    case 'b':
       use_binning = true;
       break;
-    case 'e' :
+    case 'e':
       esmooth = atof(optarg);
       break;
-    case 'f' :
+    case 'f':
       fftsize = atoi(optarg);
       break;
-    case 'F' :
+    case 'F':
       filtscale = atof(optarg);
       break;
-    case '1' :
+    case '5':
+      nbeambins = atoi(optarg);
+      break;
+    case '1':
       nbins = atoi(optarg);
       break;
-    case 'n' :
+    case '6':
+      nfwhm = atof(optarg);
+      break;
+    case 'n':
       nsims = atoi(optarg);
       break;
-    case 'N' :
+    case 'N':
       map_like = false;
       break;
-    case '2' :
+    case '2':
       nlike = atoi(optarg);
       break;
-    case '3' :
+    case '3':
       n0initrange = atof(optarg);
       break;
-    case '4' :
+    case '4':
       n0rangefrac = atof(optarg);
       break;
-    case 'o' :
+    case 'o':
       oversample = atoi(optarg);
       break;
     case 'p':
       powerspecfile = std::string(optarg);
       break;
-    case 's' :
+    case 's':
       sigma = atof(optarg);
       break;
-    case '%' :
+    case '%':
       sparcity = atoi(optarg);
       break;
-    case 'S' :
+    case 'S':
       has_user_seed = true;
       seed = static_cast<unsigned long long int>( atoi(optarg) );
       break;
-    case 'v' :
+    case 'v':
       verbose = true;
       break;
-    case 'w' :
+    case 'w':
       has_wisdom = true;
       wisdom_file = std::string( optarg );
       break;
@@ -166,6 +177,19 @@ int runSimSingle(int argc, char **argv) {
   }
   if (fwhm <= 0.0) {
     std::cout << "Invalid (non-positive) FWHM" << std::endl;
+    return 1;
+  }
+  if (nfwhm <= 0.0) {
+    std::cout << "Invalid (non-positive) NFWHM: " << nfwhm << std::endl;
+    return 1;
+  }
+  if (nbeambins == 0) {
+    std::cout << "Invalid number of beam bins (0)" << std::endl;
+    return 1;
+  }
+  if (nbeambins > 10000) {
+    std::cout << "Invalid number of beam bins -- too large: " 
+	      << nbeambins << std::endl;
     return 1;
   }
   if (esmooth < 0.0) {
@@ -223,15 +247,17 @@ int runSimSingle(int argc, char **argv) {
       double area = n1*n2*std::pow(pixsize/3600.0,2);
       printf("   base model file:    %s\n", modelfile.c_str());
       printf("   base n0:            %0.3e\n", base_n0);
-      printf("   nsims:              %u\n",nsims);
-      printf("   n0initrange         %0.3f\n",n0initrange);
-      printf("   Beam fwhm:          %0.2f\n",fwhm);
-      printf("   Pixel size:         %0.1f\n",pixsize);
-      printf("   Number of pixels:   %u x %u\n",n1,n2);
-      printf("   Area:               %0.2f\n",area);
-      printf("   N0:                 %0.3e\n",n0);
-      printf("   sigma:              %0.4f\n",sigma);
-      printf("   fftsize:            %u\n",fftsize);
+      printf("   nsims:              %u\n", nsims);
+      printf("   n0initrange         %0.3f\n", n0initrange);
+      printf("   Beam fwhm:          %0.2f\n", fwhm);
+      printf("   Nfwhm:              %0.2f\n", nfwhm);
+      printf("   N Beam Bins:        %u\n", nbeambins);
+      printf("   Pixel size:         %0.1f\n", pixsize);
+      printf("   Number of pixels:   %u x %u\n", n1, n2);
+      printf("   Area:               %0.2f\n", area);
+      printf("   N0:                 %0.3e\n", n0);
+      printf("   sigma:              %0.4f\n", sigma);
+      printf("   fftsize:            %u\n", fftsize);
       if (esmooth > 0) 
 	printf("   esmooth:            %0.2f\n",esmooth);
       if (oversample > 1)
@@ -243,17 +269,17 @@ int runSimSingle(int argc, char **argv) {
       if (!powerspecfile.empty())
 	printf("   clustering P(k):    %s\n", powerspecfile.c_str());
       if (use_binning)
-	printf("   nbins:              %u\n",nbins);
+	printf("   nbins:              %u\n", nbins);
       if (map_like) {
-	printf("   nlike:              %u\n",nlike);
+	printf("   nlike:              %u\n", nlike);
 	printf("   n0rangefrac         %0.3f\n",n0rangefrac);
       }
     }
 
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike, 
-		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, filtscale,
-		   sigma, n0, esmooth, oversample, powerspecfile, sparcity,
-		   use_binning, nbins);
+		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, nfwhm,
+		   filtscale, nbeambins, sigma, n0, esmooth, oversample, 
+		   powerspecfile, sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -284,8 +310,9 @@ int runSimDouble(int argc, char **argv) {
   double n0; //Model params
   double fwhm1, fwhm2; //Calculation params (req)
   double esmooth1, esmooth2; //Extra smoothing amount
-  unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample, sparcity;
-  double pixsize, n0rangefrac, n0initrange, filtscale;
+  unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample;
+  unsigned int nbeambins, sparcity;
+  double pixsize, n0rangefrac, n0initrange, filtscale, nfwhm;
   double sigma1, sigma2; //Instrument noise, unsmoothed
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; // Power spectrum file
@@ -314,6 +341,8 @@ int runSimDouble(int argc, char **argv) {
   use_binning         = false;
   map_like            = true;
   powerspecfile       = "";
+  nbeambins           = 150;
+  nfwhm               = 10.0;
 
   int c;
   int option_index = 0;
@@ -321,62 +350,68 @@ int runSimDouble(int argc, char **argv) {
   while ((c = getopt_long(argc,argv,optstring,long_options,
 			    &option_index)) != -1) 
     switch(c) {
-    case 'b' :
+    case 'b':
       use_binning = true;
       break;
-    case '!' :
+    case '!':
       esmooth1 = atof(optarg);
       break;
-    case '@' :
+    case '@':
       esmooth2 = atof(optarg);
       break;
-    case 'f' :
+    case 'f':
       fftsize = atoi(optarg);
       break;
-    case 'F' :
+    case 'F':
       filtscale = atof(optarg);
       break;
-    case '1' :
+    case '1':
       nbins = atoi(optarg);
       break;
-    case 'n' :
+    case '5':
+      nbeambins = atoi(optarg);
+      break;
+    case '6':
+      nfwhm = atof(optarg);
+      break;
+    case 'n':
       nsims = atoi(optarg);
       break;
-    case 'N' :
+    case 'N':
       map_like = false;
       break;
-    case '2' :
+    case '2':
       nlike = atoi(optarg);
       break;
-    case '3' :
+    case '3':
       n0initrange = atof(optarg);
       break;
-    case '4' :
+    case '4':
       n0rangefrac = atof(optarg);
       break;
-    case 'o' :
+    case 'o':
       oversample = atoi(optarg);
       break;
     case 'p':
       powerspecfile = std::string(optarg);
       break;
-    case '#' :
+    case '#':
       sigma1 = atof(optarg);
       break;
-    case '$' :
+    case '$':
       sigma2 = atof(optarg);
       break;
-    case '%' :
+    case '%':
       sparcity = atoi(optarg);
       break;
-    case 'S' :
+    case 'S':
       has_user_seed = true;
       seed = static_cast<unsigned long long int>( atoi(optarg) );
       break;
-    case 'v' :
+    case 'v':
       verbose = true;
       break;
-    case 'w' :
+    case 'w':
       has_wisdom = true;
       wisdom_file = std::string( optarg );
       break;
@@ -441,6 +476,19 @@ int runSimDouble(int argc, char **argv) {
     std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
+  if (nfwhm <= 0.0) {
+    std::cout << "Invalid (non-positive) NFWHM: " << nfwhm << std::endl;
+    return 1;
+  }
+  if (nbeambins == 0) {
+    std::cout << "Invalid number of beam bins (0)" << std::endl;
+    return 1;
+  }
+  if (nbeambins > 10000) {
+    std::cout << "Invalid number of beam bins -- too large: " 
+	      << nbeambins << std::endl;
+    return 1;
+  }
   if (filtscale < 0.0) {
     std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
     return 1;
@@ -488,6 +536,8 @@ int runSimDouble(int argc, char **argv) {
       printf("   n0initrange         %0.3f\n",n0initrange);
       printf("   Beam fwhm1:         %0.2f\n",fwhm1);
       printf("   Beam fwhm2:         %0.2f\n",fwhm2);
+      printf("   Nfwhm:              %0.2f\n", nfwhm);
+      printf("   N Beam Bins:        %u\n", nbeambins);
       printf("   Pixel size:         %0.1f\n",pixsize);
       printf("   Number of pixels:   %u x %u\n",n1,n2);
       printf("   Area:               %0.2f\n",area);
@@ -517,9 +567,9 @@ int runSimDouble(int argc, char **argv) {
 
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
-			 filtscale, sigma1, sigma2, n0, esmooth1, esmooth2, 
-			 oversample, powerspecfile, sparcity, use_binning, 
-			 nbins);
+			 nfwhm, filtscale, nbeambins, sigma1, sigma2, n0, 
+			 esmooth1, esmooth2, oversample, powerspecfile, 
+			 sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -559,7 +609,7 @@ int main(int argc, char **argv) {
   while ( ( c = getopt_long(argc,argv,optstring,long_options,
 			    &option_index ) ) != -1 ) 
     switch(c) {
-    case 'h' :
+    case 'h':
       std::cout << "NAME" << std::endl;
       std::cout << "\tpofd_coverage_runSim -- make a set of "
 		<< "simulated images for" << std::endl;
@@ -664,8 +714,15 @@ int main(int argc, char **argv) {
 		<< std::endl;
       std::cout << "\t\tone dimension and 4096 in two dimensions.)" 
 		<< std::endl;
+      std::cout << "\t--nbeambins NBINS" << std::endl;
+      std::cout << "\t\tNumber of histogram bins to use for beams. (def: 100"
+		<< std::endl;
+      std::cout << "\t\tin the 1D case, 150 for the 2D case.)" << std::endl;
       std::cout << "\t--nbins NBINS" << std::endl;
       std::cout << "\t\tNumber of bins to use if binning simulated image."
+		<< std::endl;
+      std::cout << "\t--nfwhm NFWHM" << std::endl;
+      std::cout << "\t\tNumber of FWHM kept after filtering. (def: 10.0)"
 		<< std::endl;
       std::cout << "\t-n, --nsims NSIMS" << std::endl;
       std::cout << "\t\tThe number of simulations to do (def: 100)." 
@@ -739,10 +796,10 @@ int main(int argc, char **argv) {
 		<< std::endl;
       return 0;
       break;
-    case 'd' :
+    case 'd':
       twod = true;
       break;
-    case 'V' :
+    case 'V':
       std::cout << "pofd_coverage version number: " << pofd_coverage::version 
 		<< std::endl;
       return 0;

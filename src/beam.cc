@@ -2,7 +2,7 @@
 
 #include<sstream>
 #include<limits>
-
+#include<cstring>
 #include<fitsio.h>
 
 #include "../include/beam.h"
@@ -387,7 +387,8 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
 beamHist::beamHist(unsigned int NBINS, double FILTSCALE,
 		   bool KEEP_FILT_INMEM) : 
   has_data(false), inverse(false), nbins(0), fwhm(0.0), nfwhm(4.0),
-  pixsize(0.0), eff_area(0.0), oversamp(1), n_pos(0), n_neg(0) {
+  nfwhmkeep(4.0), pixsize(0.0), eff_area(0.0), oversamp(1), 
+  n_pos(0), n_neg(0) {
 
   if (NBINS == 0)
     throw pofdExcept("beamHist", "beamHist", "Invalid (non-positive) NBINS", 1);
@@ -424,9 +425,12 @@ beamHist::~beamHist() {
   \param[in] pixsz Pixel size (arcseconds)
   \param[in] inv Histogram the inverse beam
   \param[in] oversampling Oversampling of beam. Must be odd
+  \param[in] num_fwhm_keep How many FWHM to keep in the histogram
+              after filtering.  If 0 (the default), keeps everything.
 */
 void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
-		    bool inv, unsigned int oversampling) {
+		    bool inv, unsigned int oversampling,
+		    double num_fwhm_keep) {
 
   const double minval = 1e-5; //Always ignore beam values below this
 
@@ -436,6 +440,8 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   oversamp = oversampling;
   nfwhm = num_fwhm;
   eff_area = bm.getEffectiveArea();
+  if (num_fwhm_keep == 0) nfwhmkeep = nfwhm;
+  else nfwhmkeep = std::min(num_fwhm, num_fwhm_keep);
 
   // Get how many pixels we will go out
   unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
@@ -461,6 +467,27 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   minmax_neg = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			      std::numeric_limits<double>::quiet_NaN());
 
+  // Set up the part we will actually use (which may mean clipping)
+  unsigned int minidx;
+  unsigned int maxidx;
+  if ((num_fwhm_keep != 0) && (num_fwhm_keep < num_fwhm)) {
+    // We want to set up logical indexing into the array to only keep
+    //  the part we want.
+    unsigned int nclippix = 
+      static_cast<unsigned int>(num_fwhm_keep * fwhm / pixsize + 0.9999999999);
+    nclippix = 2 * nclippix + 1;
+    if (nclippix < npix) {
+      minidx = (npix - nclippix) / 2;
+      maxidx = npix - minidx;
+    } else {
+      minidx = 0;
+      maxidx = npix;
+    }
+  } else {
+    minidx = 0;
+    maxidx = npix;
+  }
+    
   // Histogram
   // Find minimum and maximum non-zero parts for neg/pos histograms
   bool has_pos = false;
@@ -468,18 +495,22 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   double minbinval_pos, maxbinval_pos, minbinval_neg, maxbinval_neg;
   minbinval_pos = minbinval_neg = 1e100; // Will definitely never be this large
   maxbinval_pos = maxbinval_neg = -1.0;
-  for (unsigned int i = 0; i < npix * npix; ++i) {
-    val = bmtmp[i];
-    // Ignore anything within [-minval, minval]
-    if (val > minval) { // Positive part
-      has_pos = true;
-      if (val > maxbinval_pos) maxbinval_pos = val;
-      if (val < minbinval_pos) minbinval_pos = val;
-    } else if (val < (-minval)) { //Negative part
-      val = fabs(val);
-      has_neg = true;
-      if (val > maxbinval_neg) maxbinval_neg = val;
-      if (val < minbinval_neg) minbinval_neg = val;
+  double *rowptr;
+  for (unsigned int i = minidx; i < maxidx; ++i) {
+    rowptr = bmtmp + i * npix; // Logical size npix by npix
+    for (unsigned int j = minidx; j < maxidx; ++j) {
+      val = rowptr[j];
+      // Ignore anything within [-minval, minval]
+      if (val > minval) { // Positive part
+	has_pos = true;
+	if (val > maxbinval_pos) maxbinval_pos = val;
+	if (val < minbinval_pos) minbinval_pos = val;
+      } else if (val < (-minval)) { //Negative part
+	val = fabs(val);
+	has_neg = true;
+	if (val > maxbinval_neg) maxbinval_neg = val;
+	if (val < minbinval_neg) minbinval_neg = val;
+      }
     }
   }
 
@@ -509,22 +540,23 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
 
   // Do positive beam
   n_pos = 0;
-  for (unsigned int i = 0; i < nbins; ++i) wt_pos[i] = 0;
-  for (unsigned int i = 0; i < nbins; ++i) bm_pos[i] = 0.0;
+  std::memset(wt_pos, 0, nbins * sizeof(unsigned int));
+  std::memset(bm_pos, 0, nbins * sizeof(double));
   double lval;
   if (has_pos) {
-    for (unsigned int i = 0; i < nbins; ++i)
-      tmpwt[i] = 0;
-    for (unsigned int i = 0; i < nbins; ++i)
-      tmphist[i] = 0.0;
-    for (unsigned int i = 0; i < npix * npix; ++i) {
-      val = bmtmp[i];
-      if (val <= minval) continue;  //skip: too close to zero or negative
-      lval = log2(val);
-      idx = static_cast<unsigned int>((lval - minbinval_pos) / 
-				      histstep_pos);
-      tmphist[idx] += val;
-      tmpwt[idx] += 1;
+    std::memset(tmpwt, 0, nbins * sizeof(unsigned int));
+    std::memset(tmphist, 0, nbins * sizeof(double));
+    for (unsigned int i = minidx; i < maxidx; ++i) {
+      rowptr = bmtmp + i * npix;
+      for (unsigned int j = minidx; j < maxidx; ++j) {
+	val = rowptr[j];
+	if (val <= minval) continue;  //skip: too close to zero or negative
+	lval = log2(val);
+	idx = static_cast<unsigned int>((lval - minbinval_pos) / 
+					histstep_pos);
+	tmphist[idx] += val;
+	tmpwt[idx] += 1;
+      }
     }
     for (unsigned int i = 0; i < nbins; ++i)
       if (tmpwt[i] > 0) ++n_pos;
@@ -547,23 +579,24 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
 
   // Negative
   n_neg = 0;
-  for (unsigned int i = 0; i < nbins; ++i) wt_neg[i] = 0;
-  for (unsigned int i = 0; i < nbins; ++i) bm_neg[i] = 0.0;
+  std::memset(wt_neg, 0, nbins * sizeof(unsigned int));
+  std::memset(bm_neg, 0, nbins * sizeof(double));
   if (has_neg) {
-    for (unsigned int i = 0; i < nbins; ++i)
-      tmpwt[i] = 0;
-    for (unsigned int i = 0; i < nbins; ++i)
-      tmphist[i] = 0.0;
+    std::memset(tmpwt, 0, nbins * sizeof(unsigned int));
+    std::memset(tmphist, 0, nbins * sizeof(double));
     double testval = -minval;
-    for (unsigned int i = 0; i < npix * npix; ++i) {
-      val = bmtmp[i];
-      if (val > testval) continue;  //skip; too close to 0 or positive
-      val = fabs(val); // Work with abs value
-      lval = log2(val);
-      idx = static_cast<unsigned int>((lval - minbinval_neg) / 
-				      histstep_neg);
-      tmphist[idx] += val;
-      tmpwt[idx] += 1;
+    for (unsigned int i = minidx; i < maxidx; ++i) {
+      rowptr = bmtmp + i * npix;
+      for (unsigned int j = minidx; j < maxidx; ++j) {
+	val = rowptr[j];
+	if (val > testval) continue;  //skip; too close to 0 or positive
+	val = fabs(val); // Work with abs value
+	lval = log2(val);
+	idx = static_cast<unsigned int>((lval - minbinval_neg) / 
+					histstep_neg);
+	tmphist[idx] += val;
+	tmpwt[idx] += 1;
+      }
     }
     for (unsigned int i = 0; i < nbins; ++i)
       if (tmpwt[i] > 0) ++n_neg;
@@ -629,6 +662,9 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   dtmp = nfwhm;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
 		 const_cast<char*>("Number of FWHM out"), &status);
+  dtmp = nfwhmkeep;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHMKP"), &dtmp,
+		 const_cast<char*>("Number of FWHM kept"), &status);
   
   if (filtscale > 0.0) {
     itmp = 1;
@@ -668,7 +704,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   // Pos beam
   if (n_pos > 0) {
     fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, "POSBEAM", 
-		    &status );
+		    &status);
     fits_insert_rows(fp, 0, n_pos, &status);
     for (unsigned int i = 0; i < n_pos; ++i) {
       itmp = static_cast<int>(wt_pos[i]);
@@ -680,7 +716,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   }
   if (n_neg > 0) {
     fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, "NEGBEAM", 
-		    &status );
+		    &status);
     fits_insert_rows(fp, 0, n_neg, &status);
     for (unsigned int i = 0; i < n_neg; ++i) {
       itmp = static_cast<int>(wt_neg[i]);

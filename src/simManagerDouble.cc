@@ -11,8 +11,6 @@
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
-const unsigned int simManagerDouble::nbeambins = 250; 
-const double simManagerDouble::nfwhm_nofilt = 4.5;
 const unsigned int simManagerDouble::nnoisetrials = 9;
 
 //This is the function we call to find the best fitting n0
@@ -61,8 +59,11 @@ static double minfunc(double x, void* params) {
   \param[in] PIXSIZE Pixel size, in arcsec
   \param[in] FWHM1 Fwhm of band 1 beam, in arcsec
   \param[in] FWHM2 Fwhm of band 2 beam, in arcsec
+  \param[in] NFWHM Number of FWHM out to go on beam.  This is the number
+              after filtering (if filtering is applied)
   \param[in] FILTSCALE Filtering scale, in arcsec.  If 0, no filtering is
               applied.
+  \param[in] NBEAMBINS Number of bins to use in beam histogram; def 150
   \param[in] SIGI1 Instrument noise (without smoothing or filtering) in Jy, 
              band 1
   \param[in] SIGI2 Instrument noise (without smoothing or filtering) in Jy, 
@@ -84,7 +85,8 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   double N0RANGEFRAC, unsigned int FFTSIZE,
 				   unsigned int N1, unsigned int N2, 
 				   double PIXSIZE, double FWHM1, double FWHM2, 
-				   double FILTSCALE, double SIGI1, 
+				   double NFWHM, double FILTSCALE, 
+				   unsigned int NBEAMBINS, double SIGI1, 
 				   double SIGI2, double N0, 
 				   double ESMOOTH1, double ESMOOTH2,
 				   unsigned int OVERSAMPLE,
@@ -94,7 +96,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
   fftsize(FFTSIZE), n0(N0), fwhm1(FWHM1), fwhm2(FWHM2), pixsize(PIXSIZE),
-  inv_bmhist(nbeambins, FILTSCALE, false),
+  inv_bmhist(NBEAMBINS, FILTSCALE, false),
   simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, 
 	FILTSCALE, OVERSAMPLE, NBINS, POWERSPECFILE), 
   use_binning(USEBIN), model(MODELFILE), 
@@ -140,13 +142,11 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     unsigned int maxextent = N1 > N2 ? N1 : N2;
     double maxfwhm = fwhm1 > fwhm2 ? fwhm1 : fwhm2;
     nfwhm = static_cast<double>(maxextent) * PIXSIZE / (2 * maxfwhm);
-  } else nfwhm = nfwhm_nofilt; // Can be smaller if not filtering
-  inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE);
-
+  } else nfwhm = NFWHM; // Can be smaller if not filtering
+  inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE, NFWHM);
 
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
-
 }
 
 simManagerDouble::~simManagerDouble() {
@@ -447,6 +447,14 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   dtmp = fwhm2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp, 
 		 const_cast<char*>("Beam fwhm, band 2 [arcsec]"), 
+		 &status);
+  dtmp = inv_bmhist.getNFWHMKeep();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp, 
+		 const_cast<char*>("Number of FWHM kept"), 
+		 &status);
+  utmp = inv_bmhist.getNbins();
+  fits_write_key(fp, TUINT, const_cast<char*>("NBMBINS"), &utmp, 
+		 const_cast<char*>("Number of Beam hist bins"), 
 		 &status);
   std::pair<double,double> dpr;
   dpr = simim.getBeamSum();

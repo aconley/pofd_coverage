@@ -3,6 +3,7 @@
 #include<sstream>
 #include<limits>
 #include<fitsio.h>
+#include<cstring>
 
 #include "../include/doublebeam.h"
 #include "../include/pofdExcept.h"
@@ -478,7 +479,8 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
 doublebeamHist::doublebeamHist(unsigned int NBINS, double FILTSCALE,
 			       bool KEEP_FILT_INMEM) : 
   has_data(false), inverse(false), nbins(0), fwhm1(0.0), fwhm2(0.0),
-  nfwhm(4.0), pixsize(0.0), eff_area1(0.0), eff_area2(0.0), oversamp(1) {
+  nfwhm(4.0), nfwhmkeep(4.0), pixsize(0.0), eff_area1(0.0), eff_area2(0.0), 
+  oversamp(1) {
 
   if (NBINS == 0)
     throw pofdExcept("doublebeamHist", "doublebeamHist", 
@@ -518,9 +520,12 @@ doublebeamHist::~doublebeamHist() {
   \param[in] pixsz Pixel size (arcseconds)
   \param[in] inv Histogram the inverse beam
   \param[in] oversampling Oversampling of beam. Must be odd
+  \param[in] num_fwhm_keep How many FWHM to keep in the histogram
+              after filtering.  If 0 (the default), keeps everything.
 */
 void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
-		    bool inv, unsigned int oversampling) {
+			  bool inv, unsigned int oversampling,
+			  double num_fwhm_keep) {
 
   //Always ignore beam values below this
   // Use a lower value than in the 1D version because either beam can
@@ -551,6 +556,8 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
   tmp = bm.getEffectiveArea();
   eff_area1 = tmp.first;
   eff_area2 = tmp.second;
+  if (num_fwhm_keep == 0) nfwhmkeep = nfwhm;
+  else nfwhmkeep = std::min(num_fwhm, num_fwhm_keep);
 
   // Get how many pixels we will go out
   double fwhm = fwhm1 > fwhm2 ? fwhm1 : fwhm2;
@@ -573,6 +580,26 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
     delete filt;
     filt = NULL;
   }
+
+  unsigned int minidx;
+  unsigned int maxidx;
+  if ((num_fwhm_keep != 0) && (num_fwhm_keep < num_fwhm)) {
+    // We want to set up logical indexing into the array to only keep
+    //  the part we want.
+    unsigned int nclippix = 
+      static_cast<unsigned int>(num_fwhm_keep * fwhm / pixsize + 0.9999999999);
+    nclippix = 2 * nclippix + 1;
+    if (nclippix < npix) {
+      minidx = (npix - nclippix) / 2;
+      maxidx = npix - minidx;
+    } else {
+      minidx = 0;
+      maxidx = npix;
+    }
+  } else {
+    minidx = 0;
+    maxidx = npix;
+  }
   
   // Histogram
 
@@ -586,39 +613,44 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
   double minbinval2[4], maxbinval2[4];
   unsigned int npix2 = npix * npix;
   unsigned char* comparr;
+  double *rowptr1, *rowptr2;
   comparr = new unsigned char[npix2];
-  for (unsigned int i = 0; i < 4; ++i) ninbm[i] = 0;
+  std::memset(ninbm, 0, 4 * sizeof(unsigned int));
   for (unsigned int i = 0; i < 4; ++i) minbinval1[i] = 1e100;
   for (unsigned int i = 0; i < 4; ++i) maxbinval1[i] = -1.0;
   for (unsigned int i = 0; i < 4; ++i) minbinval2[i] = 1e100;
   for (unsigned int i = 0; i < 4; ++i) maxbinval2[i] = -1.0;
   unsigned int comp;
   double val1, val2, fval1, fval2;
-  for (unsigned int i = 0; i < npix2; ++i) {
-    val1 = bmtmp1[i];
-    val2 = bmtmp2[i];
-    fval1 = fabs(val1);
-    fval2 = fabs(val2);
-    // Ignore anything within [-minval, minval]
-    if ((fval1 <= minval) || (fval2 <= minval)) {
-      comparr[i] = 4; //Invalid value -- will be skipped
-      continue;
+  for (unsigned int i = minidx; i < maxidx; ++i) {
+    rowptr1 = bmtmp1 + i * npix;
+    rowptr2 = bmtmp2 + i * npix;
+    for (unsigned int j = minidx; j < maxidx; ++j) {
+      val1 = rowptr1[j];
+      val2 = rowptr2[j];
+      fval1 = fabs(val1);
+      fval2 = fabs(val2);
+      // Ignore anything within [-minval, minval]
+      if ((fval1 <= minval) || (fval2 <= minval)) {
+	comparr[i*npix + j] = 4; //Invalid value -- will be skipped
+	continue;
+      }
+      
+      // Determine the sign component
+      if (val1 > 0) {
+	if (val2 > 0) comp = 0; else comp = 1;
+      } else {
+	if (val2 > 0) comp = 2; else comp = 3;
+      }
+      ++ninbm[comp];
+      comparr[i*npix + j] = comp;
+      
+      // Min/max bit
+      if (fval1 > maxbinval1[comp]) maxbinval1[comp] = fval1;
+      else if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
+      if (fval2 > maxbinval2[comp]) maxbinval2[comp] = fval2;
+      else if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
     }
-
-    // Determine the sign component
-    if (val1 > 0) {
-      if (val2 > 0) comp = 0; else comp = 1;
-    } else {
-      if (val2 > 0) comp = 2; else comp = 3;
-    }
-    ++ninbm[comp];
-    comparr[i] = comp;
-
-    // Min/max bit
-    if (fval1 > maxbinval1[comp]) maxbinval1[comp] = fval1;
-    else if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
-    if (fval2 > maxbinval2[comp]) maxbinval2[comp] = fval2;
-    else if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
   }
 
   for (unsigned int i = 0; i < 4; ++i)
@@ -660,26 +692,31 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
     curr_n = ninbm[compidx]; // Number in input beam, not histogram
     if (curr_n > 0) {
       // Zero temporary arrays
-      for (unsigned int i = 0; i < nbins2; ++i) tmpwt[i] = 0;
-      for (unsigned int i = 0; i < nbins2; ++i) tmphist1[i] = 0.0;
-      for (unsigned int i = 0; i < nbins2; ++i) tmphist2[i] = 0.0;
+      std::memset(tmpwt, 0, nbins2 * sizeof(unsigned int));
+      std::memset(tmphist1, 0, nbins2 * sizeof(double));
+      std::memset(tmphist2, 0, nbins2 * sizeof(double));
 
       // Now loop over pixels
       min1 = minbinval1[compidx];
       min2 = minbinval2[compidx];
       istp1 = ihiststep1[compidx];
       istp2 = ihiststep2[compidx];
-      for (unsigned int i = 0; i < npix2; ++i) {
-	// Skip if not in this component
-	if (comparr[i] != compidx) continue; // Also skips too-close-to-zeros
-	fval1 = fabs(bmtmp1[i]);
-	fval2 = fabs(bmtmp2[i]);
-	idx1 = static_cast<unsigned int>((log2(fval1) - min1) * istp1);
-	idx2 = static_cast<unsigned int>((log2(fval2) - min2) * istp2);
-	totidx = idx1 * nbins + idx2;
-	tmpwt[totidx] += 1;
-	tmphist1[totidx] += fval1;
-	tmphist2[totidx] += fval2;
+      for (unsigned int i = minidx; i < maxidx; ++i) {
+	rowptr1 = bmtmp1 + i * npix;
+	rowptr2 = bmtmp2 + i * npix;
+	for (unsigned int j = minidx; j < maxidx; ++j) {
+	  // Skip if not in this component
+	  //  Also skips too-close-to-zeros
+	  if (comparr[i * npix + j] != compidx) continue; 
+	  fval1 = fabs(rowptr1[j]);
+	  fval2 = fabs(rowptr2[j]);
+	  idx1 = static_cast<unsigned int>((log2(fval1) - min1) * istp1);
+	  idx2 = static_cast<unsigned int>((log2(fval2) - min2) * istp2);
+	  totidx = idx1 * nbins + idx2;
+	  tmpwt[totidx] += 1;
+	  tmphist1[totidx] += fval1;
+	  tmphist2[totidx] += fval2;
+	}
       }
 
       // Count the number of histogram bins.
@@ -774,7 +811,10 @@ void doublebeamHist::writeToFits(const std::string& outputfile) const {
   dtmp = nfwhm;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
 		 const_cast<char*>("Number of FWHM out"), &status);
-  
+  dtmp = nfwhmkeep;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHMKP"), &dtmp,
+		 const_cast<char*>("Number of FWHM kept"), &status);  
+
   if (filtscale > 0.0) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,

@@ -11,8 +11,6 @@
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
-const unsigned int simManager::nbeambins = 200; 
-const double simManager::nfwhm_nofilt = 4.5;
 const unsigned int simManager::nnoisetrials = 9;
 
 //This is the function we call to find the best fitting n0
@@ -63,8 +61,11 @@ static double minfunc(double x, void* params) {
   \param[in] N2 Number of pixels along second axis in simulated image
   \param[in] PIXSIZE Pixel size, in arcsec
   \param[in] FWHM Fwhm of beam, in arcsec
+  \param[in] NFWHM Number of FWHM out to go on beam.  This is the number
+              after filtering (if filtering is applied)
   \param[in] FILTSCALE Filtering scale, in arcsec.  If 0, no filtering is
               applied.
+  \param[in] NBEAMBINS Number of bins to use in beam histogram; def 100
   \param[in] SIGI Instrument noise (without smoothing or filtering) in Jy
   \param[in] N0 Simulated number of sources per sq deg.
   \param[in] ESMOOTH Amount of extra Gaussian smoothing to apply
@@ -81,7 +82,8 @@ simManager::simManager(const std::string& MODELFILE,
 		       bool MAPLIKE, unsigned int NLIKE, 
 		       double N0RANGEFRAC, unsigned int FFTSIZE,
 		       unsigned int N1, unsigned int N2, 
-		       double PIXSIZE, double FWHM, double FILTSCALE,
+		       double PIXSIZE, double FWHM, double NFWHM,
+		       double FILTSCALE, unsigned int NBEAMBINS,
 		       double SIGI, double N0, double ESMOOTH,
 		       unsigned int OVERSAMPLE, 
 		       const std::string& POWERSPECFILE,
@@ -90,7 +92,7 @@ simManager::simManager(const std::string& MODELFILE,
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
   fftsize(FFTSIZE), n0(N0), fwhm(FWHM), pixsize(PIXSIZE), 
-  inv_bmhist(nbeambins, FILTSCALE, false), 
+  inv_bmhist(NBEAMBINS, FILTSCALE, false), 
   simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, FILTSCALE, OVERSAMPLE, 
 	NBINS, POWERSPECFILE), 
   use_binning(USEBIN), model(MODELFILE), esmooth(ESMOOTH) {
@@ -130,12 +132,11 @@ simManager::simManager(const std::string& MODELFILE,
     // accurate.  Expensive, but we only do this once after all.
     unsigned int maxextent = N1 > N2 ? N1 : N2;
     nfwhm = static_cast<double>(maxextent) * PIXSIZE / (2 * fwhm);
-  } else nfwhm = nfwhm_nofilt; // Can be smaller if not filtering
-  inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE);
+  } else nfwhm = NFWHM;
+  inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE, NFWHM);
 
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
-
 }
 
 simManager::~simManager() {
@@ -431,6 +432,14 @@ int simManager::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &dtmp, 
 		 const_cast<char*>("Beam fwhm [arcsec]"), 
 		 &status);
+  dtmp = inv_bmhist.getNFWHMKeep();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp, 
+		 const_cast<char*>("Number of FWHM kept"), 
+		 &status);
+  utmp = inv_bmhist.getNbins();
+  fits_write_key(fp, TUINT, const_cast<char*>("NBMBINS"), &utmp, 
+		 const_cast<char*>("Number of Beam hist bins"), 
+		 &status);
   dtmp = simim.getBeamSum();
   fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREA"), &dtmp, 
 		 const_cast<char*>("Beam area [pixels]"), 
@@ -439,7 +448,6 @@ int simManager::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREASQ"), &dtmp, 
 		 const_cast<char*>("Beam squared area [pixels]"), 
 		 &status);
-
 
   if (simim.isSmoothed()) {
     itmp = 1;

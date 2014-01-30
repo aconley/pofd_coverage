@@ -72,6 +72,7 @@ class beamHist {
 
   double fwhm; //!< FWHM of beam we are storing
   double nfwhm; //!< Number of FWHM out we go
+  double nfwhmkeep; //!< Number of FWHM we actually keep (after filtering)
   double pixsize; //!< Pixsize of beam sampling
   double eff_area; //!< Effective area of beam in deg^2
   unsigned int oversamp; //!< Oversampling factor
@@ -101,6 +102,7 @@ class beamHist {
   unsigned int getNbins() const { return nbins; }
   double getFWHM() const { return fwhm; }
   double getNFWHM() const { return nfwhm; }
+  double getNFWHMKeep() const { return nfwhmkeep; }
   double getPixsize() const { return pixsize; }
   unsigned int getOversamp() const { return oversamp; }
   double getEffectiveArea() const { return eff_area; }
@@ -124,7 +126,8 @@ class beamHist {
 
   /*!\brief Fill from beam*/
   void fill(const beam& bm, double nfwhm, double pixsize,
-	    bool inv=false, unsigned int oversamp=1);
+	    bool inv=false, unsigned int oversamp=1,
+	    double num_fwhm_keep=0.0);
 
   /*! \brief Write out as FITS file*/
   void writeToFits(const std::string&) const;

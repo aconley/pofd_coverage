@@ -84,6 +84,7 @@ class doublebeamHist {
   double fwhm1; //!< FWHM of beam we are storing, band 1
   double fwhm2; //!< FWHM of beam we are storing, band 2
   double nfwhm; //!< Number of FWHM out we go (using the larger of fwhm1/2)
+  double nfwhmkeep; //!< Number of FWHM kept after filtering
   double pixsize; //!< Pixsize of beam sampling
   double eff_area1; //!< Effective area of beam in deg^2, band 1
   double eff_area2; //!< Effective area of beam in deg^2, band 2
@@ -111,6 +112,7 @@ class doublebeamHist {
   unsigned int getNbins() const { return nbins; }
   dblpair getFWHM() const { return std::make_pair(fwhm1, fwhm2); }
   double getNFWHM() const { return nfwhm; }
+  double getNFWHMKeep() const { return nfwhmkeep; }
   double getPixsize() const { return pixsize; }
   unsigned int getOversamp() const { return oversamp; }
   dblpair getEffectiveArea() const { return std::make_pair(eff_area1, eff_area2); }
@@ -133,7 +135,7 @@ class doublebeamHist {
 
   /*!\brief Fill from beam*/
   void fill(const doublebeam& bm, double nfwhm, double pixsize,
-	    bool inv=false, unsigned int oversamp=1);
+	    bool inv=false, unsigned int oversamp=1, double num_fwhm_keep=0);
 
   /*! \brief Write out as FITS file*/
   void writeToFits(const std::string&) const;

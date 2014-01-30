@@ -89,7 +89,8 @@ class simImage {
   simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 	   double FWHM, double SIGI, double ESMOOTH=0.0, 
 	   double FILTERSCALE=0.0, unsigned int OVERSAMPLE=1, 
-	   unsigned int NBINS=1000, const std::string& powerfile=""); 
+	   unsigned int NBINS=1000, const std::string& powerfile="",
+	   bool quickfft=false); 
   ~simImage(); //!< Destructor
 
   /*! \brief Set random number generator seed */

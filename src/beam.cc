@@ -406,7 +406,7 @@ beamHist::beamHist(unsigned int NBINS, double FILTSCALE,
   keep_filt = KEEP_FILT_INMEM;
   filtscale = FILTSCALE;
   if (filtscale > 0.0 && KEEP_FILT_INMEM)
-    filt = new hipassFilter(FILTSCALE);
+    filt = new hipassFilter(FILTSCALE, 0.1, false);
   else
     filt = NULL;
 }
@@ -454,7 +454,7 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   double *bmtmp = (double*) fftw_malloc(sizeof(double) * npix * npix);
   // Setup filter if needed
   if ((filtscale > 0.0) && !(keep_filt))
-    filt = new hipassFilter(filtscale);
+    filt = new hipassFilter(filtscale, 0.1, true);
   // Get the beam
   bm.getBeam(npix, pixsize, oversamp, bmtmp, filt); // Also filters
   // Clean up filter if not permanent

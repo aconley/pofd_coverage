@@ -20,13 +20,14 @@ class hipassFilter {
   
   unsigned int nxplan; //!< Current plan size, x
   unsigned int nyplan; //!< Current plan size, y
+  unsigned int fftw_plan_style; //!< What type of planning to use
   fftw_plan plan; //!< Forward transform plan from input data to transdata
   fftw_plan plan_inv; //!< Backwards transform from transdata back to input data
 
   double meanSub(unsigned int, double* const) const; //!< Subtracts mean from input
 
  public:
-  hipassFilter(double f, double q=0.1); //!< Constructor
+  hipassFilter(double f, double q=0.1, bool quickfft=false); //!< Constructor
   ~hipassFilter();
   
   double getFiltScale() const { return filtscale; }

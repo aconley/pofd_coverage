@@ -94,7 +94,7 @@ simManager::simManager(const std::string& MODELFILE,
   fftsize(FFTSIZE), n0(N0), fwhm(FWHM), pixsize(PIXSIZE), 
   inv_bmhist(NBEAMBINS, FILTSCALE, false), 
   simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, FILTSCALE, OVERSAMPLE, 
-	NBINS, POWERSPECFILE), 
+	NBINS, POWERSPECFILE, false), 
   use_binning(USEBIN), model(MODELFILE), esmooth(ESMOOTH) {
 
 #ifdef TIMING

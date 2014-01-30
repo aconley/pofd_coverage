@@ -98,7 +98,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   fftsize(FFTSIZE), n0(N0), fwhm1(FWHM1), fwhm2(FWHM2), pixsize(PIXSIZE),
   inv_bmhist(NBEAMBINS, FILTSCALE, false),
   simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, 
-	FILTSCALE, OVERSAMPLE, NBINS, POWERSPECFILE), 
+	FILTSCALE, OVERSAMPLE, NBINS, POWERSPECFILE, false), 
   use_binning(USEBIN), model(MODELFILE), 
   esmooth1(ESMOOTH1), esmooth2(ESMOOTH2) {
 

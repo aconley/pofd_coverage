@@ -137,7 +137,7 @@ int makeSimSingle(int argc, char **argv) {
 		<< " Your value: " << n0 << std::endl;
 
     simImage dim(n1, n2, pixsize, fwhm, sigma, extra_smooth,
-		 filtscale, oversample, 1000, powspecfile);
+		 filtscale, oversample, 1000, powspecfile, true);
     if (have_user_seed) dim.setSeed(user_seed);
 
 
@@ -289,7 +289,7 @@ int makeSimDouble(int argc, char **argv) {
 
     simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, 
 		       extra_smooth1, extra_smooth2, filtscale, oversample, 
-		       1000, powerspecfile);
+		       1000, powerspecfile, true);
     if (have_user_seed) dim.setSeed( user_seed );
     
     // Generate with mean subtraction

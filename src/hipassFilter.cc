@@ -8,12 +8,21 @@
 /*!
   \param[in] f Radius outside which filter is unity (in pixels)
   \param[in] q Sigma as a fraction of filtscale if apodizing with Gaussian
+  \param[in] quickfft If set, use FFTW_ESTIMATE for the plans.  Otherwise
+                    use FFTW_MEASURE.  Set this if you are only planning
+                    on calling this once.
  */
-hipassFilter::hipassFilter(double f, double q) : filtscale(f), qfactor(q),
-						 nx(0), ny(0), nyhalf(0), 
-						 transdata(NULL), nxplan(0), 
-						 nyplan(0), plan(NULL), 
-						 plan_inv(NULL){}
+hipassFilter::hipassFilter(double f, double q, bool quickfft) : 
+  filtscale(f), qfactor(q), nx(0), ny(0), nyhalf(0), 
+  transdata(NULL), nxplan(0), nyplan(0), plan(NULL), plan_inv(NULL) {
+
+  // Set plan style.  We don't support WISDOM here because our image
+  //  sizes are unlikely to be regular enough to be prepared.
+  if (quickfft) fftw_plan_style = FFTW_ESTIMATE; 
+  else fftw_plan_style = FFTW_MEASURE;
+
+}
+
 
 hipassFilter::~hipassFilter() {
   if (transdata != NULL) fftw_free(transdata);
@@ -38,7 +47,6 @@ double hipassFilter::meanSub(unsigned int N, double* const data) const {
   \param[in] NY size of input data array along 2nd dimension
   \param[inout] data Data to filter.  Modified on output.  This must be
                       allocated with fftw_malloc.
-
   In wavenumber space, the filter is unity for wavenumbers larger
   than the filterscale, followed by a Gaussian decay with 
   sigma=qfactor * filtscale.
@@ -90,12 +98,13 @@ void hipassFilter::filter(double pixscale, unsigned int NX, unsigned int NY,
   }
 
   // Deal with plans
+  // We use FFTW measure because frequently we are doing this many times
   if (plan == NULL) { // New
     unsigned intx = static_cast<int>(NX);
     unsigned inty = static_cast<int>(NY);
-    plan = fftw_plan_dft_r2c_2d(intx, inty, data, transdata, FFTW_ESTIMATE);
+    plan = fftw_plan_dft_r2c_2d(intx, inty, data, transdata, fftw_plan_style);
     plan_inv = fftw_plan_dft_c2r_2d(intx, inty, transdata, data,
-				    FFTW_ESTIMATE);
+				    fftw_plan_style);
     nxplan = NX;
     nyplan = NY;
   } else if ((NX != nxplan) || (NY != nyplan)) {
@@ -103,9 +112,9 @@ void hipassFilter::filter(double pixscale, unsigned int NX, unsigned int NY,
     fftw_destroy_plan(plan_inv);
     unsigned intx = static_cast<int>(NX);
     unsigned inty = static_cast<int>(NY);
-    plan = fftw_plan_dft_r2c_2d(intx, inty, data, transdata, FFTW_ESTIMATE);
+    plan = fftw_plan_dft_r2c_2d(intx, inty, data, transdata, fftw_plan_style);
     plan_inv = fftw_plan_dft_c2r_2d(intx, inty, transdata, data,
-				    FFTW_ESTIMATE);
+				    fftw_plan_style);
     nxplan = NX;
     nyplan = NY;
   }

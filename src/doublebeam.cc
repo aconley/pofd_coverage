@@ -499,7 +499,7 @@ doublebeamHist::doublebeamHist(unsigned int NBINS, double FILTSCALE,
   keep_filt = KEEP_FILT_INMEM;
   filtscale = FILTSCALE;
   if (filtscale > 0.0 && keep_filt)
-    filt = new hipassFilter(FILTSCALE);
+    filt = new hipassFilter(FILTSCALE, 0.1, false);
   else
     filt = NULL;
 }
@@ -571,7 +571,7 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
   double *bmtmp2 = (double*) fftw_malloc(sizeof(double) * npix * npix);
   // Setup filter if needed
   if ((filtscale > 0.0) && !(keep_filt))
-    filt = new hipassFilter(filtscale);
+    filt = new hipassFilter(filtscale, 0.1, true);
   // Get the beams
   bm.getBeam(1, npix, pixsize, oversamp, bmtmp1, filt); // Also filters
   bm.getBeam(2, npix, pixsize, oversamp, bmtmp2, filt); // Also filters

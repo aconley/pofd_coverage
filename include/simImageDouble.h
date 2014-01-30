@@ -112,7 +112,8 @@ class simImageDouble {
 		 double FWHM1, double FWHM2, double SIGI1,
 		 double SIGI2, double ESMOOTH1=0.0, double ESMOOTH2=0.0, 
 		 double FILTERSCALE=0.0, unsigned int OVERSAMPLE =1, 
-		 unsigned int NBINS=1000, const std::string& powerspec="");
+		 unsigned int NBINS=1000, const std::string& powerspec="",
+		 bool quickfft=false);
   ~simImageDouble(); //!< Destructor
 
   /*! \brief Set random number generator seed */

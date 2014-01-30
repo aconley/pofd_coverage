@@ -38,13 +38,16 @@
   \param[in] powerspecfile File containing power spectrum.  If set, the
               source positions are generated using this P(k).  If not set, they
 	      are uniformly distributed across the image.
+  \param[in] quickfft Set to true to use FFTW_ESTIMATE rather than FFTW_MEASURE
+              when filtering; suitable if you only plan to call this once.
 */
 simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 			       double FWHM1, double FWHM2, double SIGI1, 
 			       double SIGI2, double ESMOOTH1, double ESMOOTH2,
 			       double FILTERSCALE, unsigned int OVERSAMPLE, 
 			       unsigned int NBINS,
-			       const std::string& powerspecfile) {
+			       const std::string& powerspecfile,
+			       bool quickfft) {
 
   if (N1 == 0)
     throw pofdExcept("simImageDouble", "simImageDouble", 
@@ -110,7 +113,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 
   // Filtering
   if (FILTERSCALE > 0.0)
-    filt = new hipassFilter(FILTERSCALE);
+    filt = new hipassFilter(FILTERSCALE, 0.1, quickfft);
   else filt = NULL;
 
   // Position generator if needed

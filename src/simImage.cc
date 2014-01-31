@@ -90,7 +90,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   
   // Filtering
   if (FILTERSCALE > 0.0)
-    filt = new hipassFilter(FILTERSCALE, 0.1, quickfft);
+    filt = new fourierFilter(n1, n2, pixsize, FILTERSCALE, 0.1, quickfft);
   else filt = NULL;
 
   // Position generator if needed
@@ -557,7 +557,7 @@ void simImage::realize(const numberCounts& model, double n0,
   // Filtering will always result in mean subtraction since
   // it is a hipass filter.
   if (filt != NULL)
-    filt->filter(pixsize, n1, n2, data);
+    filt->filter(n1, n2, pixsize, data);
   else
     if (meansub) meanSubtract();
 
@@ -800,6 +800,10 @@ int simImage::writeToFits(const std::string& outputfile) const {
     dtmp = filt->getFiltScale();
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp, 
 		   const_cast<char*>("Hipass filtering scale [arcsec]"), 
+		   &status);
+    dtmp = filt->getQFactor();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTQ"), &dtmp, 
+		   const_cast<char*>("Hipass filtering apodization"), 
 		   &status);
   }
 

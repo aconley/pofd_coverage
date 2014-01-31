@@ -235,17 +235,18 @@ void beam::getRawBeam(unsigned int n, double pixsize, unsigned int oversamp,
   \param[in] n  Number of pixels along each dimension.  Should be odd
   \param[in] pixsize Size of pixels in arcsec
   \param[in] bm Beam. Must be pre-allocated by caller and be of length n * n
-  \param[in] filter Hi-pass filter to apply.  If null, don't apply filter
+  \param[in] filter Hi-pass/matched filter to apply.  If null, don't apply 
+                     filtering
 */
 void beam::getBeam(unsigned int n, double pixsize, double* const bm, 
-		   hipassFilter* const filter) const {
+		   fourierFilter* const filter) const {
 
   // pre-filtered beam
   getRawBeam(n, pixsize, bm);
 
-  // Apply filtering
+  // Apply filtering to beam
   if (filter != NULL)
-    filter->filter(pixsize, n, n, bm);
+    filter->filter(n, n, pixsize, bm);
 }
 
 
@@ -255,17 +256,18 @@ void beam::getBeam(unsigned int n, double pixsize, double* const bm,
   \param[in] oversamp Oversampling.  Must be odd
   \param[in] bm Beam. Must be pre-allocated by
                    caller and be of length n * n
-  \param[in] filter Hi-pass filter to apply.  If null, don't apply filter
+  \param[in] filter Hi-pass/Matched filter to apply.  If null, don't 
+                apply filter
 */
 void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
-		   double* const bm, hipassFilter* const filter) const {
+		   double* const bm, fourierFilter* const filter) const {
 
   // Pre-filtered beam
   getRawBeam(n, pixsize, oversamp, bm);
 
   // Apply filtering
   if (filter != NULL)
-    filter->filter(pixsize, n, n, bm);
+    filter->filter(n, n, pixsize, bm);
 }
 
 
@@ -279,7 +281,7 @@ void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
 */
 void beam::writeToFits(const std::string& outputfile, double pixsize, 
 		       double nfwhm, unsigned int oversamp,
-		       hipassFilter* const filt, bool inverse) const {
+		       fourierFilter* const filt, bool inverse) const {
   if (nfwhm <= 0.0)
     throw pofdExcept("beam", "writeToFits", "Invalid (non-positive) nfwhm", 1);
   if (pixsize <= 0.0)
@@ -313,6 +315,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
   
   // Header
+  bool ubl;
   double dtmp;
   unsigned int utmp;
   fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &inverse,
@@ -327,10 +330,43 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
 		 const_cast<char*>("Number of FWHM out"), &status);
   if (filt != NULL) {
-    dtmp = filt->getFiltScale();
-    if (dtmp > 0)
-      fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
-		     const_cast<char*>("Filtering scale [arcsec]"), &status);
+    ubl = true;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
+		   const_cast<char*>("Filtered?"), &status);
+    ubl = filt->isHipass();
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIPASS"), &ubl,
+		   const_cast<char*>("Hipass filtered?"), &status);
+    if (ubl) {
+      dtmp = filt->getFiltScale();
+      if (dtmp > 0)
+	fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
+		       const_cast<char*>("Hipass filtering scale [arcsec]"), 
+		       &status);
+      dtmp = filt->getQFactor();
+      if (dtmp > 0)
+	fits_write_key(fp, TDOUBLE, const_cast<char*>("QFACTOR"), &dtmp,
+		       const_cast<char*>("Hipass filtering apodization"), 
+		       &status);
+    }
+    ubl = filt->isMatched();
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MATCHED"), &ubl,
+		   const_cast<char*>("Match filtered?"), &status);
+    if (ubl) {
+      dtmp = filt->getSigInst();
+      if (dtmp > 0)
+	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGI"), &dtmp,
+		       const_cast<char*>("Matched filtering sig_i [Jy]"), 
+		       &status);
+      dtmp = filt->getSigConf();
+      if (dtmp > 0)
+	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGC"), &dtmp,
+		       const_cast<char*>("Matched filtering sig_c [Jy]"),
+		       &status);
+    }
+  } else {
+    ubl = false;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
+		   const_cast<char*>("Filtered?"), &status);
   }
   if (oversamp > 1) {
     utmp = oversamp;
@@ -377,15 +413,8 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   \param[in] NBINS Number of bins in histogram
   \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If zero, no 
              filtering is applied.
-  \param[in] KEEP_FILT_INMEM If true (and FILTSCALE is not zero), keep
-             hipassFilter allocated.  Otherwise it is allocated/deallocated
-	     as called.  
-
-  If you are only planning on calling fill once, setting KEEP_FILT_INMEM
-  to false is more memory efficient.
 */
-beamHist::beamHist(unsigned int NBINS, double FILTSCALE,
-		   bool KEEP_FILT_INMEM) : 
+beamHist::beamHist(unsigned int NBINS, double FILTSCALE):
   has_data(false), inverse(false), nbins(0), fwhm(0.0), nfwhm(4.0),
   nfwhmkeep(4.0), pixsize(0.0), eff_area(0.0), oversamp(1), 
   n_pos(0), n_neg(0) {
@@ -403,12 +432,8 @@ beamHist::beamHist(unsigned int NBINS, double FILTSCALE,
   minmax_neg = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			      std::numeric_limits<double>::quiet_NaN());
 
-  keep_filt = KEEP_FILT_INMEM;
   filtscale = FILTSCALE;
-  if (filtscale > 0.0 && KEEP_FILT_INMEM)
-    filt = new hipassFilter(FILTSCALE, 0.1, false);
-  else
-    filt = NULL;
+  qfactor = 0.1;
 }
 
 beamHist::~beamHist() {
@@ -416,7 +441,6 @@ beamHist::~beamHist() {
   delete[] bm_pos;
   delete[] wt_neg;
   delete[] bm_neg;
-  if (filt != NULL) delete filt;
 }
 
 /*!
@@ -452,16 +476,16 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   // Temporary beam storage.  Must use fftw_malloc since we may filter
   double val;
   double *bmtmp = (double*) fftw_malloc(sizeof(double) * npix * npix);
-  // Setup filter if needed
-  if ((filtscale > 0.0) && !(keep_filt))
-    filt = new hipassFilter(filtscale, 0.1, true);
+  // Setup high-pass filter if needed
+  fourierFilter *filt = NULL;
+  if (filtscale > 0.0)
+    filt = new fourierFilter(npix, npix, pixsize, filtscale, qfactor, true);
   // Get the beam
   bm.getBeam(npix, pixsize, oversamp, bmtmp, filt); // Also filters
   // Clean up filter if not permanent
-  if ((filtscale > 0.0) && !(keep_filt)) {
+  if (filt != NULL)
     delete filt;
-    filt = NULL;
-  }
+
   minmax_pos = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			      std::numeric_limits<double>::quiet_NaN());
   minmax_neg = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
@@ -673,6 +697,9 @@ void beamHist::writeToFits(const std::string& outputfile) const {
     dtmp = filtscale;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
 		   const_cast<char*>("Filtering scale [arcsec]"), &status);
+    dtmp = qfactor;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTQ"), &dtmp,
+		   const_cast<char*>("Filtering apodization"), &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,

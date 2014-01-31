@@ -92,7 +92,7 @@ simManager::simManager(const std::string& MODELFILE,
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
   fftsize(FFTSIZE), n0(N0), fwhm(FWHM), pixsize(PIXSIZE), 
-  inv_bmhist(NBEAMBINS, FILTSCALE, false), 
+  inv_bmhist(NBEAMBINS, FILTSCALE), 
   simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, FILTSCALE, OVERSAMPLE, 
 	NBINS, POWERSPECFILE, false), 
   use_binning(USEBIN), model(MODELFILE), esmooth(ESMOOTH) {

@@ -9,7 +9,7 @@
 #include "../include/numberCountsDouble.h"
 #include "../include/ran.h"
 #include "../include/positionGenerator.h"
-#include "../include/hipassFilter.h"
+#include "../include/fourierFilter.h"
 
 /*!
   \brief Data class for creating and holding double (two-band) simulated
@@ -33,7 +33,7 @@ class simImageDouble {
   double sigi2; //!< Instrumental (white) noise in band 2
   double esmooth1; //!< Additional Gaussian smoothing FWHM in arcsec, band 1
   double esmooth2; //!< Additional Gaussian smoothing FWHM in arcsec, band 2
-  mutable hipassFilter* filt; //!< High pass filter
+  mutable fourierFilter* filt; //!< High pass filter
 
   // The sigi_final are only computed when needed, since they isn't 
   // totally free to do if there is filtering
@@ -88,7 +88,7 @@ class simImageDouble {
 			     double sigi, double fwhm, double esmooth, 
 			     unsigned int ngauss_add,
 			     const double* const gauss_add,
-			     hipassFilter* const filt) const;
+			     fourierFilter* const filt) const;
 
   //Convolution stuff
   void convolveInner(unsigned int, const double* const,

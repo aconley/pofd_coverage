@@ -8,7 +8,7 @@
 #include "../include/ran.h"
 #include "../include/numberCounts.h"
 #include "../include/positionGenerator.h"
-#include "../include/hipassFilter.h"
+#include "../include/fourierFilter.h"
 
 /*!
   \brief Data class for creating and holding simulated
@@ -28,7 +28,7 @@ class simImage {
   double fwhm; //!< Beam FWHM in arcsec
   double sigi; //!< Raw instrumental noise, before any smoothing/filtering
   double esmooth; //!< Additional Gaussian smoothing FWHM in arcsec
-  mutable hipassFilter* filt; //!< High pass filter
+  mutable fourierFilter* filt; //!< High pass filter
 
   // sigi_final is only computed when needed, since it isn't 
   // totally free to do if there is filtering

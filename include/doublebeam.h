@@ -6,7 +6,7 @@
 #define __doublebeam__
 
 #include "../include/global_settings.h"
-#include "../include/hipassFilter.h"
+#include "../include/fourierFilter.h"
 
 /*!
   \brief Represents PSF parameters for two Gaussian beams.
@@ -49,16 +49,16 @@ class doublebeam {
 
   /*!\brief Get 2D beam*/
   void getBeam(unsigned int band, unsigned int n, double pixsize, 
-	       double* const, hipassFilter* const=NULL) const;
+	       double* const, fourierFilter* const=NULL) const;
   /*!\brief Get 2D beam with oversampling*/
   void getBeam(unsigned int band, unsigned int n, double pixsize, 
 	       unsigned int oversamp, double* const, 
-	       hipassFilter* const=NULL) const;
+	       fourierFilter* const=NULL) const;
 
   /*!\brief Write the beams to a FITS file*/
   void writeToFits(const std::string& outfile, double pixsize, 
 		   double nfwhm=3.5, unsigned int oversamp=1,
-		   hipassFilter* const=NULL, bool inverse=false) const;
+		   fourierFilter* const=NULL, bool inverse=false) const;
 };
 
 /*!
@@ -90,9 +90,8 @@ class doublebeamHist {
   double eff_area2; //!< Effective area of beam in deg^2, band 2
   unsigned int oversamp; //!< Oversampling factor
 
-  bool keep_filt; //!< Keep filt allocated, or dealloc between calls
-  double filtscale; //!< Filtering scale, in arcsec
-  hipassFilter* filt; //!< Hi pass filter, if any is being applied
+  double filtscale; //!< High-pass filtering scale, in arcsec
+  double qfactor; //!< High-pass filtering apodization
 
   unsigned int n[4]; //!< Number of histogram elements filled in pp, pn, np, nn
   unsigned int* wt[4]; //!< Weights
@@ -103,8 +102,7 @@ class doublebeamHist {
   dblpair minmax2[4]; //!< Min/max beam (not inverse beam!) in each sign component, band 2
  public:
 
-  doublebeamHist(unsigned int NBINS, double FILTSCALE=0.0,
-		 bool KEEP_FILT_INMEM=true); //!< Constructor
+  doublebeamHist(unsigned int NBINS, double FILTSCALE=0.0); //!< Constructor
   ~doublebeamHist(); //!< Destructor
   
   bool hasData() const { return has_data; }

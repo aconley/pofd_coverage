@@ -113,7 +113,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 
   // Filtering
   if (FILTERSCALE > 0.0)
-    filt = new hipassFilter(FILTERSCALE, 0.1, quickfft);
+    filt = new fourierFilter(n1, n2, pixsize, FILTERSCALE, 0.1, quickfft);
   else filt = NULL;
 
   // Position generator if needed
@@ -410,7 +410,7 @@ double simImageDouble::getFinalNoiseHelper(unsigned int ntrials,
 					   double fwhm, double esmooth, 
 					   unsigned int ngauss_add,
 					   const double* const gauss_add,
-					   hipassFilter* const filt) const {
+					   fourierFilter* const filt) const {
   // Compute esmooth prefactor if needed
   const double prefac = 4 * std::log(2) / pofd_coverage::pi;
   double normval = 1.0;
@@ -437,7 +437,7 @@ double simImageDouble::getFinalNoiseHelper(unsigned int ntrials,
     }
 
     // Now filtering
-    filt->filter(pixsize, n1, n2, data);
+    filt->filter(n1, n2, pixsize, data);
 
     // Measure using two pass algorithm
     mn = data[0];
@@ -648,8 +648,8 @@ void simImageDouble::realize(const numberCountsDouble& model,
   // Filtering will always result in mean subtraction since
   // it is a hipass filter.
   if (filt != NULL) {
-    filt->filter(pixsize, n1, n2, data1);
-    filt->filter(pixsize, n1, n2, data2);
+    filt->filter(n1, n2, pixsize, data1);
+    filt->filter(n1, n2, pixsize, data2);
   } else if (meansub) meanSubtract();
 
   //bin
@@ -968,6 +968,10 @@ int simImageDouble::writeFits(const std::string& outputfile,
     tmpval = filt->getFiltScale();
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &tmpval,
 		   const_cast<char*>("Hipass filtering scale [arcsec]"), 
+		   &status);
+    tmpval = filt->getQFactor();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &tmpval,
+		   const_cast<char*>("Hipass filtering apodization"), 
 		   &status);
   }
 

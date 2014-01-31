@@ -6,7 +6,7 @@
 #define __beam__
 
 #include "../include/global_settings.h"
-#include "../include/hipassFilter.h"
+#include "../include/fourierFilter.h"
 
 /*!
   \brief Represents PSF parameters for single Gaussian beam
@@ -43,16 +43,16 @@ class beam {
 
   /*!\brief Get 2D beam*/
   void getBeam(unsigned int n, double pixsize, double* const, 
-	       hipassFilter* const=NULL) const;
+	       fourierFilter* const=NULL) const;
 
   /*!\brief Get 2D beam with oversampling*/
   void getBeam(unsigned int n, double pixsize, unsigned int oversamp,
-	       double* const, hipassFilter* const=NULL) const;
+	       double* const, fourierFilter* const=NULL) const;
 
   /*!\brief Write the beam to a FITS file*/
   void writeToFits(const std::string& outfile, double pixsize, 
 		   double nfwhm=3.5, unsigned int oversamp=1,
-		   hipassFilter* const=NULL, bool inverse=false) const;
+		   fourierFilter* const=NULL, bool inverse=false) const;
 };
 
 /*!
@@ -77,9 +77,8 @@ class beamHist {
   double eff_area; //!< Effective area of beam in deg^2
   unsigned int oversamp; //!< Oversampling factor
 
-  bool keep_filt; //!< Keep filt allocated, or dealloc between calls
-  double filtscale; //!< Filtering scale, in arcsec
-  hipassFilter* filt; //!< Hi pass filter, if any is being applied
+  double filtscale; //!< High-pass filtering scale, in arcsec
+  double qfactor; //!< High-pass filtering apodization
 
   unsigned int n_pos; //!< Number of positive beam histogram elements filled
   unsigned int* wt_pos; //!< Positive weights
@@ -93,8 +92,7 @@ class beamHist {
   dblpair minmax_neg; //!< Min/max value of |neg| beam (not inverse beam!)
 
  public:
-  beamHist(unsigned int NBINS, double FILTSCALE=0.0,
-	   bool KEEP_FILT_INMEM=true); //!< Constructor
+  beamHist(unsigned int NBINS, double FILTSCALE=0.0); //!< Constructor
   ~beamHist(); //!< Destructor
   
   bool hasData() const { return has_data; }

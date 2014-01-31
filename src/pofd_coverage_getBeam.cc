@@ -14,7 +14,7 @@
 #include "../include/beam.h"
 #include "../include/doublebeam.h"
 #include "../include/pofdExcept.h"
-#include "../include/hipassFilter.h"
+#include "../include/fourierFilter.h"
 
 static struct option long_options[] = {
   {"double", no_argument, 0, 'd'},
@@ -148,8 +148,14 @@ int getBeamSingle(int argc, char **argv) {
       // Write
       bmhist.writeToFits(outputfile);
     } else {
-      hipassFilter *filt = NULL;
-      if (filterscale > 0) filt = new hipassFilter(filterscale);
+      fourierFilter *filt = NULL;
+      if (filterscale > 0) {
+	// We have to figure out how many pixels to make it
+	unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
+						      0.9999999999);
+	npix = 2 * npix + 1;
+	filt = new fourierFilter(npix, npix, pixsize, filterscale, 0.1, true);
+      }
       bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, inverse);
       if (filt != NULL) delete filt; 
     }    
@@ -283,8 +289,15 @@ int getBeamDouble(int argc, char **argv) {
       // Write
       bmhist.writeToFits(outputfile);
     } else {
-      hipassFilter *filt = NULL;
-      if (filterscale > 0) filt = new hipassFilter(filterscale);
+      fourierFilter *filt = NULL;
+      if (filterscale > 0) {
+	// We have to figure out how many pixels to make it
+	double fwhm = std::max(fwhm1, fwhm2);
+	unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
+						      0.9999999999);
+	npix = 2 * npix + 1;
+	filt = new fourierFilter(npix, npix, pixsize, filterscale, 0.1, true);
+      }
       bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, inverse);
       if (filt != NULL) delete filt; 
     }    

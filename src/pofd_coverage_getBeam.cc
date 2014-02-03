@@ -149,7 +149,7 @@ int getBeamSingle(int argc, char **argv) {
       bmhist.writeToFits(outputfile);
     } else {
       hipassFilter *filt = NULL;
-      if (filterscale > 0) filt = new hipassFilter(filterscale);
+      if (filterscale > 0) filt = new hipassFilter(filterscale, 0.1, true);
       bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, inverse);
       if (filt != NULL) delete filt; 
     }    
@@ -284,7 +284,7 @@ int getBeamDouble(int argc, char **argv) {
       bmhist.writeToFits(outputfile);
     } else {
       hipassFilter *filt = NULL;
-      if (filterscale > 0) filt = new hipassFilter(filterscale);
+      if (filterscale > 0) filt = new hipassFilter(filterscale, 0.1, true);
       bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, inverse);
       if (filt != NULL) delete filt; 
     }    

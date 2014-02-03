@@ -583,11 +583,11 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
 
   unsigned int minidx;
   unsigned int maxidx;
-  if ((num_fwhm_keep != 0) && (num_fwhm_keep < num_fwhm)) {
+  if ((num_fwhm_keep != 0) && (nfwhmkeep < num_fwhm)) {
     // We want to set up logical indexing into the array to only keep
     //  the part we want.
     unsigned int nclippix = 
-      static_cast<unsigned int>(num_fwhm_keep * fwhm / pixsize + 0.9999999999);
+      static_cast<unsigned int>(nfwhmkeep * fwhm / pixsize + 0.9999999999);
     nclippix = 2 * nclippix + 1;
     if (nclippix < npix) {
       minidx = (npix - nclippix) / 2;

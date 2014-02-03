@@ -454,7 +454,7 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   double *bmtmp = (double*) fftw_malloc(sizeof(double) * npix * npix);
   // Setup filter if needed
   if ((filtscale > 0.0) && !(keep_filt))
-    filt = new hipassFilter(filtscale, 0.1, true);
+    filt = new hipassFilter(filtscale, 0.0, true); //HACK
   // Get the beam
   bm.getBeam(npix, pixsize, oversamp, bmtmp, filt); // Also filters
   // Clean up filter if not permanent
@@ -470,11 +470,11 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   // Set up the part we will actually use (which may mean clipping)
   unsigned int minidx;
   unsigned int maxidx;
-  if ((num_fwhm_keep != 0) && (num_fwhm_keep < num_fwhm)) {
+  if (nfwhmkeep < num_fwhm) {
     // We want to set up logical indexing into the array to only keep
     //  the part we want.
     unsigned int nclippix = 
-      static_cast<unsigned int>(num_fwhm_keep * fwhm / pixsize + 0.9999999999);
+      static_cast<unsigned int>(nfwhmkeep * fwhm / pixsize + 0.9999999999);
     nclippix = 2 * nclippix + 1;
     if (nclippix < npix) {
       minidx = (npix - nclippix) / 2;
@@ -516,6 +516,9 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
 
   if (has_pos) minmax_pos = std::make_pair(minbinval_pos, maxbinval_pos);
   if (has_pos) minmax_neg = std::make_pair(minbinval_neg, maxbinval_neg);
+  if (!(has_pos || has_neg))
+    throw pofdExcept("beamHist", "fill", 
+		     "Found no positive or negative pix", 1);
 
   // Set bin size
   double histstep_pos, histstep_neg;

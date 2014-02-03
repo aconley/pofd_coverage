@@ -20,7 +20,6 @@ hipassFilter::hipassFilter(double f, double q, bool quickfft) :
   //  sizes are unlikely to be regular enough to be prepared.
   if (quickfft) fftw_plan_style = FFTW_ESTIMATE; 
   else fftw_plan_style = FFTW_MEASURE;
-
 }
 
 
@@ -98,13 +97,19 @@ void hipassFilter::filter(double pixscale, unsigned int NX, unsigned int NY,
   }
 
   // Deal with plans
-  // We use FFTW measure because frequently we are doing this many times
+  // Note we can't plan using data if we are using FFTW_MEASURE
+  //  since that will destroy the contents.  But we can with ESTIMATE
   if (plan == NULL) { // New
+    double *planreal;
+    if (fftw_plan_style == FFTW_ESTIMATE) planreal = data;
+    else planreal = (double*) fftw_malloc(nx * ny * sizeof(fftw_complex));
     unsigned intx = static_cast<int>(NX);
     unsigned inty = static_cast<int>(NY);
-    plan = fftw_plan_dft_r2c_2d(intx, inty, data, transdata, fftw_plan_style);
-    plan_inv = fftw_plan_dft_c2r_2d(intx, inty, transdata, data,
+    plan = fftw_plan_dft_r2c_2d(intx, inty, planreal, transdata, 
+				fftw_plan_style);
+    plan_inv = fftw_plan_dft_c2r_2d(intx, inty, transdata, planreal,
 				    fftw_plan_style);
+    if (planreal != data) fftw_free(planreal);
     nxplan = NX;
     nyplan = NY;
   } else if ((NX != nxplan) || (NY != nyplan)) {
@@ -112,9 +117,14 @@ void hipassFilter::filter(double pixscale, unsigned int NX, unsigned int NY,
     fftw_destroy_plan(plan_inv);
     unsigned intx = static_cast<int>(NX);
     unsigned inty = static_cast<int>(NY);
-    plan = fftw_plan_dft_r2c_2d(intx, inty, data, transdata, fftw_plan_style);
-    plan_inv = fftw_plan_dft_c2r_2d(intx, inty, transdata, data,
+    double *planreal;
+    if (fftw_plan_style == FFTW_ESTIMATE) planreal = data;
+    else planreal = (double*) fftw_malloc(nx * ny * sizeof(fftw_complex));
+    plan = fftw_plan_dft_r2c_2d(intx, inty, planreal, transdata, 
+				fftw_plan_style);
+    plan_inv = fftw_plan_dft_c2r_2d(intx, inty, transdata, planreal,
 				    fftw_plan_style);
+    if (planreal != data) fftw_free(planreal);
     nxplan = NX;
     nyplan = NY;
   }

@@ -8,8 +8,6 @@
 double NaN = std::numeric_limits<double>::quiet_NaN();
 
 /*!
-  \param[in] NX Size of data we will transform in x
-  \param[in] NY Size of data we will transform in x
   \param[in] pixsize Size of pixels, in arcseconds
   \param[in] FWHM FWHM of Gaussian beam, in arcseconds
   \param[in] sigi Instrument noise, in Jy
@@ -17,24 +15,16 @@ double NaN = std::numeric_limits<double>::quiet_NaN();
   \param[in] quickfft If set, use FFTW_ESTIMATE for the plans.  Otherwise
                     use FFTW_MEASURE.  Set this if you are only planning
                     on calling this once.
-
   This version of the constructor sets up only matched filtering
 */
-fourierFilter::fourierFilter(unsigned int NX, unsigned int NY,
-			     double pixsize, double FWHM, double sigi,
+fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
 			     double sigc, bool quickfft):
   initialized(false), doHipass(false), doMatched(true), 
-  nx(NX), ny(NY), pixscale(pixsize), filtscale(NaN), qfactor(NaN), 
-  fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(NY/2 + 1),
+  nx(0), ny(0), pixscale(pixsize), filtscale(NaN), qfactor(NaN), 
+  fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(0),
   plan(NULL), plan_inv(NULL), filt_fft(NULL), map_fft(NULL) {
 
   // Check inputs
-  if (nx < 2)
-    throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (<2) nx", 1);
-  if (ny < 2)
-    throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (<2) ny", 2);
   if (fwhm <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
 		     "Invalid (non-positive) FWHM", 3);
@@ -59,8 +49,6 @@ fourierFilter::fourierFilter(unsigned int NX, unsigned int NY,
 }
 
 /*!
-  \param[in] NX Size of data we will transform in x
-  \param[in] NY Size of data we will transform in x
   \param[in] pixsize Size of pixels, in arcseconds
   \param[in] fscale Filtering scale, in arcseconds
   \param[in] q Gaussian sigma of apodization as a fraction of fscale
@@ -70,21 +58,14 @@ fourierFilter::fourierFilter(unsigned int NX, unsigned int NY,
 
   This version of the constructor sets up only hipass filtering
 */
-fourierFilter::fourierFilter(unsigned int NX, unsigned int NY,
-			     double pixsize, double fscale, double q,
+fourierFilter::fourierFilter(double pixsize, double fscale, double q,
 			     bool quickfft):
   initialized(false), doHipass(true), doMatched(false), 
-  nx(NX), ny(NY), pixscale(pixsize), filtscale(fscale), qfactor(q),
-  fwhm(NaN), sig_inst(NaN), sig_conf(NaN), nyhalf(NY/2 + 1),
+  nx(0), ny(0), pixscale(pixsize), filtscale(fscale), qfactor(q),
+  fwhm(NaN), sig_inst(NaN), sig_conf(NaN), nyhalf(0),
   plan(NULL), plan_inv(NULL), filt_fft(NULL), map_fft(NULL) {
 
   // Check inputs
-  if (nx < 2)
-    throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (<2) nx", 1);
-  if (ny < 2)
-    throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (<2) ny", 2);
   if (filtscale <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
 		     "Invalid (non-positive) filtscale", 3);
@@ -104,8 +85,6 @@ fourierFilter::fourierFilter(unsigned int NX, unsigned int NY,
 
 
 /*!
-  \param[in] NX Size of data we will transform in x
-  \param[in] NY Size of data we will transform in x
   \param[in] pixsize Size of pixels, in arcseconds
   \param[in] FWHM FWHM of Gaussian beam, in arcseconds
   \param[in] sigi Instrument noise, in Jy
@@ -118,22 +97,15 @@ fourierFilter::fourierFilter(unsigned int NX, unsigned int NY,
 
   This version of the constructor sets up both hipass and matched filtering
 */
-fourierFilter::fourierFilter(unsigned int NX, unsigned int NY,
-			     double pixsize, double FWHM, double sigi,
+fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
 			     double sigc, double fscale, double q,
 			     bool quickfft):
   initialized(false), doHipass(true), doMatched(true), 
-  nx(NX), ny(NY), pixscale(pixsize), filtscale(fscale), qfactor(q), 
-  fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(NY/2 + 1),
+  nx(0), ny(0), pixscale(pixsize), filtscale(fscale), qfactor(q), 
+  fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(0),
   plan(NULL), plan_inv(NULL), filt_fft(NULL), map_fft(NULL) {
 
   // Check inputs
-  if (nx < 2)
-    throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (<2) nx", 1);
-  if (ny < 2)
-    throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (<2) ny", 2);
   if (fwhm <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
 		     "Invalid (non-positive) FWHM", 3);
@@ -205,6 +177,38 @@ void fourierFilter::setup_beam(double* const bm) const {
   }
 }
 
+/*!
+  \param[in] rl Real variable (size nx by ny) to plan with.
+  \param[in] im Complex variable (size nx by ny/2+1) to plan with
+
+  Note that both of these will be destroyed on output for any
+  style of planning except FFTW_ESTIMATE
+*/
+void fourierFilter::setup_plans(double* const rl,
+				fftw_complex* const im) const {
+
+  unsigned intx = static_cast<int>(nx);
+  unsigned inty = static_cast<int>(ny);
+  if (plan != NULL) fftw_destroy_plan(plan);
+  plan = fftw_plan_dft_r2c_2d(intx, inty, rl, im, fftw_plan_style);
+  if (plan == NULL) {
+    std::stringstream str;
+    str << "Plan creation failed for forward transform of size: " << 
+      nx << " by " << ny;
+    throw pofdExcept("fourierFilter", "setup_plans", str.str(), 1);
+  }
+  if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+
+  plan_inv = fftw_plan_dft_c2r_2d(intx, inty, im, rl, fftw_plan_style);
+  if (plan_inv == NULL) {
+    std::stringstream str;
+    str << "Inverse plan creation failed for forward transform of size: " << 
+      nx << " by " << ny;
+    throw pofdExcept("fourierFilter", "setup_plans", str.str(), 2);
+  }
+  initialized = false;
+}
+
 /*! 
   Set up the filter for matched filtering.  Only touches mutable variables.
 */
@@ -223,23 +227,7 @@ void fourierFilter::setup_matched() const {
   bm = (double*) fftw_malloc(nx * ny * sizeof(double));
   
   // Set up plans
-  unsigned intx = static_cast<int>(nx);
-  unsigned inty = static_cast<int>(ny);
-  plan = fftw_plan_dft_r2c_2d(intx, inty, bm, map_fft, fftw_plan_style);
-  if (plan == NULL) {
-    std::stringstream str;
-    str << "Plan creation failed for forward transform of size: " << 
-      nx << " by " << ny;
-    throw pofdExcept("fourierFilter", "setup", str.str(), 1);
-  }
-  plan_inv = fftw_plan_dft_c2r_2d(intx, inty, map_fft, bm,
-				  fftw_plan_style);
-  if (plan_inv == NULL) {
-    std::stringstream str;
-    str << "Inverse plan creation failed for forward transform of size: " << 
-      nx << " by " << ny;
-    throw pofdExcept("fourierFilter", "setup", str.str(), 2);
-  }
+  setup_plans(bm, map_fft);
 
   // Now set up the beam
   setup_beam(bm);
@@ -318,19 +306,54 @@ void fourierFilter::setup_matched() const {
 void fourierFilter::setup_hipass() const {
   if (initialized) return; 
   // This one is quite simple -- we just need to allocate
-  //  map_fft because hipass filtering doesn't require setting up filt_fft
+  //  map_fft because hipass filtering doesn't require setting up filt_fft,
+  //  and set up the plans
   // Note we can do this even if setup_hipass has been called
   //  because of the quick return on initialized above.
   map_fft = (fftw_complex*) fftw_malloc(nx * nyhalf * sizeof(fftw_complex));
+
+  // Need some temporary planning storage -- even FFTW_ESTIMATE
+  // doesn't work correctly without something to plan through
+  double *tmp;
+  tmp = (double*) fftw_malloc(nx * ny * sizeof(double));
+  setup_plans(tmp, map_fft);
+  fftw_free(tmp);
+
   initialized = true;
 }
 
 /*!
+  \param[in] NX New size of transform, dimension 1
+  \param[in] NY New size of transform, dimension 2
+  
+  \returns true if resizing was done.
   Set up all filtering
 */
-void fourierFilter::setup() const {
-  if (doMatched) setup_matched();
+bool fourierFilter::setup(unsigned int NX, unsigned int NY) const {
+
+  if (NX < 2)
+    throw pofdExcept("fourierFilter", "setup", "Invalid NX (<2)", 1);
+  if (NY < 2)
+    throw pofdExcept("fourierFilter", "setup", "Invalid NY (<2)", 2);
+
+  // Figure out if the size has changed
+  bool resized = false;
+  if ((NX != nx) || (NY != ny)) {
+    // Have to resize; clean up and mark as uninitialized.
+    if (filt_fft != NULL) { fftw_free(filt_fft); filt_fft = NULL; }
+    if (map_fft != NULL) { fftw_free(map_fft); map_fft = NULL; }
+    if (plan != NULL) { fftw_destroy_plan(plan); plan = NULL; }
+    if (plan_inv != NULL) { fftw_destroy_plan(plan_inv); plan_inv = NULL; }
+    initialized = false;
+    resized = true;
+    nx = NX;
+    ny = NY;
+    nyhalf = ny / 2 + 1;
+  }
+
+  //if (doMatched) setup_matched();
   if (doHipass) setup_hipass();
+  return resized;
 }
 
 /*!
@@ -360,51 +383,49 @@ double fourierFilter::meanSub(double* const data) const {
   n1, n2, and pixscale are just used to check against what this was set up 
   with.  If they don't match, the code throws an exception.
 
-  The data must have the same dimensions and pixel size as the filter 
-  was set up with.  If not, the code will run but apply the wrong filter
-  without warning.  However, having a different instrument and confusion
-  noise is fine, it's just that the filter will no longer quite be the
-  matched filter for that particular map.
+  The data must have the same pixel size as the filter was set up with,
+  but the other variables do not need to match.
 
   The order is matched, then hipass.
+
+  This will resize the filter internally if needed, but that is an expensive 
+  operation.  So the caller should do their best to call this
+  with the same n1, n2 every time to avoid setup overheads.
 */
 void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
 			   double* const data) const {
   const double nsig = 5.0; //Number of sigma out we go out in highpass Gaussian
 
-  if (n1 != nx)
-    throw pofdExcept("fourierFilter", "filter", 
-		     "n1 doesn't match the nx this was set up with", 1);
-  if (n2 != ny)
-    throw pofdExcept("fourierFilter", "filter", 
-		     "n2 doesn't match the ny this was set up with", 2);
   double reldiff = fabs(pixsize - pixscale) / pixscale;
   if (reldiff > 1e-4)
     throw pofdExcept("fourierFilter", "filter", 
-		     "pixscale doesn't match what this was set up with", 3);
+		     "pixscale doesn't match what this was set up with", 1);
 
   // Handle the special case of no matched filtering, and hipass filtering
   // on scales larger than the map.  That's just mean subtracting.
   // Note this can be done without calling setup!
-  double nxny = static_cast<double>(nx * ny);
+  double n1n2 = static_cast<double>(n1 * n2);
   if (doHipass && (!doMatched)) {
     double filtscale_pix = filtscale / pixscale;
-    if (filtscale_pix * filtscale_pix > nxny) {
+    if (filtscale_pix * filtscale_pix > n1n2) {
       meanSub(data);
       return;
     }
   }
 
   // If we got this far, we need to allocate some stuff, maybe 
-  //  set up the matched filter
-  if (!initialized) setup();
+  //  set up the matched filter.  This will set nx=n1, ny=n2.
+  // If this is true already and we have done this before, this will
+  //  quick return.
+  setup(n1, n2);
+  double nxny = static_cast<double>(nx * ny);
 
   // Forward transform the data into map_fft
   // We use the advanced 'array execute' interface in case we are 
   // re-using an old plan which may have been set up on a different
   // data array.
   fftw_execute_dft_r2c(plan, data, map_fft);
-  
+
   if (doMatched) {
     // Multiply the filter into the map.  Note that we actually store 
     // the conjugated fft of the filter so that this is cross-correlation 

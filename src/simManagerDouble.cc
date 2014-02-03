@@ -1,6 +1,7 @@
 #include<cstring>
 #include<iostream>
 #include<sstream>
+#include<limits>
 
 #include<gsl/gsl_errno.h>
 #include<fitsio.h>
@@ -96,10 +97,10 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
   fftsize(FFTSIZE), n0(N0), fwhm1(FWHM1), fwhm2(FWHM2), pixsize(PIXSIZE),
-  inv_bmhist(NBEAMBINS, FILTSCALE),
+  inv_bmhist(NBEAMBINS), 
   simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, 
-	FILTSCALE, OVERSAMPLE, NBINS, POWERSPECFILE, false), 
-  use_binning(USEBIN), model(MODELFILE), 
+	OVERSAMPLE, NBINS, POWERSPECFILE), 
+  use_binning(USEBIN), model(MODELFILE), filt1(NULL), filt2(NULL),
   esmooth1(ESMOOTH1), esmooth2(ESMOOTH2) {
 
 #ifdef TIMING
@@ -134,6 +135,10 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     delta_n0 = NULL;
   }
 
+  // Set up filter if needed.  Right now we only support hi-pass filtering,
+  //  so we can ignore filt2
+  if (FILTSCALE > 0) filt1 = new fourierFilter(PIXSIZE, FILTSCALE, 0.1, false);
+
   // Set up the histogrammed beam
   double nfwhm;
   if (FILTSCALE > 0) {
@@ -143,7 +148,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     double maxfwhm = fwhm1 > fwhm2 ? fwhm1 : fwhm2;
     nfwhm = static_cast<double>(maxextent) * PIXSIZE / (2 * maxfwhm);
   } else nfwhm = NFWHM; // Can be smaller if not filtering
-  inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE, NFWHM);
+  inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE, filt1, filt2, NFWHM);
 
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
@@ -160,6 +165,8 @@ simManagerDouble::~simManagerDouble() {
   }
   if (min_n0 != NULL) delete[] min_n0;
   if (delta_n0 != NULL) delete[] delta_n0;
+  if (filt1 != NULL) delete filt1;
+  if (filt2 != NULL) delete filt2;
 }
 
 /*!
@@ -172,15 +179,12 @@ void simManagerDouble::doSims(bool verbose=false) {
   const unsigned int max_iter = 100; //!< Maximum number of iters for min
   const unsigned int max_expiter = 20; //!< Maximum number of bracket steps
   const double reltol = 0.001; //!< Relative tolerance in n0: 0.1%
-  double sigval1, sigval2; // Params to pass to minimizer
-  std::pair<double, double> maxflux, sigfinal;
+  std::pair<double, double> maxflux;
 
   //Turn off gsl error handler during call
   gsl_error_handler_t *old_handler = gsl_set_error_handler_off();
 
-  sigfinal = simim.getFinalNoise(nnoisetrials);
-  sigval1 = sigfinal.first;
-  sigval2 = sigfinal.second;
+  sigi_final = simim.getFinalNoise(nnoisetrials, filt1, filt2);
 
   //Now, set up the parameters to pass to the minimizer.  Ugly!
   varr[0] = static_cast<void*>(&pdfac);
@@ -209,7 +213,8 @@ void simManagerDouble::doSims(bool verbose=false) {
   maxflux = model.getMaxFluxEstimate();
   maxflux.first *= 1.05 * max_n0ratio;
   maxflux.second *= 1.05 * max_n0ratio;
-  pdfac.initPD(fftsize, sigval1, sigval2, maxflux.first, maxflux.second, 
+  pdfac.initPD(fftsize, sigi_final.first, sigi_final.second, 
+	       maxflux.first, maxflux.second, 
 	       init_b, model, inv_bmhist, true);
 #ifdef TIMING
   initTime += std::clock() - starttime;
@@ -226,7 +231,7 @@ void simManagerDouble::doSims(bool verbose=false) {
     }
     //Make simulated image, don't mean sub until we have mn estimate
     // so we can estimate shifts
-    simim.realize(model, n0, true, use_binning, like_sparcity);
+    simim.realize(model, n0, true, filt1, filt2, use_binning, like_sparcity);
 
     //Now set up the minimization; note this involves calling minfunc
     // so we can't do it until all the arguments are ready
@@ -498,7 +503,7 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &dpr.second, 
 		 const_cast<char*>("Raw instrument noise, band 2"), 
 		 &status);
-  dpr = simim.getFinalNoise();
+  dpr = sigi_final;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL1"), &dpr.first, 
 		 const_cast<char*>("Final instrument noise, band 1"), 
 		 &status);
@@ -556,14 +561,68 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		 const_cast<char*>("N0 range fraction for minimization"), 
 		 &status);
 
-  itmp = simim.isFiltered();
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp, 
-		 const_cast<char*>("Has hipass filtering been applied?"), 
+  itmp = simim.isHipassFiltered().first;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT1"), &itmp,
+		 const_cast<char*>("Has hipass filtering been applied in band1?"), 
 		 &status);
-  if (simim.isFiltered()) {
-    dtmp = simim.getFiltScale();
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp, 
-		 const_cast<char*>("Hipass filtering scale [arcsec]"), 
+  if (itmp) {
+    dtmp = simim.getFiltScale().first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL1"), &dtmp, 
+		 const_cast<char*>("Hipass filtering scale1 [arcsec]"), 
+		 &status);
+    dtmp = simim.getFiltQFactor().first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ1"), &dtmp, 
+		 const_cast<char*>("Hipass filtering apodization1"), 
+		 &status);
+  } 
+  itmp = simim.isMatchFiltered().first;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT1"), &itmp, 
+		 const_cast<char*>("Has matched filtering been applied in band1?"), 
+		 &status);
+  if (itmp) {
+    dtmp = simim.getFiltFWHM().first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTFWHM1"), &dtmp, 
+		 const_cast<char*>("Matched filtering fwhm1 [arcsec]"), 
+		 &status);
+    dtmp = simim.getFiltSigInst().first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGI1"), &dtmp, 
+		 const_cast<char*>("Matched filtering sig_i1 [Jy]"), 
+		 &status);
+    dtmp = simim.getFiltSigConf().first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGC1"), &dtmp, 
+		 const_cast<char*>("Matched filtering sig_c1 [Jy]"), 
+		 &status);
+  } 
+  itmp = simim.isHipassFiltered().second;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT2"), &itmp,
+		 const_cast<char*>("Has hipass filtering been applied in band2?"), 
+		 &status);
+  if (itmp) {
+    dtmp = simim.getFiltScale().second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL2"), &dtmp, 
+		 const_cast<char*>("Hipass filtering scale2 [arcsec]"), 
+		 &status);
+    dtmp = simim.getFiltQFactor().second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ2"), &dtmp, 
+		 const_cast<char*>("Hipass filtering apodization2"), 
+		 &status);
+  } 
+  itmp = simim.isMatchFiltered().second;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT2"), &itmp, 
+		 const_cast<char*>("Has matched filtering been applied in band2?"), 
+		 &status);
+  if (itmp) {
+    dtmp = simim.getFiltFWHM().second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTFWHM2"), &dtmp, 
+		 const_cast<char*>("Matched filtering fwhm2 [arcsec]"), 
+		 &status);
+    dtmp = simim.getFiltSigInst().second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGI2"), &dtmp, 
+		 const_cast<char*>("Matched filtering sig_i2 [Jy]"), 
+		 &status);
+    dtmp = simim.getFiltSigConf().second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGC2"), &dtmp, 
+		 const_cast<char*>("Matched filtering sig_c2 [Jy]"), 
 		 &status);
   } 
 

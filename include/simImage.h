@@ -28,7 +28,15 @@ class simImage {
   double fwhm; //!< Beam FWHM in arcsec
   double sigi; //!< Raw instrumental noise, before any smoothing/filtering
   double esmooth; //!< Additional Gaussian smoothing FWHM in arcsec
-  mutable fourierFilter* filt; //!< High pass filter
+
+  bool isHipass; //!< Was hipass filtering applied during fill?
+  double filtscale; //!< High-pass filtering scale, in arcsec
+  double qfactor; //!< High-pass filtering apodization
+
+  bool isMatched; //!< Was matched filtering applied during the fill?
+  double matched_fwhm; //!< FWHM of matched filter (doesn't have to match this beam)
+  double matched_sigi; //!< Instrument sigma of matched filter
+  double matched_sigc; //!< Confusion sigma of matched filter
 
   // sigi_final is only computed when needed, since it isn't 
   // totally free to do if there is filtering
@@ -88,9 +96,8 @@ class simImage {
   /*!\brief Constructor */
   simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 	   double FWHM, double SIGI, double ESMOOTH=0.0, 
-	   double FILTERSCALE=0.0, unsigned int OVERSAMPLE=1, 
-	   unsigned int NBINS=1000, const std::string& powerfile="",
-	   bool quickfft=false); 
+	   unsigned int OVERSAMPLE=1, unsigned int NBINS=1000, 
+	   const std::string& powerfile="");
   ~simImage(); //!< Destructor
 
   /*! \brief Set random number generator seed */
@@ -98,7 +105,8 @@ class simImage {
   
   /*! \brief Generate realization of model */
   void realize(const numberCounts& model, double n0, 
-	       bool meansub=false, bool bin=false, unsigned int sparsebin=1); 
+	       bool meansub=false, const fourierFilter* const filt=NULL,
+	       bool bin=false, unsigned int sparsebin=1); 
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 
@@ -109,8 +117,13 @@ class simImage {
   double getBinCent0() const { return bincent0; } //!< Get bin 0 center
   double getBinDelta() const { return bindelta; } //!< Get bin size
 
-  bool isFiltered() const { return filt != NULL; } //!< Is the image filtered
-  double getFiltScale() const; //!< Get image filter scale
+  bool isHipassFiltered() const { return isHipass; }
+  double getFiltScale() const { return filtscale; } //!< Get filtering scale
+  double getFiltQFactor() const { return qfactor; } //!< Get filtering scale
+  bool isMatchFiltered() const { return isMatched; }
+  double getFiltFWHM() const { return matched_fwhm; }
+  double getFiltSigInst() const { return matched_sigi; }
+  double getFiltSigConf() const { return matched_sigc; }
 
   unsigned int isSmoothed() const { return esmooth > 0.0; }
   double getEsmooth() const;
@@ -118,7 +131,8 @@ class simImage {
   /*! \brief Get Raw instrument noise */
   double getInstNoise() const { return sigi; }
 
-  double getFinalNoise(unsigned int ntrials=3) const; //!< Returns noise level estimate for image after smoothing or filtering
+  double getFinalNoise(unsigned int ntrials=3,
+		       const fourierFilter* const filt=NULL) const; //!< Returns noise level estimate for image after smoothing or filtering
 
   double meanSubtract(); //!< Subtract mean from image
   void getMinMax(double& min, double& max) const; //!< Get minima and maxima of data

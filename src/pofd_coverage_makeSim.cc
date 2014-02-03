@@ -136,13 +136,18 @@ int makeSimSingle(int argc, char **argv) {
       std::cout << "Base model n0: " << model.getBaseN0()
 		<< " Your value: " << n0 << std::endl;
 
+    fourierFilter *filt = NULL;
+    if (filtscale > 0)
+      filt = new fourierFilter(pixsize, filtscale, 0.1, true);
+
     simImage dim(n1, n2, pixsize, fwhm, sigma, extra_smooth,
-		 filtscale, oversample, 1000, powspecfile, true);
+		 oversample, 1000, powspecfile);
     if (have_user_seed) dim.setSeed(user_seed);
 
-
     // Generate with mean subtraction
-    dim.realize(model, n0, true, false); 
+    dim.realize(model, n0, true, filt, false); 
+
+    if (filt != NULL) delete filt;
 
     //Write it
     if (verbose) std::cout << "Writing simulated image to " << outputfile
@@ -287,13 +292,19 @@ int makeSimDouble(int argc, char **argv) {
       std::cout << "Base model n0: " << model.getBaseN0()
 		<< " Your value: " << n0 << std::endl;
 
+    fourierFilter *filt = NULL;
+    if (filtscale > 0)
+      filt = new fourierFilter(pixsize, filtscale, 0.1, true);
+
     simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, 
-		       extra_smooth1, extra_smooth2, filtscale, oversample, 
-		       1000, powerspecfile, true);
-    if (have_user_seed) dim.setSeed( user_seed );
+		       extra_smooth1, extra_smooth2, oversample, 
+		       1000, powerspecfile);
+    if (have_user_seed) dim.setSeed(user_seed);
     
     // Generate with mean subtraction
-    dim.realize(model, n0, true, false);
+    dim.realize(model, n0, true, filt, NULL, false);
+
+    if (filt != NULL) delete filt;
 
     //Write it
     if (verbose) std::cout << "Writing simulated images to " << outputfile1

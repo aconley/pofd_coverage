@@ -141,24 +141,18 @@ int getBeamSingle(int argc, char **argv) {
       if (histogram) printf("Returning histogrammed beam\n");
     }
 
+    fourierFilter *filt = NULL;
+    if (filterscale > 0)
+      filt = new fourierFilter(pixsize, filterscale, 0.1, true); 
     if (histogram) {
       // Get histogrammed beam
-      beamHist bmhist(nbins, filterscale);
-      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp, nkeep);
+      beamHist bmhist(nbins);
+      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp, filt, nkeep);
       // Write
       bmhist.writeToFits(outputfile);
-    } else {
-      fourierFilter *filt = NULL;
-      if (filterscale > 0) {
-	// We have to figure out how many pixels to make it
-	unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
-						      0.9999999999);
-	npix = 2 * npix + 1;
-	filt = new fourierFilter(npix, npix, pixsize, filterscale, 0.1, true);
-      }
+    } else 
       bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, inverse);
-      if (filt != NULL) delete filt; 
-    }    
+    if (filt != NULL) delete filt; 
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
@@ -282,25 +276,18 @@ int getBeamDouble(int argc, char **argv) {
       if (histogram) printf("Returning histogrammed beam\n");
     }
 
+    fourierFilter *filt = NULL;
+    if (filterscale > 0)
+      filt = new fourierFilter(pixsize, filterscale, 0.1, true);
     if (histogram) {
       // Get histogrammed beam
-      doublebeamHist bmhist(nbins, filterscale);
-      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp, nkeep);
+      doublebeamHist bmhist(nbins);
+      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp, filt, NULL, nkeep);
       // Write
       bmhist.writeToFits(outputfile);
-    } else {
-      fourierFilter *filt = NULL;
-      if (filterscale > 0) {
-	// We have to figure out how many pixels to make it
-	double fwhm = std::max(fwhm1, fwhm2);
-	unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
-						      0.9999999999);
-	npix = 2 * npix + 1;
-	filt = new fourierFilter(npix, npix, pixsize, filterscale, 0.1, true);
-      }
-      bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, inverse);
-      if (filt != NULL) delete filt; 
-    }    
+    } else
+      bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, NULL, inverse);
+    if (filt != NULL) delete filt; 
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;

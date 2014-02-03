@@ -239,7 +239,7 @@ void beam::getRawBeam(unsigned int n, double pixsize, unsigned int oversamp,
                      filtering
 */
 void beam::getBeam(unsigned int n, double pixsize, double* const bm, 
-		   fourierFilter* const filter) const {
+		   const fourierFilter* const filter) const {
 
   // pre-filtered beam
   getRawBeam(n, pixsize, bm);
@@ -260,7 +260,7 @@ void beam::getBeam(unsigned int n, double pixsize, double* const bm,
                 apply filter
 */
 void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
-		   double* const bm, fourierFilter* const filter) const {
+		   double* const bm, const fourierFilter* const filter) const {
 
   // Pre-filtered beam
   getRawBeam(n, pixsize, oversamp, bm);
@@ -281,7 +281,7 @@ void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
 */
 void beam::writeToFits(const std::string& outputfile, double pixsize, 
 		       double nfwhm, unsigned int oversamp,
-		       fourierFilter* const filt, bool inverse) const {
+		       const fourierFilter* const filt, bool inverse) const {
   if (nfwhm <= 0.0)
     throw pofdExcept("beam", "writeToFits", "Invalid (non-positive) nfwhm", 1);
   if (pixsize <= 0.0)
@@ -411,10 +411,8 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
 
 /*!
   \param[in] NBINS Number of bins in histogram
-  \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If zero, no 
-             filtering is applied.
 */
-beamHist::beamHist(unsigned int NBINS, double FILTSCALE):
+beamHist::beamHist(unsigned int NBINS):
   has_data(false), inverse(false), nbins(0), fwhm(0.0), nfwhm(4.0),
   nfwhmkeep(4.0), pixsize(0.0), eff_area(0.0), oversamp(1), 
   n_pos(0), n_neg(0) {
@@ -432,8 +430,13 @@ beamHist::beamHist(unsigned int NBINS, double FILTSCALE):
   minmax_neg = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			      std::numeric_limits<double>::quiet_NaN());
 
-  filtscale = FILTSCALE;
-  qfactor = 0.1;
+  isHipass = false;
+  filtscale = std::numeric_limits<double>::quiet_NaN();
+  qfactor = std::numeric_limits<double>::quiet_NaN();
+  isMatched = false;
+  matched_fwhm = std::numeric_limits<double>::quiet_NaN();
+  matched_sigi = std::numeric_limits<double>::quiet_NaN();
+  matched_sigc = std::numeric_limits<double>::quiet_NaN();
 }
 
 beamHist::~beamHist() {
@@ -449,11 +452,13 @@ beamHist::~beamHist() {
   \param[in] pixsz Pixel size (arcseconds)
   \param[in] inv Histogram the inverse beam
   \param[in] oversampling Oversampling of beam. Must be odd
+  \param[in] filt Fourier space filter to apply
   \param[in] num_fwhm_keep How many FWHM to keep in the histogram
               after filtering.  If 0 (the default), keeps everything.
 */
 void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
 		    bool inv, unsigned int oversampling,
+		    const fourierFilter* const filt,
 		    double num_fwhm_keep) {
 
   const double minval = 1e-5; //Always ignore beam values below this
@@ -476,15 +481,31 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   // Temporary beam storage.  Must use fftw_malloc since we may filter
   double val;
   double *bmtmp = (double*) fftw_malloc(sizeof(double) * npix * npix);
-  // Setup high-pass filter if needed
-  fourierFilter *filt = NULL;
-  if (filtscale > 0.0)
-    filt = new fourierFilter(npix, npix, pixsize, filtscale, qfactor, true);
-  // Get the beam
-  bm.getBeam(npix, pixsize, oversamp, bmtmp, filt); // Also filters
-  // Clean up filter if not permanent
-  if (filt != NULL)
-    delete filt;
+  // Get the beam, filtering as needed
+  bm.getBeam(npix, pixsize, oversamp, bmtmp, filt);
+
+  // Store information about the filtering.  This is done purely
+  //  in case we want to write the beam out.
+  isHipass = false;
+  filtscale = std::numeric_limits<double>::quiet_NaN();
+  qfactor = std::numeric_limits<double>::quiet_NaN();
+  isMatched = false;
+  matched_fwhm = std::numeric_limits<double>::quiet_NaN();
+  matched_sigi = std::numeric_limits<double>::quiet_NaN();
+  matched_sigc = std::numeric_limits<double>::quiet_NaN();
+  if (filt != NULL) {
+    if (filt->isHipass()) {
+      isHipass = true;
+      filtscale = filt->getFiltScale();
+      qfactor = filt->getQFactor();
+    }
+    if (filt->isMatched()) {
+      isMatched = true;
+      matched_fwhm = filt->getFWHM();
+      matched_sigi = filt->getSigInst();
+      matched_sigc = filt->getSigConf();
+    } 
+  }
 
   minmax_pos = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			      std::numeric_limits<double>::quiet_NaN());
@@ -690,20 +711,39 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHMKP"), &dtmp,
 		 const_cast<char*>("Number of FWHM kept"), &status);
   
-  if (filtscale > 0.0) {
+  if (isHipass) {
     itmp = 1;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
-		   const_cast<char*>("Is beam filtered?"), &status);
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
+		   const_cast<char*>("Is beam hipass filtered?"), &status);
     dtmp = filtscale;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL"), &dtmp,
 		   const_cast<char*>("Filtering scale [arcsec]"), &status);
     dtmp = qfactor;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTQ"), &dtmp,
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ"), &dtmp,
 		   const_cast<char*>("Filtering apodization"), &status);
   } else {
     itmp = 0;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
-		   const_cast<char*>("Is beam filtered?"), &status);
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
+		   const_cast<char*>("Is beam hipass filtered?"), &status);
+  }
+  if (isMatched) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
+		   const_cast<char*>("Is beam match filtered?"), &status);
+    dtmp = matched_fwhm;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITFWHM"), &dtmp,
+		   const_cast<char*>("Matched filtering FWHM [arcsec]"), 
+		   &status);
+    dtmp = matched_sigi;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGI"), &dtmp,
+		   const_cast<char*>("Matched filtering sigi"), &status);
+    dtmp = matched_sigc;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGC"), &dtmp,
+		   const_cast<char*>("Matched filtering sigc"), &status);
+  } else {
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
+		   const_cast<char*>("Is beam match filtered?"), &status);
   }
   
   if (oversamp > 1) {

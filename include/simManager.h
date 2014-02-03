@@ -65,8 +65,13 @@ class simManager {
   mutable PDFactory pdfac; //!< Computes P(D)
   mutable numberCounts model; //!< Model variable
 
+  fourierFilter *filt; //!< Fourier space filter
+
   //Additional smoothing
   double esmooth; //!< Additional smoothing
+
+  // Final noise
+  double sigi_final; //!< final noise value
 
   //Stuff for GSL minimization call
   void **varr; //!< Internal evil casting array for minimization

@@ -64,7 +64,13 @@ class simManagerDouble {
   mutable PDFactoryDouble pdfac; //!< Computes P(D)
   mutable numberCountsDouble model; //!< Model variable
 
+  // Filtering.  If only filt1 is set, use that for both.
+  fourierFilter *filt1; //!< Band 1 (and maybe 2) fourier space filter
+  fourierFilter *filt2; //!< Band 2 fourier space filter
+
   double esmooth1, esmooth2; //!< Additional smoothing amount
+
+  dblpair sigi_final; //!< Final noise in each band.
 
   //Stuff for GSL minimization call
   void **varr; //!< Internal evil casting array for minimization

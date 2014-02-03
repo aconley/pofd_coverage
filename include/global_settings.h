@@ -38,5 +38,6 @@ namespace pofd_coverage {
 
 // Typedefs
 typedef std::pair<double, double> dblpair;
+typedef std::pair<bool, bool> blpair;
 
 #endif

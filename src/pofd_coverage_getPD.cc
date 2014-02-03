@@ -230,8 +230,12 @@ int getPDSingle(int argc, char **argv) {
     }
 
     // Get histogrammed inverse beam
-    beamHist inv_bmhist(nbins, filterscale);
-    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, nkeep);
+    beamHist inv_bmhist(nbins);
+    fourierFilter *filt = NULL;
+    if (filterscale > 0)
+      filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, filt, nkeep);
+    if (filt != NULL) delete filt;
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 
@@ -501,8 +505,12 @@ int getPDDouble(int argc, char **argv) {
     }
 
     // Get histogrammed inverse beam
-    doublebeamHist inv_bmhist(nbins, filterscale);
-    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, nkeep);
+    doublebeamHist inv_bmhist(nbins);
+    fourierFilter *filt = NULL;
+    if (filterscale > 0)
+      filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, filt, NULL, nkeep);
+    if (filt != NULL) delete filt;
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 

@@ -24,22 +24,17 @@
               This is the noise before additional smoothing or filtering.
   \param[in] ESMOOTH Additional Gaussian smoothing FWHM.  If non-zero,
               additional smoothing is applied.
-  \param[in] FILTERSCALE High-pass filtering scale, in arcseconds.
-              Zero means no filtering.
   \param[in] OVERSAMPLE Oversampling of simulated image.  Must be odd.
               1 means no additional oversampling.
   \param[in] NBINS Number of bins, if binning is applied.
   \param[in] powerspecfile File containing power spectrum.  If set, the
               source positions are generated using this P(k).  If not set, they
 	      are uniformly distributed across the image.
-  \param[in] quickfft Set to true to use FFTW_ESTIMATE rather than FFTW_MEASURE
-              when filtering; suitable if you only plan to call this once.
 */
 simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 		   double FWHM, double SIGI, double ESMOOTH, 
-		   double FILTERSCALE, unsigned int OVERSAMPLE, 
-		   unsigned int NBINS, const std::string& powerspecfile,
-		   bool quickfft) {
+		   unsigned int OVERSAMPLE, unsigned int NBINS, 
+		   const std::string& powerspecfile) {
 
   if (N1 == 0)
     throw pofdExcept("simImage", "simImage", "Invalid (non-positive) N1", 1);
@@ -88,10 +83,12 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   seed += static_cast<unsigned long long int>(clock());
   rangen.set_seed(seed);
   
-  // Filtering
-  if (FILTERSCALE > 0.0)
-    filt = new fourierFilter(n1, n2, pixsize, FILTERSCALE, 0.1, quickfft);
-  else filt = NULL;
+  // Filtering variables
+  isHipass = false;
+  filtscale = qfactor = std::numeric_limits<double>::quiet_NaN();
+  isMatched = false;
+  matched_fwhm = std::numeric_limits<double>::quiet_NaN();
+  matched_sigi = matched_sigc = std::numeric_limits<double>::quiet_NaN();
 
   // Position generator if needed
   use_clustered_pos = false;
@@ -131,7 +128,6 @@ simImage::~simImage() {
   fftw_free(work);
   if (gen_image != NULL) fftw_free(gen_image);
   if (posgen != NULL) delete posgen;
-  if (filt != NULL) delete filt;
   delete[] gauss;
   if (gauss_add != NULL) delete[] gauss_add;
   if (binval != NULL) delete[] binval;
@@ -347,6 +343,7 @@ void simImage::convolveWithAdd() {
 
 /*
   \param[in] ntrials Number of trials to do if measuring filtered noise.
+  \param[in] filt fourier space filter to apply
   \returns Instrument noise including effects of filtering, etc.
   
   This can include both filtering and additional Gaussian smoothing.
@@ -357,7 +354,8 @@ void simImage::convolveWithAdd() {
   This is not particularly cheap the first time it is called.
   After that it uses the previously computed value if possible.  
 */
-double simImage::getFinalNoise(unsigned int ntrials) const {
+double simImage::getFinalNoise(unsigned int ntrials,
+			       const fourierFilter* const filt) const {
 
   // esmooth normalization factor input
   const double prefac = 4 * std::log(2) / pofd_coverage::pi;
@@ -465,13 +463,14 @@ double simImage::getArea() const {
   \param[in] n0 Number of sources per area to generate
   \param[in] meansub Do mean subtraction.  Note that filtering
              automatically results in mean subtraction.
+  \param[in] Fourier space filter to apply.  If NULL, no filtering.
   \param[in] bin Create binned image data
   \param[in] sparsebin Only take every this many pixels in binned image.
                          Does nothing if no binning.
 */
 void simImage::realize(const numberCounts& model, double n0,
-		       bool meansub, bool bin,
-		       unsigned int sparsebin) {
+		       bool meansub, const fourierFilter* const filt,
+		       bool bin, unsigned int sparsebin) {
 
   if (!isValid())
     throw pofdExcept("simImage", "realize",
@@ -553,13 +552,26 @@ void simImage::realize(const numberCounts& model, double n0,
     convolveWithAdd();
 
   // Apply filtering.  Note this is done after adding noise and
-  // downsampling to the final resolution (if oversampling is used).
-  // Filtering will always result in mean subtraction since
-  // it is a hipass filter.
-  if (filt != NULL)
+  //  downsampling to the final resolution (if oversampling is used).
+  // Filtering will always result in mean subtraction, so no need to do
+  //  that twice
+  isHipass = isMatched = false;
+  filtscale = qfactor = matched_fwhm = matched_sigi = matched_sigc =
+	std::numeric_limits<double>::quiet_NaN();
+  if (filt != NULL) {
     filt->filter(n1, n2, pixsize, data);
-  else
-    if (meansub) meanSubtract();
+    if (filt->isHipass()) {
+      isHipass = true;
+      filtscale = filt->getFiltScale();
+      qfactor = filt->getQFactor();
+    } 
+    if (filt->isMatched()) {
+      isMatched = true;
+      matched_fwhm = filt->getFWHM();
+      matched_sigi = filt->getSigInst();
+      matched_sigc = filt->getSigConf();
+    } 
+  } else if (meansub) meanSubtract();
 
   is_binned = false;
   if (bin) applyBinning(sparsebin);
@@ -703,11 +715,6 @@ double simImage::getBeamSumSq() const {
   return sum1D * sum1D;
 }
 
-double simImage::getFiltScale() const {
-  if (filt == NULL) return std::numeric_limits<double>::quiet_NaN();
-  return filt->getFiltScale();
-}
-
 double simImage::getEsmooth() const {
   if (esmooth <= 0.0) return std::numeric_limits<double>::quiet_NaN();
   else return esmooth;
@@ -776,10 +783,12 @@ int simImage::writeToFits(const std::string& outputfile) const {
 		 const_cast<char*>("Raw instrument noise"), 
 		 &status);
 
-  dtmp = getFinalNoise();
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL"), &dtmp, 
-		 const_cast<char*>("Final instrument noise"), 
-		 &status);
+  if (sigi_final_computed) {
+    dtmp = sigi_final;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL"), &dtmp, 
+		   const_cast<char*>("Final instrument noise"), 
+		   &status);
+  }
 
   if (oversample > 1) {
     unsigned int utmp = oversample;
@@ -792,19 +801,39 @@ int simImage::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &itmp,
 		 const_cast<char*>("Use clustered positions"), &status);
 
-
-  if (filt != NULL) itmp = 1; else itmp = 0;
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
-		 const_cast<char*>("Hipass filtering applied"), &status);
-  if (filt != NULL) {
-    dtmp = filt->getFiltScale();
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp, 
-		   const_cast<char*>("Hipass filtering scale [arcsec]"), 
+  if (isHipass) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
+		   const_cast<char*>("Is beam hipass filtered?"), &status);
+    dtmp = filtscale;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL"), &dtmp,
+		   const_cast<char*>("Filtering scale [arcsec]"), &status);
+    dtmp = qfactor;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ"), &dtmp,
+		   const_cast<char*>("Filtering apodization"), &status);
+  } else {
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
+		   const_cast<char*>("Is beam hipass filtered?"), &status);
+  }
+  if (isMatched) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
+		   const_cast<char*>("Is beam match filtered?"), &status);
+    dtmp = matched_fwhm;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITFWHM"), &dtmp,
+		   const_cast<char*>("Matched filtering FWHM [arcsec]"), 
 		   &status);
-    dtmp = filt->getQFactor();
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTQ"), &dtmp, 
-		   const_cast<char*>("Hipass filtering apodization"), 
-		   &status);
+    dtmp = matched_sigi;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGI"), &dtmp,
+		   const_cast<char*>("Matched filtering sigi"), &status);
+    dtmp = matched_sigc;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGC"), &dtmp,
+		   const_cast<char*>("Matched filtering sigc"), &status);
+  } else {
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
+		   const_cast<char*>("Is beam match filtered?"), &status);
   }
 
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),

@@ -33,7 +33,16 @@ class simImageDouble {
   double sigi2; //!< Instrumental (white) noise in band 2
   double esmooth1; //!< Additional Gaussian smoothing FWHM in arcsec, band 1
   double esmooth2; //!< Additional Gaussian smoothing FWHM in arcsec, band 2
-  mutable fourierFilter* filt; //!< High pass filter
+
+  // Filtering info
+  blpair isHipass; //!< Was hipass filtering applied during fill?
+  dblpair filtscale; //!< High-pass filtering scale, in arcsec
+  dblpair qfactor; //!< High-pass filtering apodization
+
+  blpair isMatched; //!< Was matched filtering applied during the fill?
+  dblpair matched_fwhm; //!< FWHM of matched filter (doesn't have to match this beam)
+  dblpair matched_sigi; //!< Instrument sigma of matched filter
+  dblpair matched_sigc; //!< Confusion sigma of matched filter
 
   // The sigi_final are only computed when needed, since they isn't 
   // totally free to do if there is filtering
@@ -88,7 +97,7 @@ class simImageDouble {
 			     double sigi, double fwhm, double esmooth, 
 			     unsigned int ngauss_add,
 			     const double* const gauss_add,
-			     fourierFilter* const filt) const;
+			     const fourierFilter* const filt) const;
 
   //Convolution stuff
   void convolveInner(unsigned int, const double* const,
@@ -111,17 +120,18 @@ class simImageDouble {
   simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE, 
 		 double FWHM1, double FWHM2, double SIGI1,
 		 double SIGI2, double ESMOOTH1=0.0, double ESMOOTH2=0.0, 
-		 double FILTERSCALE=0.0, unsigned int OVERSAMPLE =1, 
-		 unsigned int NBINS=1000, const std::string& powerspec="",
-		 bool quickfft=false);
+		 unsigned int OVERSAMPLE=1, unsigned int NBINS=1000, 
+		 const std::string& powerspec="", bool quickfft=false);
   ~simImageDouble(); //!< Destructor
 
   /*! \brief Set random number generator seed */
   void setSeed(unsigned long long int seed) const { rangen.set_seed(seed); }
   
   /*! Generate realization of model */
-  void realize(const numberCountsDouble& model, double n0,
-	       bool meansub=false, bool bin=false, unsigned int sparsebin=1);
+  void realize(const numberCountsDouble& model, double n0, bool meansub=false, 
+	       const fourierFilter* const filt1=NULL,
+	       const fourierFilter* const filt2=NULL,
+	       bool bin=false, unsigned int sparsebin=1);
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 
@@ -134,22 +144,27 @@ class simImageDouble {
   double getBinCent02() const { return bincent02; }
   double getBinDelta2() const { return bindelta2; }
 
-  bool isFiltered() const { return filt != NULL; } //!< Is the image filtered
-  double getFiltScale() const; //!< Get image filter scale
+  blpair isHipassFiltered() const { return isHipass; }
+  dblpair getFiltScale() const { return filtscale; } //!< Get filtering scale
+  dblpair getFiltQFactor() const { return qfactor; } //!< Get filtering scale
+  blpair isMatchFiltered() const { return isMatched; }
+  dblpair getFiltFWHM() const { return matched_fwhm; }
+  dblpair getFiltSigInst() const { return matched_sigi; }
+  dblpair getFiltSigConf() const { return matched_sigc; }
 
   bool isSmoothed() const { return (esmooth1 > 0.0) || (esmooth2 > 0.0); }
-  std::pair<double, double> getEsmooth() const {
-    return std::make_pair(esmooth1, esmooth2); }
+  dblpair getEsmooth() const { return std::make_pair(esmooth1, esmooth2); }
 
   /*! \brief Get raw instrument noise */
-  std::pair<double,double> getInstNoise() const {
-    return std::make_pair(sigi1, sigi2); }
+  dblpair getInstNoise() const { return std::make_pair(sigi1, sigi2); }
 
   /*! \brief Returns noise level estimate after smoothing or filtering*/
-  std::pair<double,double> getFinalNoise(unsigned int ntrials=3) const; 
+  dblpair getFinalNoise(unsigned int ntrials=3,
+			const fourierFilter* const filt1=NULL,
+			const fourierFilter* const filt2=NULL) const;
 
-  std::pair<double, double> meanSubtract(); //!< Subtract off means
-  std::pair<double, double> getMean() const; //!< Get mean in each band
+  dblpair meanSubtract(); //!< Subtract off means
+  dblpair getMean() const; //!< Get mean in each band
   /*! \brief Get mean and variance of image in each band */
   void getMeanAndVar(double&, double&, double&, double&) const;
   /*! \brief Get minimum and maximum of image in each band */
@@ -157,9 +172,9 @@ class simImageDouble {
 		 double& max2) const; //!< Get minima and maxima in both bands
 
   /*! \brief Returns sum of beams (i.e., area in pixels) */
-  std::pair<double,double> getBeamSum() const; 
+  dblpair getBeamSum() const; 
   /*! \brief Returns sum of beams squared (i.e., area in pixels of bm^2) */
-  std::pair<double,double> getBeamSumSq() const; 
+  dblpair getBeamSumSq() const; 
 
   unsigned int getN1() const { return n1; } //!< Get image extent, band 1
   unsigned int getN2() const { return n2; } //!< Get image extent, band 1

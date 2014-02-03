@@ -49,16 +49,18 @@ class doublebeam {
 
   /*!\brief Get 2D beam*/
   void getBeam(unsigned int band, unsigned int n, double pixsize, 
-	       double* const, fourierFilter* const=NULL) const;
+	       double* const, const fourierFilter* const=NULL) const;
   /*!\brief Get 2D beam with oversampling*/
   void getBeam(unsigned int band, unsigned int n, double pixsize, 
 	       unsigned int oversamp, double* const, 
-	       fourierFilter* const=NULL) const;
+	       const fourierFilter* const=NULL) const;
 
   /*!\brief Write the beams to a FITS file*/
   void writeToFits(const std::string& outfile, double pixsize, 
 		   double nfwhm=3.5, unsigned int oversamp=1,
-		   fourierFilter* const=NULL, bool inverse=false) const;
+		   const fourierFilter* const filt1=NULL, 
+		   const fourierFilter* const filt2=NULL,
+		   bool inverse=false) const;
 };
 
 /*!
@@ -90,8 +92,14 @@ class doublebeamHist {
   double eff_area2; //!< Effective area of beam in deg^2, band 2
   unsigned int oversamp; //!< Oversampling factor
 
-  double filtscale; //!< High-pass filtering scale, in arcsec
-  double qfactor; //!< High-pass filtering apodization
+  std::pair<bool, bool> isHipass; //!< Was hipass filtering applied during fill?
+  dblpair filtscale; //!< High-pass filtering scale, in arcsec
+  dblpair qfactor; //!< High-pass filtering apodization
+
+  std::pair<bool, bool> isMatched; //!< Was matched filtering applied during the fill?
+  dblpair matched_fwhm; //!< FWHM of matched filter, band 1 (doesn't have to match this beam)
+  dblpair matched_sigi; //!< Instrument sigma of matched filter
+  dblpair matched_sigc; //!< Confusion sigma of matched filter
 
   unsigned int n[4]; //!< Number of histogram elements filled in pp, pn, np, nn
   unsigned int* wt[4]; //!< Weights
@@ -102,7 +110,7 @@ class doublebeamHist {
   dblpair minmax2[4]; //!< Min/max beam (not inverse beam!) in each sign component, band 2
  public:
 
-  doublebeamHist(unsigned int NBINS, double FILTSCALE=0.0); //!< Constructor
+  doublebeamHist(unsigned int NBINS); //!< Constructor
   ~doublebeamHist(); //!< Destructor
   
   bool hasData() const { return has_data; }
@@ -122,8 +130,14 @@ class doublebeamHist {
   const double* getBm1(unsigned int idx) const { return bm1[idx]; }
   const double* getBm2(unsigned int idx) const { return bm2[idx]; }
   
-  bool isFiltered() const { return filtscale>0; } //!< Is the beam filtered
-  double getFiltScale() const { return filtscale; } //!< Get filtering scale
+  std::pair<bool, bool> isHipassFiltered() const { return isHipass; }
+  /*!\brief Get High-Pass filtering scale*/
+  dblpair getFiltScale() const { return filtscale; } 
+  dblpair getFiltQFactor() const { return qfactor; }
+  std::pair<bool, bool> isMatchFiltered() const { return isMatched; }
+  dblpair getFiltFWHM() const { return matched_fwhm; }
+  dblpair getFiltSigInst() const { return matched_sigi; }
+  dblpair getFiltSigConf() const { return matched_sigc; }
 
   // Min/max values
   /*!\brief Get min/max band 1 (non-inverse beam)*/
@@ -133,7 +147,10 @@ class doublebeamHist {
 
   /*!\brief Fill from beam*/
   void fill(const doublebeam& bm, double nfwhm, double pixsize,
-	    bool inv=false, unsigned int oversamp=1, double num_fwhm_keep=0);
+	    bool inv=false, unsigned int oversamp=1, 
+	    const fourierFilter* const filt1=NULL, 
+	    const fourierFilter* const filt2=NULL, 
+	    double num_fwhm_keep=0);
 
   /*! \brief Write out as FITS file*/
   void writeToFits(const std::string&) const;

@@ -136,9 +136,15 @@ int getRSingle(int argc, char** argv) {
   try {
     numberCounts model(modelfile);
     beam bm(fwhm);
-    beamHist inv_bmhist(nbins, filterscale);
-    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, nkeep);
-    
+    beamHist inv_bmhist(nbins);
+
+    // Fill beam, possibly with filtering
+    fourierFilter *filt = NULL;
+    if (filterscale > 0)
+      filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, filt, nkeep);
+    if (filt != NULL) delete filt;
+
     if (n0 == 0)
       n0 = model.getBaseN0();
 
@@ -373,8 +379,14 @@ int getRDouble(int argc, char** argv) {
   try {
     numberCountsDouble model(modelfile);
     doublebeam bm(fwhm1, fwhm2);
-    doublebeamHist inv_bmhist(nbins, filterscale);
-    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, nkeep);
+    doublebeamHist inv_bmhist(nbins);
+
+    // Fill beam
+    fourierFilter *filt = NULL;
+    if (filterscale > 0)
+      filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, filt, NULL, nkeep);
+    if (filt != NULL) delete filt;
 
     if (n0 == 0)
       n0 = model.getBaseN0();

@@ -7,6 +7,33 @@
 #include<utility>
 
 /*!
+\mainpage pofd_coverage
+
+This is the source documentation for pofd_coverage, a package
+which tests one and two-dimensional P(D) fitting against simulated
+maps.  It is related to pofd_affine, but:
+  - Can only fit for one variable, the number of sources per square degree.
+    This makes it simpler to test the code.
+  - Deals purely with simulated data, including methods for generating 
+    such data.
+  - Uses a slightly simpler (brute force) implementation of the R computation.
+  - The beam is strictly Gaussian, although it can be filtered.
+
+There are three intended purposes for this code:
+  - Because the one-parameter fit is fast and simple, it is possible to 
+    establish with much more certainty that this code works correctly.  
+    It can then be compared with pofd_affine for debugging purposes.
+  - It can be used to test out modifications more easily (e.g. floating point
+    FFTs, aliasing, the effects of clustering, matched filtering) on simulated
+    data.
+  - In addition to finding the best fit, it is capable of mapping out 
+    likelihood curves, and thus can be used to empirically determine the
+    likelihood correction factors to match the observed scatter (that is --
+    to get the statistical coverage right).
+*/
+
+
+/*!
   \brief Global convenience variables
 */
 namespace pofd_coverage {

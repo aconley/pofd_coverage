@@ -175,10 +175,10 @@ int getBeamSingle(int argc, char **argv) {
 
     fourierFilter *filt = NULL;
     if (filterscale > 0) {
-      if (matched) {
+      if (matched)
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
 				 filterscale, 0.1, true);
-      } else
+      else
 	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
     } else if (matched)
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
@@ -187,11 +187,13 @@ int getBeamSingle(int argc, char **argv) {
       // Get histogrammed beam
       beamHist bmhist(nbins);
       bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp, filt, nkeep);
+
       // Write
       bmhist.writeToFits(outputfile);
     } else 
       bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, inverse);
-    if (filt != NULL) delete filt; 
+
+    if (filt != NULL) delete filt;
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;

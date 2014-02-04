@@ -51,7 +51,7 @@ int getRSingle(int argc, char** argv) {
   filterscale = 0.0;
   matched = false;
   sigi = 0.002;
-  sigc = 0.002;
+  sigc = 0.006;
   oversamp = 1;
   write_to_hdf5 = false;
   nkeep = 0; // Means keep all
@@ -485,7 +485,7 @@ int getRDouble(int argc, char** argv) {
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.4f\n", filterscale);
       if (matched) {
-	printf("   matched fwhm:       %0.1f\n", dpr.first);
+	printf("   matched fwhm:       %0.1f\n", fwhm1);
 	printf("   matched sigi:       %0.4f\n", sigi);
 	printf("   matched sigc:       %0.4f\n", sigc);
       }

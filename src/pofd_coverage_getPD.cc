@@ -572,7 +572,7 @@ int getPDDouble(int argc, char **argv) {
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.1f\n", filterscale);
       if (matched) {
-	printf("   matched fwhm:       %0.1f\n", dpr.first);
+	printf("   matched fwhm:       %0.1f\n", fwhm1);
 	printf("   matched sigi:       %0.4f\n", sigi);
 	printf("   matched sigc:       %0.4f\n", sigc);
       }

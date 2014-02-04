@@ -724,7 +724,7 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
   //  the negative and positive bits overlap.  But using the minimum
   //  is unstable due to numeric 'noise' so we instead look for the PD
   //  being down by a certain amount relative to peak.
-  const double peakfrac = 1e-10; // How far down from the peak we want
+  const double peakfrac = 1e-12; // How far down from the peak we want
 
   // Our acceptance testing is a bit complicated.
   // If the minimum point is more than nsig1 away from the expected mean (0)

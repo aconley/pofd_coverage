@@ -386,7 +386,12 @@ double fourierFilter::meanSub(double* const data) const {
   The data must have the same pixel size as the filter was set up with,
   but the other variables do not need to match.
 
-  The order is matched, then hipass.
+  The order is matched, then hipass.  The matched filter maintains
+  peak (per-beam) normalization for isolated objects, but the high-pass
+  filter does not.  In general, the high-pass filter will mildly suppress
+  the peak values of sources more than it does white noise -- which means 
+  that (unsurprisingly), by throwing out low frequency information some 
+  signal-to-noise will be lost.
 
   This will resize the filter internally if needed, but that is an expensive 
   operation.  So the caller should do their best to call this
@@ -512,12 +517,14 @@ void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
       }
     }
     // Since FFTW does unscaled transforms, we need to fix the scaling. 
-    //  Doing it here plays a little nicer with matched filtering above,
-    //  keeping the steps logically separate.
-    double scalfac = 1.0 / nxny;
-    for (unsigned int i = 1; i < nx * nyhalf; ++i) {
-      map_fft[i][0] *= scalfac;
-      map_fft[i][1] *= scalfac;
+    // However, if we also did a matched filter, we don't want to do 
+    //  it again.
+    if (!doMatched) {
+      double scalfac = 1.0 / nxny;
+      for (unsigned int i = 1; i < nx * nyhalf; ++i) {
+	map_fft[i][0] *= scalfac;
+	map_fft[i][1] *= scalfac;
+      }
     }
 
     // Always 0 mean

@@ -290,7 +290,7 @@ void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
   //  different minima due to numeric 'noise'.  So it's better to just
   //  look for the first point that is more than some specified value
   //  down from the peak -if- it exists, and the minimum otherwise
-  const double peakfrac = 1e-10; // How far down from the peak we want
+  const double peakfrac = 1e-12; // How far down from the peak we want
 
   // Our acceptance testing is a bit complicated.
   // If the split point is more than nsig1 away from the expected mean (0)

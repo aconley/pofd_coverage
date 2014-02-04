@@ -515,7 +515,7 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   // Set up the part we will actually use (which may mean clipping)
   unsigned int minidx;
   unsigned int maxidx;
-  if ((num_fwhm_keep != 0) && (num_fwhm_keep < num_fwhm)) {
+  if (nfwhmkeep < num_fwhm) {
     // We want to set up logical indexing into the array to only keep
     //  the part we want.
     unsigned int nclippix = 
@@ -558,6 +558,10 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
       }
     }
   }
+
+  if (!(has_pos || has_neg))
+    throw pofdExcept("beamHist", "fill", 
+		     "No pos or negative components", 1);
 
   if (has_pos) minmax_pos = std::make_pair(minbinval_pos, maxbinval_pos);
   if (has_pos) minmax_neg = std::make_pair(minbinval_neg, maxbinval_neg);

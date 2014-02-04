@@ -21,6 +21,7 @@ static struct option long_options[] = {
   {"extra_smooth2", required_argument, 0, '@'},
   {"fftsize", required_argument, 0, 'f'},
   {"filtscale", required_argument, 0, 'F'},
+  {"matched", no_argument, 0, 'm'},
   {"nbeambins", required_argument, 0, '5'},
   {"nbins", required_argument, 0, '1'},
   {"nfwhm", required_argument, 0, '6'},
@@ -34,6 +35,7 @@ static struct option long_options[] = {
   {"sigma", required_argument, 0, 's'},
   {"sigma1", required_argument, 0, '#'},
   {"sigma2", required_argument, 0, '$'},
+  {"sigc", required_argument, 0, '8'},
   {"sparcity", required_argument, 0, '%'},
   {"seed", required_argument, 0, 'S'},
   {"verbose", no_argument, 0, 'v'},
@@ -42,7 +44,7 @@ static struct option long_options[] = {
   {0, 0, 0, 0}
 };
 
-char optstring[] = "hbde:!:@:f:F:1:n:5:6:N2:3:4:o:p:s:#:$:%:S:vVw:";
+char optstring[] = "hbde:!:@:f:F:1:mn:5:6:N2:3:4:o:p:s:#:$:8:%:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -50,13 +52,14 @@ int runSimSingle(int argc, char **argv) {
   double n0; //Model params
   double fwhm; //Calculation params (req)
   double esmooth; //Extra smoothing amount
-  unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample, sparcity;
-  unsigned int nbeambins;
-  double pixsize, filtscale, n0rangefrac, n0initrange, nfwhm;
-  double sigma; //Instrument noise, unsmoothed
+  double sigma; // Instrument noise
+  unsigned int nsims, nlike, n1, n2, fftsize, nbins;
+  unsigned int oversample, sparcity, nbeambins;
+  double pixsize, n0rangefrac, n0initrange, nfwhm;
+  double filtscale, sigc; //Filtering parameters
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; //Power spectrum file
-  bool verbose, has_wisdom, has_user_seed, use_binning, map_like;
+  bool verbose, has_wisdom, has_user_seed, use_binning, map_like, matched;
   unsigned long long int seed;
   std::string wisdom_file;
 
@@ -74,6 +77,8 @@ int runSimSingle(int argc, char **argv) {
   seed                = 1024;
   oversample          = 1;
   filtscale           = 0.0;
+  matched             = false;
+  sigc                = 0.006;
   sparcity            = 1;
   nbins               = 1000;
   use_binning         = false;
@@ -99,6 +104,9 @@ int runSimSingle(int argc, char **argv) {
       break;
     case 'F':
       filtscale = atof(optarg);
+      break;
+    case 'm':
+      matched = true;
       break;
     case '5':
       nbeambins = atoi(optarg);
@@ -132,6 +140,9 @@ int runSimSingle(int argc, char **argv) {
       break;
     case 's':
       sigma = atof(optarg);
+      break;
+    case '8':
+      sigc = atof(optarg);
       break;
     case '%':
       sparcity = atoi(optarg);
@@ -232,6 +243,13 @@ int runSimSingle(int argc, char **argv) {
     std::cout << "Invalid n0rangefrac: must be < 1" << std::endl;
     return 1;
   }
+  if (matched) {
+    if (sigc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc for matched filter"
+		<< std::endl;
+      return 1;
+    }
+  }
 
   try {
     double base_n0;
@@ -264,6 +282,11 @@ int runSimSingle(int argc, char **argv) {
 	printf("   oversampling:       %u\n", oversample);
       if (filtscale > 0)
 	printf("   filtering scale:    %0.1f\n", filtscale);
+      if (matched > 0) {
+	printf("   matched fwhm:       %0.1f\n", fwhm);
+	printf("   matched sigi:       %0.4f\n", sigma);
+	printf("   matched sigc:       %0.4f\n", sigc);
+      }
       if (sparcity > 1)
 	printf("   sparcity:           %u\n", sparcity);
       if (!powerspecfile.empty())
@@ -278,8 +301,8 @@ int runSimSingle(int argc, char **argv) {
 
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike, 
 		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, nfwhm,
-		   filtscale, nbeambins, sigma, n0, esmooth, oversample, 
-		   powerspecfile, sparcity, use_binning, nbins);
+		   filtscale, matched, sigc, nbeambins, sigma, n0, esmooth, 
+		   oversample, powerspecfile, sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -310,13 +333,15 @@ int runSimDouble(int argc, char **argv) {
   double n0; //Model params
   double fwhm1, fwhm2; //Calculation params (req)
   double esmooth1, esmooth2; //Extra smoothing amount
+  double sigma1, sigma2; //Instrument noise, unsmoothed
   unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample;
   unsigned int nbeambins, sparcity;
-  double pixsize, n0rangefrac, n0initrange, filtscale, nfwhm;
-  double sigma1, sigma2; //Instrument noise, unsmoothed
+  bool verbose, has_wisdom, has_user_seed, use_binning, map_like, matched;
+  double pixsize, n0rangefrac, n0initrange, nfwhm;
+  double filtscale, sigc; // Filtering params
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; // Power spectrum file
-  bool verbose, has_wisdom, has_user_seed, use_binning, map_like;
+
   unsigned long long int seed;
   std::string wisdom_file;
 
@@ -336,6 +361,8 @@ int runSimDouble(int argc, char **argv) {
   seed                = 1024;
   oversample          = 1;
   filtscale           = 0.0;
+  matched             = false;
+  sigc                = 0.006;
   sparcity            = 1;
   nbins               = 1000;
   use_binning         = false;
@@ -374,6 +401,9 @@ int runSimDouble(int argc, char **argv) {
     case '6':
       nfwhm = atof(optarg);
       break;
+    case 'm':
+      matched = true;
+      break;
     case 'n':
       nsims = atoi(optarg);
       break;
@@ -400,6 +430,9 @@ int runSimDouble(int argc, char **argv) {
       break;
     case '$':
       sigma2 = atof(optarg);
+      break;
+    case '8':
+      sigc = atof(optarg);
       break;
     case '%':
       sparcity = atoi(optarg);
@@ -517,6 +550,13 @@ int runSimDouble(int argc, char **argv) {
     std::cout << "Invalid n0rangefrac: must be < 1" << std::endl;
     return 1;
   }
+  if (matched) {
+    if (sigc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc for matched filter"
+		<< std::endl;
+      return 1;
+    }
+  }
 
   try {
     double base_n0;
@@ -553,6 +593,11 @@ int runSimDouble(int argc, char **argv) {
 	printf("   oversampling:       %u\n",oversample);
       if (filtscale > 0)
 	printf("   filtering scale:    %0.1f\n", filtscale);
+      if (matched > 0) {
+	printf("   matched fwhm:       %0.1f\n", fwhm1);
+	printf("   matched sigi:       %0.4f\n", sigma1);
+	printf("   matched sigc:       %0.4f\n", sigc);
+      }
       if (sparcity > 1)
 	printf("   sparcity:           %u\n", sparcity);
       if (!powerspecfile.empty())
@@ -567,7 +612,8 @@ int runSimDouble(int argc, char **argv) {
 
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
-			 nfwhm, filtscale, nbeambins, sigma1, sigma2, n0, 
+			 nfwhm, filtscale, matched, sigc,
+			 nbeambins, sigma1, sigma2, n0, 
 			 esmooth1, esmooth2, oversample, powerspecfile, 
 			 sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
@@ -714,6 +760,14 @@ int main(int argc, char **argv) {
 		<< std::endl;
       std::cout << "\t\tone dimension and 4096 in two dimensions.)" 
 		<< std::endl;
+      std::cout << "\t-m, --matched" << std::endl;
+      std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
+		<< " matching the" << std::endl;
+      std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the "
+		<< " instrument" << std::endl;
+      std::cout << "\t\tnoise equal to sigma or sigma1 in 1D/2D, and the"
+		<< " confusion" << std::endl;
+      std::cout << "\t\tnoise set by --sigc.  Off by default." << std::endl;
       std::cout << "\t--nbeambins NBINS" << std::endl;
       std::cout << "\t\tNumber of histogram bins to use for beams. (def: 100"
 		<< std::endl;
@@ -756,13 +810,16 @@ int main(int argc, char **argv) {
 		<< " If" << std::endl;
       std::cout << "\t\tnot specified, the sources are uniformly distributed."
 		<< std::endl;
+      std::cout << "\t-S, --seed SEED" << std::endl;
+      std::cout << "\t\tSet user specified seed, otherwise taken from time."
+		<< std::endl;
+      std::cout << "\t--sigc VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
+		<< " 0.006)" << std::endl;
       std::cout << "\t--sparcity SPARCITY" << std::endl;
       std::cout << "\t\tOnly sample the simulated maps every this many pixels"
 		<< std::endl;
       std::cout << "\t\twhen computing the likelihood." << std::endl;
-      std::cout << "\t-S, --seed SEED" << std::endl;
-      std::cout << "\t\tSet user specified seed, otherwise taken from time."
-		<< std::endl;
       std::cout << "\t-v, --verbose" << std::endl;
       std::cout << "\t\tPrint informational messages while running"
 		<< std::endl;

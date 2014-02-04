@@ -25,6 +25,7 @@ static struct option long_options[] = {
   {"fits", no_argument, 0, 'f'},
   {"filterscale", required_argument, 0, 'F'},
   {"log", no_argument, 0, 'l'},
+  {"matched", no_argument, 0, 'm'},
   {"nflux", required_argument, 0, 'n'},
   {"nbins", required_argument, 0, '0'},
   {"nfwhm", required_argument, 0, 'N'},
@@ -34,12 +35,14 @@ static struct option long_options[] = {
   {"sigma", required_argument, 0, 's'},
   {"sigma1", required_argument, 0, '3'},
   {"sigma2", required_argument, 0, '4'},
+  {"sigi", required_argument, 0, '5'},
+  {"sigc", required_argument, 0, '6'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'},
   {"wisdom", required_argument, 0, 'w'},
   {0,0,0,0}
 };
-char optstring[] = "dhe:fF:Hln:N:1:0:o:r:s:3:4:vVw:";
+char optstring[] = "dhe:fF:Hlmn:N:1:0:o:r:s:3:4:5:6:vVw:";
 
 ///////////////////////////////
 
@@ -47,11 +50,13 @@ int getPDSingle(int argc, char **argv) {
 
   std::string modelfile; //Knot parameters
   double n0; //Number of sources
-  double maxflux, nkeep, fwhm, nfwhm, pixsize, filterscale;
+  double maxflux, nkeep, fwhm, nfwhm, pixsize;
   double sigma; //Instrument noise
+  double filterscale, sigi, sigc; // Filtering parameters
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins;
-  bool has_wisdom, verbose, return_log, write_fits, write_r, write_as_hdf5;
+  bool has_wisdom, verbose, return_log, matched;
+  bool write_fits, write_r, write_as_hdf5;
   std::string wisdom_file, r_file;
   unsigned int oversample;
 
@@ -69,6 +74,9 @@ int getPDSingle(int argc, char **argv) {
   write_r             = false;
   oversample          = 1;
   filterscale         = 0.0;
+  matched             = false;
+  sigi                = 0.0; // Means: use sigma
+  sigc                = 0.006;
 
   int c;
   int option_index = 0;
@@ -87,6 +95,9 @@ int getPDSingle(int argc, char **argv) {
       break;
     case 'l' :
       return_log = true;
+      break;
+    case 'm':
+      matched = true;
       break;
     case 'n' :
       nflux = static_cast<unsigned int>(atoi(optarg));
@@ -109,6 +120,12 @@ int getPDSingle(int argc, char **argv) {
       break;
     case 's' :
       sigma = atof(optarg);
+      break;
+    case '5':
+      sigi = atof(optarg);
+      break;
+    case '6':
+      sigc = atof(optarg);
       break;
     case 'v' :
       verbose = true;
@@ -133,6 +150,8 @@ int getPDSingle(int argc, char **argv) {
   pixsize    = atof(argv[optind + 3]);
   maxflux    = atof(argv[optind + 4]);
   outputfile = std::string(argv[optind + 5]);
+
+  if (matched && (sigi == 0)) sigi = sigma;
 
   //Input tests
   if (nflux == 0) {
@@ -188,6 +207,18 @@ int getPDSingle(int argc, char **argv) {
   if (write_as_hdf5 && write_fits) {
     std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
   }
+  if (matched) {
+    if (sigi <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc for matched filter"
+		<< std::endl;
+      return 1;
+    }
+  }    
 
   try {
     numberCounts model(modelfile);
@@ -223,18 +254,32 @@ int getPDSingle(int argc, char **argv) {
       printf("   sigma:              %0.4f\n", sigma);
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.1f\n", filterscale);
+      if (matched) {
+	printf("   matched fwhm:       %0.1f\n", fwhm);
+	printf("   matched sigi:       %0.4f\n", sigi);
+	printf("   matched sigc:       %0.4f\n", sigc);
+      }
       if (oversample != 1)
 	printf("   oversamp:           %u\n", oversample);
       if (return_log) 
 	printf("   Returning log(P(D)) rather than P(D)\n");
     }
 
+    fourierFilter *filt = NULL;
+    if (filterscale > 0) {
+      if (matched) {
+	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
+				 filterscale, 0.1, true);
+      } else
+	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched)
+	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
+
+
     // Get histogrammed inverse beam
     beamHist inv_bmhist(nbins);
-    fourierFilter *filt = NULL;
-    if (filterscale > 0)
-      filt = new fourierFilter(pixsize, filterscale, 0.1, true);
     inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, filt, nkeep);
+
     if (filt != NULL) delete filt;
 
     //Get P(D)
@@ -300,11 +345,13 @@ int getPDDouble(int argc, char **argv) {
   std::string modelfile; //Knot parameters
   double n0; //Number of sources
   double maxflux1, maxflux2; //Maximum fluxes requested
-  double fwhm1, fwhm2, nfwhm, pixsize, filterscale, nkeep;
+  double fwhm1, fwhm2, nfwhm, pixsize, nkeep;
+  double filterscale, sigi, sigc; // Filter params
   double sigma1, sigma2; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins, oversample;
-  bool has_wisdom, verbose, return_log, write_fits,  write_r, write_as_hdf5;
+  bool has_wisdom, verbose, return_log, matched;
+  bool write_fits,  write_r, write_as_hdf5;
   std::string wisdom_file, r_file;
 
   //Defaults
@@ -316,6 +363,9 @@ int getPDDouble(int argc, char **argv) {
   nfwhm               = 4.5;
   nkeep               = 0.0;
   filterscale         = 0.0;
+  matched             = false;
+  sigi                = 0.0; // Means use sigma1
+  sigc                = 0.006;
   verbose             = false;
   return_log          = false;
   write_fits          = false;
@@ -340,6 +390,9 @@ int getPDDouble(int argc, char **argv) {
       break;
     case 'l':
       return_log = true;
+      break;
+    case 'm':
+      matched = true;
       break;
     case 'n':
       nflux = static_cast<unsigned int>(atoi(optarg));
@@ -366,6 +419,12 @@ int getPDDouble(int argc, char **argv) {
     case '4':
       sigma2 = atof(optarg);
       break;
+    case '5':
+      sigi = atof(optarg);
+      break;
+    case '6':
+      sigc = atof(optarg);
+      break;
     case 'v':
       verbose = true;
       break;
@@ -391,6 +450,8 @@ int getPDDouble(int argc, char **argv) {
   maxflux1   = atof(argv[optind + 5]);
   maxflux2   = atof(argv[optind + 6]);
   outputfile = std::string(argv[optind + 7]);
+
+  if (matched && (sigi == 0)) sigi = sigma1;
 
   //Input tests
   if (nflux == 0) {
@@ -455,6 +516,18 @@ int getPDDouble(int argc, char **argv) {
   if (write_as_hdf5 && write_fits) {
     std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
   }
+  if (matched) {
+    if (sigi <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc for matched filter"
+		<< std::endl;
+      return 1;
+    }
+  }    
 
   try {
     numberCountsDouble model(modelfile);
@@ -498,19 +571,33 @@ int getPDDouble(int argc, char **argv) {
       printf("   sigma2:             %0.4f\n", sigma2);
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.1f\n", filterscale);
+      if (matched) {
+	printf("   matched fwhm:       %0.1f\n", dpr.first);
+	printf("   matched sigi:       %0.4f\n", sigi);
+	printf("   matched sigc:       %0.4f\n", sigc);
+      }
       if (oversample != 1)
 	printf("  oversamp:            %u\n", oversample);
       if (return_log) 
 	printf("  Returning log(P(D)) rather than P(D)\n");
     }
 
+    // Set up filter
+    fourierFilter *filt = NULL;
+    if (filterscale > 0) {
+      if (matched) {
+	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc,
+				 filterscale, 0.1, true);
+      } else
+	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched)
+	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc, true);
+
     // Get histogrammed inverse beam
     doublebeamHist inv_bmhist(nbins);
-    fourierFilter *filt = NULL;
-    if (filterscale > 0)
-      filt = new fourierFilter(pixsize, filterscale, 0.1, true);
     inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, filt, NULL, nkeep);
-    if (filt != NULL) delete filt;
+
+    if (filt != NULL) delete filt; // Don't need this any more
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 
@@ -686,6 +773,13 @@ int main( int argc, char** argv ) {
       std::cout << "\t-l, --log" << std::endl;
       std::cout << "\t\tReturn the log P(D) rather than the P(D)."
 		<< std::endl;
+      std::cout << "\t-m, --matched" << std::endl;
+      std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
+		<< " matching the" << std::endl;
+      std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the "
+		<< " instrument" << std::endl;
+      std::cout << "\t\tand confusion noise controlled by --sigi and --sigc." 
+		<< std::endl;
       std::cout << "\t-n, --nflux value" << std::endl;
       std::cout << "\t\tThe number of requested fluxes along each dimension."
 		<< std::endl;
@@ -708,6 +802,14 @@ int main( int argc, char** argv ) {
 		<< " (def: 1)" << std::endl;
       std::cout << "\t-r, --rfile FILENAME" << std::endl;
       std::cout << "\t\tWrite the R used to this file as text." << std::endl;
+      std::cout << "\t--sigi VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
+		<< std::endl;
+      std::cout << "\t\tThe instrument noise: sigma or sigma1 in 1D/2D)"
+		<< std::endl;
+      std::cout << "\t--sigc VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
+		<< " 0.006)" << std::endl;
       std::cout << "\t-v, --verbose" << std::endl;
       std::cout << "\t\tPrint informational messages while running"
 		<< std::endl;

@@ -804,7 +804,7 @@ int simImage::writeToFits(const std::string& outputfile) const {
   if (isHipass) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
-		   const_cast<char*>("Is beam hipass filtered?"), &status);
+		   const_cast<char*>("Is map hipass filtered?"), &status);
     dtmp = filtscale;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL"), &dtmp,
 		   const_cast<char*>("Filtering scale [arcsec]"), &status);
@@ -814,12 +814,12 @@ int simImage::writeToFits(const std::string& outputfile) const {
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
-		   const_cast<char*>("Is beam hipass filtered?"), &status);
+		   const_cast<char*>("Is map hipass filtered?"), &status);
   }
   if (isMatched) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
-		   const_cast<char*>("Is beam match filtered?"), &status);
+		   const_cast<char*>("Is map match filtered?"), &status);
     dtmp = matched_fwhm;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITFWHM"), &dtmp,
 		   const_cast<char*>("Matched filtering FWHM [arcsec]"), 
@@ -833,7 +833,7 @@ int simImage::writeToFits(const std::string& outputfile) const {
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
-		   const_cast<char*>("Is beam match filtered?"), &status);
+		   const_cast<char*>("Is map match filtered?"), &status);
   }
 
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),

@@ -351,7 +351,7 @@ bool fourierFilter::setup(unsigned int NX, unsigned int NY) const {
     nyhalf = ny / 2 + 1;
   }
 
-  //if (doMatched) setup_matched();
+  if (doMatched) setup_matched();
   if (doHipass) setup_hipass();
   return resized;
 }

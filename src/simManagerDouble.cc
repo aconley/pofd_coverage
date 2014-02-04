@@ -64,6 +64,9 @@ static double minfunc(double x, void* params) {
               after filtering (if filtering is applied)
   \param[in] FILTSCALE Filtering scale, in arcsec.  If 0, no filtering is
               applied.
+  \param[in] MATCHED Apply matched filtering using the FWHM of the beam,
+               the instrument noise (SIGI), and SIGC
+  \param[in] SIGC The confusion noise, if matched filtering is used
   \param[in] NBEAMBINS Number of bins to use in beam histogram; def 150
   \param[in] SIGI1 Instrument noise (without smoothing or filtering) in Jy, 
              band 1
@@ -87,6 +90,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   unsigned int N1, unsigned int N2, 
 				   double PIXSIZE, double FWHM1, double FWHM2, 
 				   double NFWHM, double FILTSCALE, 
+				   bool MATCHED, double SIGC,
 				   unsigned int NBEAMBINS, double SIGI1, 
 				   double SIGI2, double N0, 
 				   double ESMOOTH1, double ESMOOTH2,
@@ -135,9 +139,16 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     delta_n0 = NULL;
   }
 
-  // Set up filter if needed.  Right now we only support hi-pass filtering,
-  //  so we can ignore filt2
-  if (FILTSCALE > 0) filt1 = new fourierFilter(PIXSIZE, FILTSCALE, 0.1, false);
+  // Set up filter if needed.  Right now we only support using
+  //  one filter for both.
+  if (FILTSCALE > 0) {
+    if (MATCHED) // Hipass and matched
+      filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGI1, SIGC, FILTSCALE, 0.1,
+				false);
+    else // hipass only
+      filt1 = new fourierFilter(PIXSIZE, FILTSCALE, 0.1, false);
+  } else if (MATCHED) // Matched only
+    filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGI1, SIGC, false);
 
   // Set up the histogrammed beam
   double nfwhm;

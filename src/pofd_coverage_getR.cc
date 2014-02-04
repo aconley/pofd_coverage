@@ -20,31 +20,38 @@ static struct option long_options[] = {
   {"double", no_argument, 0, 'd'},
   {"filterscale", required_argument, 0, 'F'},
   {"hdf5", no_argument, 0, 'H'},
+  {"matched", no_argument, 0, 'm'},
   {"nbins", required_argument, 0, 'n'},
   {"nfwhm", required_argument, 0, 'N'},
   {"nkeep", required_argument, 0, '1'},
   {"oversamp", required_argument, 0, 'o'},
+  {"sigi", required_argument, 0, '2'},
+  {"sigc", required_argument, 0, '3'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'}, 
   {0,0,0,0}
 };
 
-char optstring[] = "hdF:Hn:N:1:o:vV";
+char optstring[] = "hdF:Hmn:N:1:o:2:3:vV";
 
 //One-D version
 int getRSingle(int argc, char** argv) {
 
   std::string modelfile; //Init file (having model we want)
   std::string outfile; //File to write to
-  bool verbose, write_to_hdf5;
-  double n0, nfwhm, pixsize, minflux, maxflux, filterscale, fwhm, nkeep;
+  bool verbose, write_to_hdf5, matched;
+  double n0, nfwhm, pixsize, minflux, maxflux, fwhm, nkeep;
   unsigned int nflux, nbins, oversamp;
+  double filterscale, sigi, sigc;
 
   // Defaults
   verbose = false;
   nfwhm = 40.0;
   nbins = 120;
   filterscale = 0.0;
+  matched = false;
+  sigi = 0.002;
+  sigc = 0.002;
   oversamp = 1;
   write_to_hdf5 = false;
   nkeep = 0; // Means keep all
@@ -61,6 +68,9 @@ int getRSingle(int argc, char** argv) {
     case 'H':
       write_to_hdf5 = true;
       break;
+    case 'm':
+      matched = true;
+      break;
     case 'n':
       nbins = atoi(optarg);
       break;
@@ -73,7 +83,13 @@ int getRSingle(int argc, char** argv) {
     case 'o':
       oversamp = atoi(optarg);
       break;
-    case 'v' :
+    case '2':
+      sigi = atof(optarg);
+      break;
+    case '3':
+      sigc = atof(optarg);
+      break;
+    case 'v':
       verbose = true;
       break;
     }
@@ -130,7 +146,19 @@ int getRSingle(int argc, char** argv) {
     std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
     return 1;
   }
-    
+  if (matched) {
+    if (sigi <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc for matched filter"
+		<< std::endl;
+      return 1;
+    }
+  }
+
   double *R = NULL;
   double *flux = NULL;
   try {
@@ -138,11 +166,20 @@ int getRSingle(int argc, char** argv) {
     beam bm(fwhm);
     beamHist inv_bmhist(nbins);
 
-    // Fill beam, possibly with filtering
+    // Set up filter
     fourierFilter *filt = NULL;
-    if (filterscale > 0)
-      filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    if (filterscale > 0) {
+      if (matched) {
+	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
+				 filterscale, 0.1, true);
+      } else
+	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched)
+	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
+
+    // Fill beam
     inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, filt, nkeep);
+
     if (filt != NULL) delete filt;
 
     if (n0 == 0)
@@ -158,6 +195,11 @@ int getRSingle(int argc, char** argv) {
       printf("   N0:                 %0.4e\n", n0);
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.4f\n", filterscale);
+      if (matched) {
+	printf("   matched fwhm:       %0.1f\n", fwhm);
+	printf("   matched sigi:       %0.4f\n", sigi);
+	printf("   matched sigc:       %0.4f\n", sigc);
+      }
       if (oversamp != 1)
 	printf("   oversamp:           %u\n", oversamp);
     }
@@ -259,16 +301,20 @@ int getRDouble(int argc, char** argv) {
 
   std::string modelfile; //Init file (having model we want)
   std::string outfile; //File to write to
-  bool verbose, write_to_hdf5;
+  bool verbose, write_to_hdf5, matched;
   double minflux1, maxflux1, minflux2, maxflux2;
-  double n0, nfwhm, pixsize, filterscale, fwhm1, fwhm2, nkeep;
+  double n0, nfwhm, pixsize, fwhm1, fwhm2, nkeep;
   unsigned int nflux1, nflux2, nbins, oversamp;
+  double filterscale, sigi, sigc;
 
   // Defaults
   verbose = false;
   nfwhm = 40.0;
   nbins = 150;
   filterscale = 0.0;
+  matched = false;
+  sigi = 0.002;
+  sigc = 0.006;
   oversamp = 1;
   nkeep = 0.0;
 
@@ -284,6 +330,9 @@ int getRDouble(int argc, char** argv) {
     case 'H':
       write_to_hdf5 = true;
       break;
+    case 'm':
+      matched = true;
+      break;
     case 'n':
       nbins = atoi(optarg);
       break;
@@ -295,6 +344,12 @@ int getRDouble(int argc, char** argv) {
       break;
     case 'o':
       oversamp = atoi(optarg);
+      break;
+    case '2':
+      sigi = atof(optarg);
+      break;
+    case '3':
+      sigc = atof(optarg);
       break;
     case 'v' :
       verbose = true;
@@ -372,6 +427,18 @@ int getRDouble(int argc, char** argv) {
     std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
     return 1;
   }
+  if (matched) {
+    if (sigi <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc for matched filter"
+		<< std::endl;
+      return 1;
+    }
+  }
 
   double *R = NULL;
   double *flux1 = NULL;
@@ -381,11 +448,20 @@ int getRDouble(int argc, char** argv) {
     doublebeam bm(fwhm1, fwhm2);
     doublebeamHist inv_bmhist(nbins);
 
-    // Fill beam
+    // Set up filter
     fourierFilter *filt = NULL;
-    if (filterscale > 0)
-      filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    if (filterscale > 0) {
+      if (matched) {
+	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc,
+				 filterscale, 0.1, true);
+      } else
+	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched)
+	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc, true);
+    
+    // Fill beam
     inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, filt, NULL, nkeep);
+
     if (filt != NULL) delete filt;
 
     if (n0 == 0)
@@ -408,6 +484,11 @@ int getRDouble(int argc, char** argv) {
       printf("   N0:                 %0.4e\n", n0);
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.4f\n", filterscale);
+      if (matched) {
+	printf("   matched fwhm:       %0.1f\n", dpr.first);
+	printf("   matched sigi:       %0.4f\n", sigi);
+	printf("   matched sigc:       %0.4f\n", sigc);
+      }
       if (oversamp != 1)
 	printf("   oversamp:           %u\n", oversamp);
     }
@@ -653,6 +734,14 @@ int main(int argc, char** argv) {
       std::cerr << "\t-H, --hdf5" << std::endl;
       std::cerr << "\t\tWrite the output as an HDF5 file rather than as text."
 		<< std::endl;
+      std::cout << "\t-m, --matched" << std::endl;
+      std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
+		<< " matching the" << std::endl;
+      std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the "
+		<< " instrument" << std::endl;
+      std::cout << "\t\tand confusion noise controlled by --sigi and --sigc." 
+		<< std::endl;
+      std::cout << "\t\tOff by default." << std::endl;
       std::cerr << "\t-n, --nbins VALUE" << std::endl;
       std::cerr << "\t\tNumber of beam histogram bins (def: 120)" << std::endl;
       std::cerr << "\t-N, --nfwhm VALUE" << std::endl;
@@ -667,6 +756,12 @@ int main(int argc, char** argv) {
       std::cerr << "\t\tOversampling of pixels used to generate beam. One means"
 		<< std::endl;
       std::cerr << "\t\tno oversampling.  Must be odd (def: 1)" << std::endl;
+      std::cout << "\t--sigi VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
+		<< " 0.002)" << std::endl;
+      std::cout << "\t--sigc VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
+		<< " 0.006)" << std::endl;
       std::cerr << "\t-V, --version" << std::endl;
       std::cerr << "\t\tOutput the version number and exit." << std::endl;
       std::cerr << std::endl;

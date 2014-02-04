@@ -22,23 +22,26 @@ static struct option long_options[] = {
   {"histogram" , no_argument, 0, 'H'},
   {"inverse", no_argument, 0, 'i'},
   {"filterscale", required_argument, 0, 'F'},
+  {"matched", no_argument, 0, 'm'},
   {"nfwhm", required_argument, 0, 'N'},
   {"nkeep", required_argument, 0, '1'},
   {"nbins", required_argument, 0, '0'},
   {"oversamp", required_argument, 0, 'o'},
+  {"sigi", required_argument, 0, '2'},
+  {"sigc", required_argument, 0, '3'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'},
-  {0,0,0,0}
+  {0, 0, 0, 0}
 };
-char optstring[] = "dhHiF:N:1:0:o:vV";
+char optstring[] = "dhHiF:mN:1:0:o:2:3:vV";
 
 ///////////////////////////////
 
 int getBeamSingle(int argc, char **argv) {
 
   unsigned int nbins, oversamp;
-  double fwhm, nfwhm, pixsize, filterscale, nkeep;
-  bool verbose, histogram, inverse;
+  bool verbose, histogram, inverse, matched;
+  double fwhm, nfwhm, pixsize, filterscale, nkeep, sigi, sigc;
   std::string outputfile; // Output FITS file
 
   //Defaults
@@ -49,6 +52,9 @@ int getBeamSingle(int argc, char **argv) {
   histogram           = false;
   oversamp            = 1;
   filterscale         = 0.0;
+  matched             = false;
+  sigi                = 0.002;
+  sigc                = 0.006;
   inverse             = false;
 
   int c;
@@ -57,7 +63,7 @@ int getBeamSingle(int argc, char **argv) {
   while ((c = getopt_long(argc,argv,optstring,long_options,
 			  &option_index)) != -1) 
     switch(c) {
-    case 'F' :
+    case 'F':
       filterscale = atof(optarg);
       break;
     case 'H':
@@ -65,6 +71,9 @@ int getBeamSingle(int argc, char **argv) {
       break;
     case 'i':
       inverse = true;
+      break;
+    case 'm':
+      matched = true;
       break;
     case 'N':
       nfwhm = atof(optarg);
@@ -78,7 +87,13 @@ int getBeamSingle(int argc, char **argv) {
     case 'o':
       oversamp = static_cast<unsigned int>(atoi(optarg));
       break;
-    case 'v' :
+    case '2':
+      sigi = atof(optarg);
+      break;
+    case '3':
+      sigc = atof(optarg);
+      break;
+    case 'v':
       verbose = true;
       break;
     }
@@ -125,6 +140,18 @@ int getBeamSingle(int argc, char **argv) {
     std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
     return 1;
   }
+  if (matched) {
+    if (sigi <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc for matched filter"
+		<< std::endl;
+      return 1;
+    }
+  }
 
   try {
     beam bm(fwhm);
@@ -134,16 +161,28 @@ int getBeamSingle(int argc, char **argv) {
       printf("   Beam area:          %0.3e\n", bm.getEffectiveArea());
       printf("  Pixel size:          %0.2f\n", pixsize);
       if (filterscale > 0.0)
-	printf(" filter scale:         %0.2f\n", filterscale);
+	printf("filter scale:          %0.2f\n", filterscale);
+      if (matched) {
+	printf("matched fwhm:          %0.1f\n", bm.getFWHM());
+	printf("matched sigi:          %0.4f\n", sigi);
+	printf("matched sigc:          %0.4f\n", sigc);
+      }
       if (oversamp != 1)
-	printf("     oversamp:         %u\n", oversamp);
+	printf("    oversamp:          %u\n", oversamp);
       if (inverse) printf("Returning inverse beam\n");
       if (histogram) printf("Returning histogrammed beam\n");
     }
 
     fourierFilter *filt = NULL;
-    if (filterscale > 0)
-      filt = new fourierFilter(pixsize, filterscale, 0.1, true); 
+    if (filterscale > 0) {
+      if (matched) {
+	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
+				 filterscale, 0.1, true);
+      } else
+	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched)
+	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
+
     if (histogram) {
       // Get histogrammed beam
       beamHist bmhist(nbins);
@@ -169,9 +208,9 @@ int getBeamSingle(int argc, char **argv) {
 
 int getBeamDouble(int argc, char **argv) {
 
-  bool verbose, histogram, inverse;
+  bool verbose, histogram, inverse, matched;
   unsigned int nbins, oversamp;
-  double fwhm1, fwhm2, nfwhm, pixsize, filterscale, nkeep;
+  double fwhm1, fwhm2, nfwhm, pixsize, filterscale, nkeep, sigi, sigc;
   std::string outputfile; //Ouput pofd option
 
   //Defaults
@@ -180,6 +219,9 @@ int getBeamDouble(int argc, char **argv) {
   verbose             = false;
   histogram           = false;
   filterscale         = 0.0;
+  matched             = false;
+  sigi                = 0.002;
+  sigc                = 0.006;
   oversamp            = 1;
   inverse             = false;
   nkeep               = 0;
@@ -190,7 +232,7 @@ int getBeamDouble(int argc, char **argv) {
   while ((c = getopt_long(argc,argv,optstring,long_options,
 			  &option_index)) != -1) 
     switch(c) {
-    case 'F' :
+    case 'F':
       filterscale = atof(optarg);
       break;
     case 'H':
@@ -198,6 +240,9 @@ int getBeamDouble(int argc, char **argv) {
       break;
     case 'i':
       inverse = true;
+      break;
+    case 'm':
+      matched = true;
       break;
     case 'N':
       nfwhm = atof(optarg);
@@ -211,7 +256,13 @@ int getBeamDouble(int argc, char **argv) {
     case 'o':
       oversamp = static_cast<unsigned int>(atoi(optarg));
       break;
-    case 'v' :
+    case '2':
+      sigi = atof(optarg);
+      break;
+    case '3':
+      sigc = atof(optarg);
+      break;
+    case 'v':
       verbose = true;
       break;
     }
@@ -255,6 +306,18 @@ int getBeamDouble(int argc, char **argv) {
 	      << std::endl;
     return 1;
   }
+  if (matched) {
+    if (sigi <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc for matched filter"
+		<< std::endl;
+      return 1;
+    }
+  }
 
   try {
     doublebeam bm(fwhm1, fwhm2);
@@ -269,16 +332,27 @@ int getBeamDouble(int argc, char **argv) {
       printf("   Beam area2:         %0.3e\n", dpr.second);
       printf("   Pixel size:         %0.2f\n", pixsize);
       if (filterscale > 0.0)
-	printf(" filter scale:         %0.1f\n", filterscale);
+	printf(" filter scale:          %0.1f\n", filterscale);
+      if (matched) {
+	printf(" matched fwhm:          %0.1f\n", dpr.first);
+	printf(" matched sigi:          %0.4f\n", sigi);
+	printf(" matched sigc:          %0.4f\n", sigc);
+      }
       if (oversamp != 1)
-	printf("     oversamp:         %u\n", oversamp);
+	printf("    oversamp:          %u\n", oversamp);
       if (inverse) printf("Returning inverse beam\n");
       if (histogram) printf("Returning histogrammed beam\n");
     }
 
     fourierFilter *filt = NULL;
-    if (filterscale > 0)
-      filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    if (filterscale > 0) {
+      if (matched) {
+	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc,
+				 filterscale, 0.1, true);
+      } else
+	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched)
+	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc, true);
     if (histogram) {
       // Get histogrammed beam
       doublebeamHist bmhist(nbins);
@@ -314,7 +388,7 @@ int main( int argc, char** argv ) {
   while ((c = getopt_long(argc,argv,optstring,long_options,
 			  &option_index)) != -1) 
     switch(c) {
-    case 'h' :
+    case 'h':
       std::cout << "NAME" << std::endl;
       std::cout << "\tpofd_coverage_getBeam -- get the beam for the"
 		<< std::endl;
@@ -348,6 +422,14 @@ int main( int argc, char** argv ) {
       std::cerr << "\t-i, --inverse" << std::endl;
       std::cout << "\t\tReturn the inverse beam rather than the beam."
 		<< std::endl;
+      std::cout << "\t-m, --matched" << std::endl;
+      std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
+		<< " matching the" << std::endl;
+      std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the "
+		<< " instrument" << std::endl;
+      std::cout << "\t\tand confusion noise controlled by --sigi and --sigc." 
+		<< std::endl;
+      std::cout << "\t\tOff by default." << std::endl;
       std::cout << "\t--nbins value" << std::endl;
       std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 120)"
 		<< std::endl;
@@ -363,15 +445,21 @@ int main( int argc, char** argv ) {
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount to oversample the beam; must be odd integer."
 		<< " (def: 1)" << std::endl;
+      std::cout << "\t--sigi VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
+		<< " 0.002)" << std::endl;
+      std::cout << "\t--sigc VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
+		<< " 0.006)" << std::endl;
       std::cout << "\t-v, --verbose" << std::endl;
       std::cout << "\t\tPrint informational messages while running"
 		<< std::endl;
       return 0;
       break;
-    case 'd' :
+    case 'd':
       twod = true;
       break;
-    case 'V' :
+    case 'V':
       std::cout << "pofd_coverage version number: " << pofd_coverage::version 
 		<< std::endl;
       return 0;

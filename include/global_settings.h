@@ -30,6 +30,9 @@ There are three intended purposes for this code:
     likelihood curves, and thus can be used to empirically determine the
     likelihood correction factors to match the observed scatter (that is --
     to get the statistical coverage right).
+
+Because this code is so strongly related to pofd_affine, the documentation
+is a bit sparser; some things may be better described there.
 */
 
 

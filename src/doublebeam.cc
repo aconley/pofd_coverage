@@ -581,23 +581,13 @@ doublebeamHist::doublebeamHist(unsigned int NBINS):
   for (unsigned int i = 0; i < 4; ++i) bm1[i] = NULL;
   for (unsigned int i = 0; i < 4; ++i) bm2[i] = NULL;
 
-  dblpair nan = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+  dblpair NaN = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			       std::numeric_limits<double>::quiet_NaN());
-  for (unsigned int i = 0; i < 4; ++i) minmax1[i] = nan;
-  for (unsigned int i = 0; i < 4; ++i) minmax2[i] = nan;
+  for (unsigned int i = 0; i < 4; ++i) minmax1[i] = NaN;
+  for (unsigned int i = 0; i < 4; ++i) minmax2[i] = NaN;
 
-  isHipass = std::make_pair(false, false);
-  filtscale = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			     std::numeric_limits<double>::quiet_NaN());
-  qfactor = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			   std::numeric_limits<double>::quiet_NaN());
-  isMatched = std::make_pair(false, false);
-  matched_fwhm = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-				std::numeric_limits<double>::quiet_NaN());
-  matched_sigi = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-				std::numeric_limits<double>::quiet_NaN());
-  matched_sigc = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-				std::numeric_limits<double>::quiet_NaN());
+  isHipass = isMatched = std::make_pair(false, false);
+  filtscale = qfactor = matched_fwhm = matched_sigi = matched_sigc = NaN;
 }
 
 doublebeamHist::~doublebeamHist() {
@@ -673,6 +663,9 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
   if (filt1 != NULL) {
     f1 = filt1;
     if (filt2 != NULL) f2 = filt2; else f2 = filt1;
+  } else if (filt2 != NULL) {
+    f1 = NULL;
+    f2 = filt2;
   } else f1 = f2 = NULL;
 
   // Get 2D beams
@@ -684,7 +677,7 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
   bm.getBeam(2, npix, pixsize, oversamp, bmtmp2, f2); 
 
   unsigned int minidx, maxidx;
-  if ((num_fwhm_keep != 0) && (num_fwhm_keep < num_fwhm)) {
+  if (nfwhmkeep < num_fwhm) {
     // We want to set up logical indexing into the array to only keep
     //  the part we want.
     unsigned int nclippix = 

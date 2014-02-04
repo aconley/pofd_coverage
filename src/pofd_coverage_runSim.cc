@@ -79,7 +79,7 @@ int runSimSingle(int argc, char **argv) {
   use_binning         = false;
   map_like            = true;
   powerspecfile       = "";
-  nfwhm               = 10.0;
+  nfwhm               = 15.0;
   nbeambins           = 100;
 
   int c;
@@ -342,7 +342,7 @@ int runSimDouble(int argc, char **argv) {
   map_like            = true;
   powerspecfile       = "";
   nbeambins           = 150;
-  nfwhm               = 10.0;
+  nfwhm               = 15.0;
 
   int c;
   int option_index = 0;
@@ -722,7 +722,7 @@ int main(int argc, char **argv) {
       std::cout << "\t\tNumber of bins to use if binning simulated image."
 		<< std::endl;
       std::cout << "\t--nfwhm NFWHM" << std::endl;
-      std::cout << "\t\tNumber of FWHM kept after filtering. (def: 10.0)"
+      std::cout << "\t\tNumber of FWHM kept after filtering. (def: 15.0)"
 		<< std::endl;
       std::cout << "\t-n, --nsims NSIMS" << std::endl;
       std::cout << "\t\tThe number of simulations to do (def: 100)." 

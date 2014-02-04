@@ -422,7 +422,7 @@ double simImage::getFinalNoise(unsigned int ntrials,
 	}
 
 	// Now filtering
-	filt->filter(pixsize, n1, n2, tmpdata);
+	filt->filter(n1, n2, pixsize, tmpdata);
 
 	// Measure using two pass algorithm
 	mn = tmpdata[0];

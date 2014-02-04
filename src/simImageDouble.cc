@@ -36,15 +36,12 @@
   \param[in] powerspecfile File containing power spectrum.  If set, the
               source positions are generated using this P(k).  If not set, they
 	      are uniformly distributed across the image.
-  \param[in] quickfft Set to true to use FFTW_ESTIMATE rather than FFTW_MEASURE
-              when filtering; suitable if you only plan to call this once.
 */
 simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 			       double FWHM1, double FWHM2, double SIGI1, 
 			       double SIGI2, double ESMOOTH1, double ESMOOTH2,
 			       unsigned int OVERSAMPLE, unsigned int NBINS,
-			       const std::string& powerspecfile,
-			       bool quickfft) {
+			       const std::string& powerspecfile) {
 
   if (N1 == 0)
     throw pofdExcept("simImageDouble", "simImageDouble", 
@@ -698,7 +695,7 @@ void simImageDouble::realize(const numberCountsDouble& model,
   }
   // And band 2
   if (f2 != NULL) {
-    f2->filter(n1, n2, pixsize, data1);
+    f2->filter(n1, n2, pixsize, data2);
     if (f2->isHipass()) {
       isHipass.second = true;
       filtscale.second = f2->getFiltScale();

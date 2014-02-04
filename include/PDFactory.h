@@ -50,10 +50,10 @@ class PDFactory {
 
   bool verbose; //!< Outputs information about each iter
 
-  //Working variable for main R fill
+  // Working variable for main R fill
   double *RFlux; //!< Holds R flux values for fill
   double minflux_R; //!< Minimum flux in RFlux; it wraps, so good to keep track fo
-
+  
   void init(); //!< Initializes memory
   bool resize(unsigned int); //!< Sets internal storage to specified size
   

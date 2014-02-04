@@ -397,9 +397,12 @@ void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
   const double nsig = 5.0; //Number of sigma out we go out in highpass Gaussian
 
   double reldiff = fabs(pixsize - pixscale) / pixscale;
-  if (reldiff > 1e-4)
-    throw pofdExcept("fourierFilter", "filter", 
-		     "pixscale doesn't match what this was set up with", 1);
+  if (reldiff > 1e-4) {
+    std::stringstream errstr;
+    errstr << "Pixel size (" << pixsize << ") doesn't match what this filter"
+	   << " was set up with (" << pixscale << ")";
+    throw pofdExcept("fourierFilter", "filter", errstr.str(), 1);
+  }
 
   // Handle the special case of no matched filtering, and hipass filtering
   // on scales larger than the map.  That's just mean subtracting.

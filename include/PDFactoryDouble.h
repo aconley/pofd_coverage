@@ -59,6 +59,7 @@ class PDFactoryDouble {
   double minfluxR_2; //!< Minimum flux in RFlux2
   bool rdflux; //!< If yes, rvals has been multiplied by dflux1 * dflux2
   double* rvals; //!< Working space for R computation, row major order
+  double* rsum; //!< Sum of R along one index or another
   fftw_complex *rtrans; //!< Holds FFTed rvals 
   fftw_complex* pval; //!< Working variable holding p = exp( stuff )
   double* pofd; //!< Internal P(D) variable.

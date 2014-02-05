@@ -139,16 +139,22 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     delta_n0 = NULL;
   }
 
-  // Set up filter if needed.  Right now we only support using
-  //  one filter for both.
+  // Set up filter(s) if needed. 
   if (FILTSCALE > 0) {
-    if (MATCHED) // Hipass and matched
+    if (MATCHED) {// Hipass and matched
       filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGI1, SIGC, 
 				FILTSCALE, 0.1, false, true);
-    else // hipass only
+      if ((FWHM1 != FWHM2) || (SIGI1 != SIGI2))
+	filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGI2, SIGC, 
+				  FILTSCALE, 0.1, false, true);
+    } else // hipass only
       filt1 = new fourierFilter(PIXSIZE, FILTSCALE, 0.1, false, true);
-  } else if (MATCHED) // Matched only
+  } else if (MATCHED) { // Matched only
     filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGI1, SIGC, false, true);
+    if ((FWHM1 != FWHM2) || (SIGI1 != SIGI2))
+      filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGI2, SIGC, 
+				FILTSCALE, 0.1, false, true);
+  }
 
   // Set up the histogrammed beam.  We must go out farther if we are filtering
   //  because the size affects the filtering significantly.  So go out to

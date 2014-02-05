@@ -35,14 +35,16 @@ static struct option long_options[] = {
   {"sigma", required_argument, 0, 's'},
   {"sigma1", required_argument, 0, '3'},
   {"sigma2", required_argument, 0, '4'},
-  {"sigi", required_argument, 0, '5'},
   {"sigc", required_argument, 0, '6'},
+  {"sigi", required_argument, 0, '5'},
+  {"sigi1", required_argument, 0, '7'},
+  {"sigi2", required_argument, 0, '8'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'},
   {"wisdom", required_argument, 0, 'w'},
   {0,0,0,0}
 };
-char optstring[] = "dhe:fF:Hlmn:N:1:0:o:r:s:3:4:5:6:vVw:";
+char optstring[] = "dhe:fF:Hlmn:N:1:0:o:r:s:3:4:5:6:7:8:vVw:";
 
 ///////////////////////////////
 
@@ -346,7 +348,7 @@ int getPDDouble(int argc, char **argv) {
   double n0; //Number of sources
   double maxflux1, maxflux2; //Maximum fluxes requested
   double fwhm1, fwhm2, nfwhm, pixsize, nkeep;
-  double filterscale, sigi, sigc; // Filter params
+  double filterscale, sigi1, sigi2, sigc; // Filter params
   double sigma1, sigma2; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins, oversample;
@@ -364,8 +366,9 @@ int getPDDouble(int argc, char **argv) {
   nkeep               = 0.0;
   filterscale         = 0.0;
   matched             = false;
-  sigi                = 0.0; // Means use sigma1
   sigc                = 0.006;
+  sigi1               = 0.0; // Means use sigma1
+  sigi2               = 0.0; // Means use sigma2
   verbose             = false;
   return_log          = false;
   write_fits          = false;
@@ -419,11 +422,14 @@ int getPDDouble(int argc, char **argv) {
     case '4':
       sigma2 = atof(optarg);
       break;
-    case '5':
-      sigi = atof(optarg);
-      break;
     case '6':
       sigc = atof(optarg);
+      break;
+    case '7':
+      sigi1 = atof(optarg);
+      break;
+    case '8':
+      sigi2 = atof(optarg);
       break;
     case 'v':
       verbose = true;
@@ -451,7 +457,8 @@ int getPDDouble(int argc, char **argv) {
   maxflux2   = atof(argv[optind + 6]);
   outputfile = std::string(argv[optind + 7]);
 
-  if (matched && (sigi == 0)) sigi = sigma1;
+  if (matched && (sigi1 == 0)) sigi1 = sigma1;
+  if (matched && (sigi2 == 0)) sigi2 = sigma2;
 
   //Input tests
   if (nflux == 0) {
@@ -517,8 +524,13 @@ int getPDDouble(int argc, char **argv) {
     std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
   }
   if (matched) {
-    if (sigi <= 0.0) {
-      std::cout << "Invalid (non-positive) sigi for matched filter"
+    if (sigi1 <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi1 for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigi2 <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi2 for matched filter"
 		<< std::endl;
       return 1;
     }
@@ -572,8 +584,10 @@ int getPDDouble(int argc, char **argv) {
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.1f\n", filterscale);
       if (matched) {
-	printf("   matched fwhm:       %0.1f\n", fwhm1);
-	printf("   matched sigi:       %0.4f\n", sigi);
+	printf("   matched fwhm1:      %0.1f\n", fwhm1);
+	printf("   matched fwhm2:      %0.1f\n", fwhm2);
+	printf("   matched sigi1:      %0.4f\n", sigi1);
+	printf("   matched sigi2:      %0.4f\n", sigi2);
 	printf("   matched sigc:       %0.4f\n", sigc);
       }
       if (oversample != 1)
@@ -583,21 +597,26 @@ int getPDDouble(int argc, char **argv) {
     }
 
     // Set up filter
-    fourierFilter *filt = NULL;
+    fourierFilter *filt1 = NULL, *filt2 = NULL;
     if (filterscale > 0) {
       if (matched) {
-	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc,
-				 filterscale, 0.1, true);
+	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
+				  filterscale, 0.1, true, true);
+	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
+				  filterscale, 0.1, true, true);
       } else
-	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
-    } else if (matched)
-	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc, true);
+	filt1 = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched) {
+      filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc, true);
+      filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc, true);
+    }
 
     // Get histogrammed inverse beam
     doublebeamHist inv_bmhist(nbins);
-    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, filt, NULL, nkeep);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, filt1, filt2, nkeep);
 
-    if (filt != NULL) delete filt; // Don't need this any more
+    if (filt1 != NULL) delete filt1; // Don't need these any more
+    if (filt2 != NULL) delete filt2; 
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 
@@ -776,9 +795,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
 		<< " matching the" << std::endl;
-      std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the "
-		<< " instrument" << std::endl;
-      std::cout << "\t\tand confusion noise controlled by --sigi and --sigc." 
+      std::cout << "\t\tbeam (each beam in the 2d case)."
 		<< std::endl;
       std::cout << "\t-n, --nflux value" << std::endl;
       std::cout << "\t\tThe number of requested fluxes along each dimension."
@@ -802,11 +819,6 @@ int main( int argc, char** argv ) {
 		<< " (def: 1)" << std::endl;
       std::cout << "\t-r, --rfile FILENAME" << std::endl;
       std::cout << "\t\tWrite the R used to this file as text." << std::endl;
-      std::cout << "\t--sigi VALUE" << std::endl;
-      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
-		<< std::endl;
-      std::cout << "\t\tThe instrument noise: sigma or sigma1 in 1D/2D)"
-		<< std::endl;
       std::cout << "\t--sigc VALUE" << std::endl;
       std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
 		<< " 0.006)" << std::endl;
@@ -821,6 +833,10 @@ int main( int argc, char** argv ) {
       std::cout << "ONE-D MODEL OPTIONS" << std::endl;
       std::cout << "\t-s, --sigma VALUE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (def: 0)" << std::endl;
+      std::cout << "\t--sigi VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
+		<< std::endl;
+      std::cout << "\t\tThe instrument noise)" << std::endl;
       std::cout << "TWO-D MODEL OPTIONS" << std::endl;
       std::cout << "\t--sigma1 NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise, band 1 (def: 0)." 
@@ -828,6 +844,15 @@ int main( int argc, char** argv ) {
       std::cout << "\t--sigma2 NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise, band 2 (def: 0)." 
 		<< std::endl;
+      std::cout << "\t--sigi1 VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, band 1, in Jy."
+		<< std::endl;
+      std::cout << "\t\t(Def: the instrument noise in band 1)" << std::endl;
+      std::cout << "\t--sigi2 VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, band 2, in Jy."
+		<< std::endl;
+      std::cout << "\t\t(Def: the instrument noise in band 2)" << std::endl;
+      std::cout << std::endl;
       return 0;
       break;
     case 'd' :

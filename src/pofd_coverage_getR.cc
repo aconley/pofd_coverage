@@ -25,14 +25,16 @@ static struct option long_options[] = {
   {"nfwhm", required_argument, 0, 'N'},
   {"nkeep", required_argument, 0, '1'},
   {"oversamp", required_argument, 0, 'o'},
-  {"sigi", required_argument, 0, '2'},
   {"sigc", required_argument, 0, '3'},
+  {"sigi", required_argument, 0, '2'},
+  {"sigi1", required_argument, 0, '4'},
+  {"sigi2", required_argument, 0, '5'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'}, 
   {0,0,0,0}
 };
 
-char optstring[] = "hdF:Hmn:N:1:o:2:3:vV";
+char optstring[] = "hdF:Hmn:N:1:o:2:3:4:5:vV";
 
 //One-D version
 int getRSingle(int argc, char** argv) {
@@ -171,11 +173,11 @@ int getRSingle(int argc, char** argv) {
     if (filterscale > 0) {
       if (matched) {
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
-				 filterscale, 0.1, true);
+				 filterscale, 0.1, true, true);
       } else
-	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+	filt = new fourierFilter(pixsize, filterscale, 0.1, true, true);
     } else if (matched)
-	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
+      filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true, true);
 
     // Fill beam
     inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, filt, nkeep);
@@ -305,7 +307,7 @@ int getRDouble(int argc, char** argv) {
   double minflux1, maxflux1, minflux2, maxflux2;
   double n0, nfwhm, pixsize, fwhm1, fwhm2, nkeep;
   unsigned int nflux1, nflux2, nbins, oversamp;
-  double filterscale, sigi, sigc;
+  double filterscale, sigi1, sigi2, sigc;
 
   // Defaults
   verbose = false;
@@ -313,8 +315,9 @@ int getRDouble(int argc, char** argv) {
   nbins = 150;
   filterscale = 0.0;
   matched = false;
-  sigi = 0.002;
   sigc = 0.006;
+  sigi1 = 0.002;
+  sigi2 = 0.002;
   oversamp = 1;
   nkeep = 0.0;
 
@@ -345,11 +348,14 @@ int getRDouble(int argc, char** argv) {
     case 'o':
       oversamp = atoi(optarg);
       break;
-    case '2':
-      sigi = atof(optarg);
-      break;
     case '3':
       sigc = atof(optarg);
+      break;
+    case '4':
+      sigi1 = atof(optarg);
+      break;
+    case '5':
+      sigi2 = atof(optarg);
       break;
     case 'v' :
       verbose = true;
@@ -428,8 +434,13 @@ int getRDouble(int argc, char** argv) {
     return 1;
   }
   if (matched) {
-    if (sigi <= 0.0) {
-      std::cout << "Invalid (non-positive) sigi for matched filter"
+    if (sigi1 <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi1 for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigi2 <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi2 for matched filter"
 		<< std::endl;
       return 1;
     }
@@ -449,20 +460,25 @@ int getRDouble(int argc, char** argv) {
     doublebeamHist inv_bmhist(nbins);
 
     // Set up filter
-    fourierFilter *filt = NULL;
+    fourierFilter *filt1 = NULL, *filt2 = NULL;
     if (filterscale > 0) {
       if (matched) {
-	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc,
-				 filterscale, 0.1, true);
+	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
+				  filterscale, 0.1, true, true);
+	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
+				  filterscale, 0.1, true, true);
       } else
-	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
-    } else if (matched)
-	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc, true);
+	filt1 = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched) {
+      filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc, true);
+      filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc, true);
+    }
     
     // Fill beam
-    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, filt, NULL, nkeep);
+    inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, filt1, filt2, nkeep);
 
-    if (filt != NULL) delete filt;
+    if (filt1 != NULL) delete filt1;
+    if (filt2 != NULL) delete filt2;
 
     if (n0 == 0)
       n0 = model.getBaseN0();
@@ -485,8 +501,10 @@ int getRDouble(int argc, char** argv) {
       if (filterscale > 0.0)
 	printf("   filter scale:       %0.4f\n", filterscale);
       if (matched) {
-	printf("   matched fwhm:       %0.1f\n", fwhm1);
-	printf("   matched sigi:       %0.4f\n", sigi);
+	printf("   matched fwhm1:      %0.1f\n", fwhm1);
+	printf("   matched fwhm2:      %0.1f\n", fwhm2);
+	printf("   matched sigi1:      %0.4f\n", sigi1);
+	printf("   matched sigi2:      %0.4f\n", sigi2);
 	printf("   matched sigc:       %0.4f\n", sigc);
       }
       if (oversamp != 1)
@@ -637,141 +655,148 @@ int main(int argc, char** argv) {
 			  &option_index)) != -1) 
     switch(c) {
     case 'h' :
-      std::cerr << "NAME" << std::endl;
-      std::cerr << "\tpofd_coverage_getR -- get R for a number counts model."
+      std::cout << "NAME" << std::endl;
+      std::cout << "\tpofd_coverage_getR -- get R for a number counts model."
 		<< "  Both" << std::endl;
-      std::cerr << "\tone-dimensional and two-dimensional models are supported."
+      std::cout << "\tone-dimensional and two-dimensional models are supported."
 		<< std::endl;
-      std::cerr << std::endl;
-      std::cerr << "SYNOPSIS" << std::endl;
-      std::cerr << "\tEither" << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\t pofd_coverage_getR [options] modelfile n0 fwhm pixsize"
+      std::cout << std::endl;
+      std::cout << "SYNOPSIS" << std::endl;
+      std::cout << "\tEither" << std::endl;
+      std::cout << std::endl;
+      std::cout << "\t pofd_coverage_getR [options] modelfile n0 fwhm pixsize"
 		<< " minflux maxflux" << std::endl;
-      std::cerr << "\t\tnflux outfile" << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tfor the 1D case or" << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\t pofd_coverage_getR -d [options] modelfile n0 fwhm1 fwhm2 "
+      std::cout << "\t\tnflux outfile" << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tfor the 1D case or" << std::endl;
+      std::cout << std::endl;
+      std::cout << "\t pofd_coverage_getR -d [options] modelfile n0 fwhm1 fwhm2 "
 		<< "pixsize" << std::endl;
-      std::cerr << "\t\tminflux1 maxflux1 nflux1 minflux2 maxflux2 nflux2"
+      std::cout << "\t\tminflux1 maxflux1 nflux1 minflux2 maxflux2 nflux2"
 		<< " outfile" << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tfor the 2D case." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "DESCRIPTION" << std::endl;
-      std::cerr << "\tEvaluates R for the model in initfile using the P(D)"
+      std::cout << std::endl;
+      std::cout << "\tfor the 2D case." << std::endl;
+      std::cout << std::endl;
+      std::cout << "DESCRIPTION" << std::endl;
+      std::cout << "\tEvaluates R for the model in initfile using the P(D)"
 		<< " formalism and" << std::endl;
-      std::cerr << "\twrites it to outfile.  The 1D model is a log-space "
+      std::cout << "\twrites it to outfile.  The 1D model is a log-space "
 		<< "spline" << std::endl;
-      std::cerr << "\tmodel for the number counts, and the 2D model is the 1D" 
+      std::cout << "\tmodel for the number counts, and the 2D model is the 1D" 
 		<< " spline" << std::endl;
-      std::cerr << "\tmodel times a log-normal color function for the second"
+      std::cout << "\tmodel times a log-normal color function for the second"
 		<< " band," << std::endl;
-      std::cerr << "\twith the log-space variance and mean color stored as"
+      std::cout << "\twith the log-space variance and mean color stored as"
 		<< " splines" << std::endl;
-      std::cerr << "\tin the flux of the first band." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tmodelfile is a text file specifying the model; the exact"
+      std::cout << "\tin the flux of the first band." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tmodelfile is a text file specifying the model; the exact"
 		<< " details" << std::endl;
-      std::cerr << "\t(given below) depend on whether the 1D or 2D case is"
+      std::cout << "\t(given below) depend on whether the 1D or 2D case is"
 		<< " being used." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tFor the 1D case, modelfile is a text file giving the "
+      std::cout << std::endl;
+      std::cout << "\tFor the 1D case, modelfile is a text file giving the "
 		<< "positions" << std::endl;
-      std::cerr << "\tof the spline knots and their values in the format"
+      std::cout << "\tof the spline knots and their values in the format"
 		<< " knotflux value." << std::endl;
-      std::cerr << "\tAdditional elements on each line are ignored."
+      std::cout << "\tAdditional elements on each line are ignored."
 		<< std::endl;
-      std::cerr << "\tFor the 2D case, modelfile is a text file giving the "
+      std::cout << "\tFor the 2D case, modelfile is a text file giving the "
 		<< "positions" << std::endl;
-      std::cerr << "\tof the knot points and their values, followed by the "
+      std::cout << "\tof the knot points and their values, followed by the "
 		<< "sigma" << std::endl;
-      std::cerr << "\tknot positions and their values, then likewise for the "
+      std::cout << "\tknot positions and their values, then likewise for the "
 		<< "colour" << std::endl;
-      std::cerr << "\toffset.  The format is three numbers on the first line, "
+      std::cout << "\toffset.  The format is three numbers on the first line, "
 		<< "giving" << std::endl;
-      std::cerr << "\tthe number of number count knots, sigma knots, and "
+      std::cout << "\tthe number of number count knots, sigma knots, and "
 		<< "offset knots," << std::endl;
-      std::cerr << "\tfollowed by a number of lines again with the format"
+      std::cout << "\tfollowed by a number of lines again with the format"
 		<< std::endl;
-      std::cerr << "\tknotpos value.  The sigmas and offsets are in log space."
+      std::cout << "\tknotpos value.  The sigmas and offsets are in log space."
 		<< std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tn0 is the number of sources per square degree.  If set"
+      std::cout << std::endl;
+      std::cout << "\tn0 is the number of sources per square degree.  If set"
 		<< " to" << std::endl;
-      std::cerr << "\tzero, then the value from the input model is used "
+      std::cout << "\tzero, then the value from the input model is used "
 		<< "directly." << std::endl;
-      std::cerr << "\tOtherwise, the model is scaled to match this value."
+      std::cout << "\tOtherwise, the model is scaled to match this value."
 		<< std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tfwhm is the beam FWHM (in arcsec) in the 1D case, and"
+      std::cout << std::endl;
+      std::cout << "\tfwhm is the beam FWHM (in arcsec) in the 1D case, and"
 		<< std::endl;
-      std::cerr << "\tfwhm1, fwhm2 are the FWHM values for each band in the 2D"
+      std::cout << "\tfwhm1, fwhm2 are the FWHM values for each band in the 2D"
 		<< "case." << std::endl;
-      std::cerr << "\tpixscale is the pixel scale (in arcsec)." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tminflux, maxflux give the minimum and maximum"
+      std::cout << "\tpixscale is the pixel scale (in arcsec)." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tminflux, maxflux give the minimum and maximum"
 		<< " flux density" << std::endl;
-      std::cerr << "\tto evaluate R for in the 1D case.  For the 2D case this" 
+      std::cout << "\tto evaluate R for in the 1D case.  For the 2D case this" 
 		<< std::endl;
-      std::cerr << "\tis extended to the minimum and maximum in each band."
+      std::cout << "\tis extended to the minimum and maximum in each band."
 		<< " nflux" << std::endl;
-      std::cerr << "\tis the number of fluxes to generate; in the 2D case along"
+      std::cout << "\tis the number of fluxes to generate; in the 2D case along"
 		<< " each" << std::endl;
-      std::cerr << "\tdimension." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "\tIn both cases the output R is written to outfile as"
+      std::cout << "\tdimension." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tIn both cases the output R is written to outfile as"
 		<< " text." << std::endl;
-      std::cerr << std::endl;
-      std::cerr << "OPTIONS" << std::endl;
-      std::cerr << "\t-d, --double" << std::endl;
-      std::cerr << "\t\tUse the 2D model." << std::endl;
-      std::cerr << "\t-F, --filterscale VALUE" << std::endl;
-      std::cerr << "\t\tHigh-pass filter scale, in arcsec.  Zero means no"
+      std::cout << std::endl;
+      std::cout << "OPTIONS" << std::endl;
+      std::cout << "\t-d, --double" << std::endl;
+      std::cout << "\t\tUse the 2D model." << std::endl;
+      std::cout << "\t-F, --filterscale VALUE" << std::endl;
+      std::cout << "\t\tHigh-pass filter scale, in arcsec.  Zero means no"
 		<< " filtering" << std::endl;
-      std::cerr << "\t\tis applied (def: 0)" << std::endl;
-      std::cerr << "\t-H, --hdf5" << std::endl;
-      std::cerr << "\t\tWrite the output as an HDF5 file rather than as text."
+      std::cout << "\t\tis applied (def: 0)" << std::endl;
+      std::cout << "\t-H, --hdf5" << std::endl;
+      std::cout << "\t\tWrite the output as an HDF5 file rather than as text."
 		<< std::endl;
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
 		<< " matching the" << std::endl;
-      std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the "
-		<< " instrument" << std::endl;
-      std::cout << "\t\tand confusion noise controlled by --sigi and --sigc." 
+      std::cout << "\t\tbeam (each band in the 2D case).  Off by default." 
 		<< std::endl;
-      std::cout << "\t\tOff by default." << std::endl;
-      std::cerr << "\t-n, --nbins VALUE" << std::endl;
-      std::cerr << "\t\tNumber of beam histogram bins (def: 120)" << std::endl;
-      std::cerr << "\t-N, --nfwhm VALUE" << std::endl;
-      std::cerr << "\t\tNumber of FWHM to go out in beam representation. "
+      std::cout << "\t-n, --nbins VALUE" << std::endl;
+      std::cout << "\t\tNumber of beam histogram bins (def: 120)" << std::endl;
+      std::cout << "\t-N, --nfwhm VALUE" << std::endl;
+      std::cout << "\t\tNumber of FWHM to go out in beam representation. "
 		<< "(def: 40.0)" << std::endl;
-      std::cerr << "\t--nkeep VALUE" << std::endl;
-      std::cerr << "\t\tNumber of FWHM out to keep after filtering in beam"
+      std::cout << "\t--nkeep VALUE" << std::endl;
+      std::cout << "\t\tNumber of FWHM out to keep after filtering in beam"
 		<< std::endl;
-      std::cerr << "\t\trepresentation.  The default is to keep all of it."
+      std::cout << "\t\trepresentation.  The default is to keep all of it."
 		<< std::endl;
-      std::cerr << "\t-o, --oversamp VALUE" << std::endl;
-      std::cerr << "\t\tOversampling of pixels used to generate beam. One means"
+      std::cout << "\t-o, --oversamp VALUE" << std::endl;
+      std::cout << "\t\tOversampling of pixels used to generate beam. One means"
 		<< std::endl;
-      std::cerr << "\t\tno oversampling.  Must be odd (def: 1)" << std::endl;
-      std::cout << "\t--sigi VALUE" << std::endl;
-      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
-		<< " 0.002)" << std::endl;
+      std::cout << "\t\tno oversampling.  Must be odd (def: 1)" << std::endl;
       std::cout << "\t--sigc VALUE" << std::endl;
       std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
 		<< " 0.006)" << std::endl;
-      std::cerr << "\t-V, --version" << std::endl;
-      std::cerr << "\t\tOutput the version number and exit." << std::endl;
-      std::cerr << std::endl;
+      std::cout << "\t-V, --version" << std::endl;
+      std::cout << "\t\tOutput the version number and exit." << std::endl;
+      std::cout << "ONE-DIMENSIONAL OPTIONS" << std::endl;
+      std::cout << "\t--sigi VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
+		<< " 0.002)" << std::endl;
+      std::cout << "TWO-DIMENSIONAL OPTIONS" << std::endl;
+      std::cout << "\t--sigi1 VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, band 1, in Jy."
+		<< std::endl;
+      std::cout << "\t\t(Def: 0.002)" << std::endl;
+      std::cout << "\t--sigi2 VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, band 2, in Jy."
+		<< std::endl;
+      std::cout << "\t\t(Def: 0.002)" << std::endl;
+      std::cout << std::endl;
       return 0;
       break;
     case 'd' :
       twod = true;
       break;
     case 'V' :
-      std::cerr << "pofd_coverage version number: " << pofd_coverage::version
+      std::cout << "pofd_coverage version number: " << pofd_coverage::version
 		<< std::endl;
       return 0;
       break;

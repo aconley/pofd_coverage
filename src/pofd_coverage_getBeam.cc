@@ -27,13 +27,15 @@ static struct option long_options[] = {
   {"nkeep", required_argument, 0, '1'},
   {"nbins", required_argument, 0, '0'},
   {"oversamp", required_argument, 0, 'o'},
-  {"sigi", required_argument, 0, '2'},
   {"sigc", required_argument, 0, '3'},
+  {"sigi", required_argument, 0, '2'},
+  {"sigi1", required_argument, 0, '4'},
+  {"sigi2", required_argument, 0, '5'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'},
   {0, 0, 0, 0}
 };
-char optstring[] = "dhHiF:mN:1:0:o:2:3:vV";
+char optstring[] = "dhHiF:mN:1:0:o:2:3:4:5:vV";
 
 ///////////////////////////////
 
@@ -212,7 +214,8 @@ int getBeamDouble(int argc, char **argv) {
 
   bool verbose, histogram, inverse, matched;
   unsigned int nbins, oversamp;
-  double fwhm1, fwhm2, nfwhm, pixsize, filterscale, nkeep, sigi, sigc;
+  double fwhm1, fwhm2, nfwhm, pixsize, nkeep;
+  double filterscale, sigi1, sigi2, sigc; // Filtering params
   std::string outputfile; //Ouput pofd option
 
   //Defaults
@@ -222,8 +225,9 @@ int getBeamDouble(int argc, char **argv) {
   histogram           = false;
   filterscale         = 0.0;
   matched             = false;
-  sigi                = 0.002;
   sigc                = 0.006;
+  sigi1               = 0.002;
+  sigi2               = 0.002;
   oversamp            = 1;
   inverse             = false;
   nkeep               = 0;
@@ -258,11 +262,14 @@ int getBeamDouble(int argc, char **argv) {
     case 'o':
       oversamp = static_cast<unsigned int>(atoi(optarg));
       break;
-    case '2':
-      sigi = atof(optarg);
-      break;
     case '3':
       sigc = atof(optarg);
+      break;
+    case '4':
+      sigi1 = atof(optarg);
+      break;
+    case '5':
+      sigi2 = atof(optarg);
       break;
     case 'v':
       verbose = true;
@@ -309,8 +316,13 @@ int getBeamDouble(int argc, char **argv) {
     return 1;
   }
   if (matched) {
-    if (sigi <= 0.0) {
-      std::cout << "Invalid (non-positive) sigi for matched filter"
+    if (sigi1 <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi1 for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigi2 <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi2 for matched filter"
 		<< std::endl;
       return 1;
     }
@@ -336,8 +348,10 @@ int getBeamDouble(int argc, char **argv) {
       if (filterscale > 0.0)
 	printf(" filter scale:          %0.1f\n", filterscale);
       if (matched) {
-	printf(" matched fwhm:          %0.1f\n", dpr.first);
-	printf(" matched sigi:          %0.4f\n", sigi);
+	printf(" matched fwhm1:         %0.1f\n", dpr.first);
+	printf(" matched fwhm2:         %0.1f\n", dpr.second);
+	printf(" matched sigi1:         %0.4f\n", sigi1);
+	printf(" matched sigi2:         %0.4f\n", sigi2);
 	printf(" matched sigc:          %0.4f\n", sigc);
       }
       if (oversamp != 1)
@@ -346,24 +360,32 @@ int getBeamDouble(int argc, char **argv) {
       if (histogram) printf("Returning histogrammed beam\n");
     }
 
-    fourierFilter *filt = NULL;
+    fourierFilter *filt1 = NULL, *filt2 = NULL;
     if (filterscale > 0) {
       if (matched) {
-	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc,
-				 filterscale, 0.1, true);
+	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
+				  filterscale, 0.1, true);
+	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
+				  filterscale, 0.1, true);
       } else
-	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
-    } else if (matched)
-	filt = new fourierFilter(pixsize, fwhm1, sigi, sigc, true);
+	filt1 = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched) {
+      filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc, true);
+      filt2 = new fourierFilter(pixsize, fwhm1, sigi2, sigc, true);
+    }
     if (histogram) {
       // Get histogrammed beam
       doublebeamHist bmhist(nbins);
-      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp, filt, NULL, nkeep);
+      bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp, filt1, filt2, nkeep);
       // Write
       bmhist.writeToFits(outputfile);
     } else
-      bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, NULL, inverse);
-    if (filt != NULL) delete filt; 
+      bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt1, filt2, 
+		     inverse);
+
+    if (filt1 != NULL) delete filt1; 
+    if (filt2 != NULL) delete filt2; 
+
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
@@ -429,8 +451,9 @@ int main( int argc, char** argv ) {
 		<< " matching the" << std::endl;
       std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the "
 		<< " instrument" << std::endl;
-      std::cout << "\t\tand confusion noise controlled by --sigi and --sigc." 
-		<< std::endl;
+      std::cout << "\t\tand confusion noise controlled by --sigi and --sigc,"
+		<< " or" << std::endl;
+      std::cout << "\t\t--sigi1, --sigi2 and --sigc in 2D." << std::endl;
       std::cout << "\t\tOff by default." << std::endl;
       std::cout << "\t--nbins value" << std::endl;
       std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 120)"
@@ -447,15 +470,26 @@ int main( int argc, char** argv ) {
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount to oversample the beam; must be odd integer."
 		<< " (def: 1)" << std::endl;
-      std::cout << "\t--sigi VALUE" << std::endl;
-      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
-		<< " 0.002)" << std::endl;
       std::cout << "\t--sigc VALUE" << std::endl;
       std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
 		<< " 0.006)" << std::endl;
       std::cout << "\t-v, --verbose" << std::endl;
       std::cout << "\t\tPrint informational messages while running"
 		<< std::endl;
+      std::cout << "ONE-DIMENSIONAL OPTIONS" << std::endl;
+      std::cout << "\t--sigi VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
+		<< " 0.002)" << std::endl;
+      std::cout << "TWO-DIMENSIONAL OPTIONS" << std::endl;
+      std::cout << "\t--sigi1 VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, band 1, in "
+		<< std::endl;
+      std::cout << "\t\tJy. (Def: 0.002)" << std::endl;
+      std::cout << "\t--sigi2 VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, band 2, in "
+		<< std::endl;
+      std::cout << "\t\tJy. (Def: 0.002)." << std::endl;
+      std::cout << std::endl;
       return 0;
       break;
     case 'd':

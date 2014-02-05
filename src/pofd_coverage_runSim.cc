@@ -244,6 +244,11 @@ int runSimSingle(int argc, char **argv) {
     return 1;
   }
   if (matched) {
+    if (sigma == 0) {
+      std::cout << "Invalid (non-positive) sigma for matched filtering"
+		<< std::endl;
+      return 1;
+    }
     if (sigc <= 0.0) {
       std::cout << "Invalid (non-positive) sigc for matched filter"
 		<< std::endl;
@@ -551,6 +556,16 @@ int runSimDouble(int argc, char **argv) {
     return 1;
   }
   if (matched) {
+    if (sigma1 == 0) {
+      std::cout << "Invalid (non-positive) sigma1 for matched filtering"
+		<< std::endl;
+      return 1;
+    }
+    if (sigma2 == 0) {
+      std::cout << "Invalid (non-positive) sigma2 for matched filtering"
+		<< std::endl;
+      return 1;
+    }
     if (sigc <= 0.0) {
       std::cout << "Invalid (non-positive) sigc for matched filter"
 		<< std::endl;
@@ -594,8 +609,10 @@ int runSimDouble(int argc, char **argv) {
       if (filtscale > 0)
 	printf("   filtering scale:    %0.1f\n", filtscale);
       if (matched > 0) {
-	printf("   matched fwhm:       %0.1f\n", fwhm1);
-	printf("   matched sigi:       %0.4f\n", sigma1);
+	printf("   matched fwhm1:      %0.1f\n", fwhm1);
+	printf("   matched fwhm2:      %0.1f\n", fwhm2);
+	printf("   matched sigi1:      %0.4f\n", sigma1);
+	printf("   matched sigi2:      %0.4f\n", sigma2);
 	printf("   matched sigc:       %0.4f\n", sigc);
       }
       if (sparcity > 1)
@@ -763,11 +780,14 @@ int main(int argc, char **argv) {
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
 		<< " matching the" << std::endl;
-      std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the "
+      std::cout << "\t\tbeam, instrument noise matching the unfiltered"
 		<< " instrument" << std::endl;
-      std::cout << "\t\tnoise equal to sigma or sigma1 in 1D/2D, and the"
-		<< " confusion" << std::endl;
-      std::cout << "\t\tnoise set by --sigc.  Off by default." << std::endl;
+      std::cout << "\t\tnoise, and confusion noise controlled by --sigc.  In"
+		<< " the" << std::endl;
+      std::cout << "\t\ttwo-d case, a different filter is applied in each band"
+		<< std::endl;
+      std::cout << "\t\tmatching the properties of that band.  Off by default."
+		<< std::endl;
       std::cout << "\t--nbeambins NBINS" << std::endl;
       std::cout << "\t\tNumber of histogram bins to use for beams. (def: 100"
 		<< std::endl;

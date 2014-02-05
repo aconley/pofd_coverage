@@ -23,18 +23,20 @@ class doublebeam {
   double rhosq2; //!< Convenience variable \f$\rho = 4 \log\left(2\right) 3600^2/FWHM^2)\f$, band 2
   
   /*!\brief Inner beam generator, no filtering*/
-  void getRawBeam(unsigned int band, unsigned int n, double pixsize, 
-		  double* const bm) const;
+  void getRawBeam(unsigned int band, unsigned int n1, unsigned int n2, 
+		  double pixsize, double* const bm) const;
 
   /*!\brief Inner beam generator, no filtering, with oversampling*/
-  void getRawBeam(unsigned int band, unsigned int n, double pixsize, 
-		  unsigned int oversamp, double* const bm) const;
+  void getRawBeam(unsigned int band, unsigned int n1, unsigned int n2, 
+		  double pixsize, unsigned int oversamp, 
+		  double* const bm) const;
 
  public :
   doublebeam(double FWHM1=10.0, double FWHM2=15.0); //!< Constructor with FWHM
 
   void setFWHM(double, double); //!< Set the FWHM values
 
+  double getMaxFWHM() const { return std::max(fwhm1, fwhm2); }
   dblpair getFWHM() const { return std::make_pair(fwhm1, fwhm2); }
   dblpair getRhoSq() const {return std::make_pair(rhosq1, rhosq2);}
 
@@ -47,12 +49,22 @@ class doublebeam {
   void getBeamFac(unsigned int band, unsigned int n, 
 		  double pixsize, double* const fac) const;
 
-  /*!\brief Get 2D beam*/
+  /*!\brief Get 2D beam, square*/
   void getBeam(unsigned int band, unsigned int n, double pixsize, 
 	       double* const, const fourierFilter* const=NULL) const;
-  /*!\brief Get 2D beam with oversampling*/
+  /*!\brief Get 2D beam, arb size*/
+  void getBeam(unsigned int band, unsigned int n1, unsigned int n2, 
+	       double pixsize, double* const, 
+	       const fourierFilter* const=NULL) const;
+
+  /*!\brief Get 2D beam with oversampling, square*/
   void getBeam(unsigned int band, unsigned int n, double pixsize, 
 	       unsigned int oversamp, double* const, 
+	       const fourierFilter* const=NULL) const;
+
+  /*!\brief Get 2D beam with oversampling, arb size*/
+  void getBeam(unsigned int band, unsigned int n1, unsigned int n2, 
+	       double pixsize, unsigned int oversamp, double* const, 
 	       const fourierFilter* const=NULL) const;
 
   /*!\brief Write the beams to a FITS file*/
@@ -145,9 +157,16 @@ class doublebeamHist {
   /*!\brief Get min/max band 2 (non-inverse beam)*/
   dblpair getMinMax2(unsigned int i) const {return minmax2[i];}
 
-  /*!\brief Fill from beam*/
+  /*!\brief Fill from beam, number of FWHM version*/
   void fill(const doublebeam& bm, double nfwhm, double pixsize,
 	    bool inv=false, unsigned int oversamp=1, 
+	    const fourierFilter* const filt1=NULL, 
+	    const fourierFilter* const filt2=NULL, 
+	    double num_fwhm_keep=0);
+
+  /*!\brief Fill from beam, arb size version*/
+  void fill(const doublebeam& bm, unsigned int n1, unsigned int n2, 
+	    double pixsize, bool inv=false, unsigned int oversamp=1, 
 	    const fourierFilter* const filt1=NULL, 
 	    const fourierFilter* const filt2=NULL, 
 	    double num_fwhm_keep=0);

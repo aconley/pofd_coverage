@@ -143,23 +143,20 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   //  one filter for both.
   if (FILTSCALE > 0) {
     if (MATCHED) // Hipass and matched
-      filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGI1, SIGC, FILTSCALE, 0.1,
-				false);
+      filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGI1, SIGC, 
+				FILTSCALE, 0.1, false, true);
     else // hipass only
-      filt1 = new fourierFilter(PIXSIZE, FILTSCALE, 0.1, false);
+      filt1 = new fourierFilter(PIXSIZE, FILTSCALE, 0.1, false, true);
   } else if (MATCHED) // Matched only
-    filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGI1, SIGC, false);
+    filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGI1, SIGC, false, true);
 
-  // Set up the histogrammed beam
-  double nfwhm;
-  if (FILTSCALE > 0) {
-    // Go all the way out to the image size so the filtering is
-    // accurate.  Expensive, but we only do this once after all.
-    unsigned int maxextent = N1 > N2 ? N1 : N2;
-    double maxfwhm = fwhm1 > fwhm2 ? fwhm1 : fwhm2;
-    nfwhm = static_cast<double>(maxextent) * PIXSIZE / (2 * maxfwhm);
-  } else nfwhm = NFWHM; // Can be smaller if not filtering
-  inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE, filt1, filt2, NFWHM);
+  // Set up the histogrammed beam.  We must go out farther if we are filtering
+  //  because the size affects the filtering significantly.  So go out to
+  //  the same size as the image to ensure the filtering is the same
+  if (filt1 != NULL)
+    inv_bmhist.fill(bm, N1, N2, PIXSIZE, true, OVERSAMPLE, filt1, filt2, NFWHM);
+  else
+    inv_bmhist.fill(bm, NFWHM, PIXSIZE, true, OVERSAMPLE, filt1, filt2, NFWHM);
 
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);

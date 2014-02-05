@@ -20,12 +20,13 @@ class beam {
   double fwhm; //!< FWHM of beam, in arcsec
   double rhosq; //!< Convenience variable \f$\rho = 4 \log\left(2\right) 3600^2/FWHM^2)\f$
   
-  /*!\brief Inner beam generator, no filtering*/
-  void getRawBeam(unsigned int n, double pixsize, double* const bm) const;
-
-  /*!\brief Inner beam generator, no filtering, with oversampling*/
-  void getRawBeam(unsigned int n, double pixsize, unsigned int oversamp,
+  /*!\brief Inner beam generator, no filtering, arbitrary extent*/
+  void getRawBeam(unsigned int n1, unsigned int n2, double pixsize, 
 		  double* const bm) const;
+
+  /*!\brief Inner beam generator, no filtering, with oversampling, arb extent*/
+  void getRawBeam(unsigned int n1, unsigned int n2, double pixsize, 
+		  unsigned int oversamp, double* const bm) const;
 
  public :
   beam(double FWHM=10.0); //!< Constructor with FWHM
@@ -41,13 +42,22 @@ class beam {
   /*!\brief Get factorized beam, no filtering*/
   void getBeamFac(unsigned int n, double pixsize, double* const fac) const; 
 
-  /*!\brief Get 2D beam*/
+  /*!\brief Get 2D beam, square*/
   void getBeam(unsigned int n, double pixsize, double* const, 
 	       const fourierFilter* const=NULL) const;
 
-  /*!\brief Get 2D beam with oversampling*/
+  /*!\brief Get 2D beam, arbitrary size*/
+  void getBeam(unsigned int n1, unsigned int n2, double pixsize, double* const, 
+	       const fourierFilter* const=NULL) const;
+  
+  /*!\brief Get 2D beam with oversampling, square*/
   void getBeam(unsigned int n, double pixsize, unsigned int oversamp,
 	       double* const, const fourierFilter* const=NULL) const;
+
+  /*!\brief Get 2D beam with oversampling, arbitrary size*/
+  void getBeam(unsigned int n1, unsigned int n2, double pixsize, 
+	       unsigned int oversamp, double* const, 
+	       const fourierFilter* const=NULL) const;
 
   /*!\brief Write the beam to a FITS file*/
   void writeToFits(const std::string& outfile, double pixsize, 
@@ -133,8 +143,13 @@ class beamHist {
   dblpair getMinMaxPos() const {return minmax_pos;} //!< Get min/max pos beam
   dblpair getMinMaxNeg() const {return minmax_neg;} //!< Get min/max neg beam
 
-  /*!\brief Fill from beam*/
+  /*!\brief Fill from beam, symmetric number of fwhm version*/
   void fill(const beam& bm, double nfwhm, double pixsize,
+	    bool inv=false, unsigned int oversamp=1,
+	    const fourierFilter* const filt=NULL, double num_fwhm_keep=0.0);
+
+  /*!\brief Fill from beam, arbitrary size version */
+  void fill(const beam& bm, unsigned int n1, unsigned int n2, double pixsize,
 	    bool inv=false, unsigned int oversamp=1,
 	    const fourierFilter* const filt=NULL, double num_fwhm_keep=0.0);
 

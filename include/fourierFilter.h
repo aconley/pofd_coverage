@@ -29,6 +29,7 @@ class fourierFilter {
   mutable bool initialized; //!< Has the filter been set up
   bool doHipass; //!< Do Highpass filtering
   bool doMatched; //!< Do matched filtering
+  bool allowResize; //!< Allow resizing
 
   mutable unsigned int nx; //!< Size of filter region, x
   mutable unsigned int ny; //!< Size of filter region, y
@@ -64,14 +65,14 @@ class fourierFilter {
 
   /*! \brief Matched filtering only constructor */
   explicit fourierFilter(double pixsize, double fwhm, double sigi, double sigc, 
-			 bool quickfft=false);
+			 bool quickfft=false, bool fixedsize=false);
   /*! \brief Hipass filtering only constructor */
   explicit fourierFilter(double pixsize, double fscale, double q=0.1, 
-			 bool quickfft=false);
+			 bool quickfft=false, bool fixedsize=false);
   /*! \brief Both types of filtering constructor */
   explicit fourierFilter(double pixsize, double fwhm, double sigi, 
 			 double sigc, double fscale, double q=0.1, 
-			 bool quickfft=false);
+			 bool quickfft=false, bool fixedsize=false);
   ~fourierFilter();
   
   bool isMatched() const { return doMatched; }

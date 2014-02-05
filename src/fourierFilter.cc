@@ -15,11 +15,13 @@ double NaN = std::numeric_limits<double>::quiet_NaN();
   \param[in] quickfft If set, use FFTW_ESTIMATE for the plans.  Otherwise
                     use FFTW_MEASURE.  Set this if you are only planning
                     on calling this once.
+  \param[in] fixedsize Only allow this to be resized the first time.
+
   This version of the constructor sets up only matched filtering
 */
 fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
-			     double sigc, bool quickfft):
-  initialized(false), doHipass(false), doMatched(true), 
+			     double sigc, bool quickfft, bool fixedsize):
+  initialized(false), doHipass(false), doMatched(true), allowResize(!fixedsize),
   nx(0), ny(0), pixscale(pixsize), filtscale(NaN), qfactor(NaN), 
   fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(0),
   plan(NULL), plan_inv(NULL), filt_fft(NULL), map_fft(NULL) {
@@ -55,12 +57,13 @@ fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
   \param[in] quickfft If set, use FFTW_ESTIMATE for the plans.  Otherwise
                     use FFTW_MEASURE.  Set this if you are only planning
                     on calling this once.
+  \param[in] fixedsize Only allow this to be resized the first time.
 
   This version of the constructor sets up only hipass filtering
 */
 fourierFilter::fourierFilter(double pixsize, double fscale, double q,
-			     bool quickfft):
-  initialized(false), doHipass(true), doMatched(false), 
+			     bool quickfft, bool fixedsize):
+  initialized(false), doHipass(true), doMatched(false), allowResize(!fixedsize),
   nx(0), ny(0), pixscale(pixsize), filtscale(fscale), qfactor(q),
   fwhm(NaN), sig_inst(NaN), sig_conf(NaN), nyhalf(0),
   plan(NULL), plan_inv(NULL), filt_fft(NULL), map_fft(NULL) {
@@ -94,13 +97,14 @@ fourierFilter::fourierFilter(double pixsize, double fscale, double q,
   \param[in] quickfft If set, use FFTW_ESTIMATE for the plans.  Otherwise
                     use FFTW_MEASURE.  Set this if you are only planning
                     on calling this once.
+  \param[in] fixedsize Only allow this to be resized the first time.
 
   This version of the constructor sets up both hipass and matched filtering
 */
 fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
 			     double sigc, double fscale, double q,
-			     bool quickfft):
-  initialized(false), doHipass(true), doMatched(true), 
+			     bool quickfft, bool fixedsize):
+  initialized(false), doHipass(true), doMatched(true), allowResize(!fixedsize),
   nx(0), ny(0), pixscale(pixsize), filtscale(fscale), qfactor(q), 
   fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(0),
   plan(NULL), plan_inv(NULL), filt_fft(NULL), map_fft(NULL) {
@@ -264,10 +268,11 @@ void fourierFilter::setup_matched() const {
   }
 
   // Now we compute the scaling by applying the filter to the original
-  // beam (modifying map_fft) and then transforming back into bm.
-  // Since we are per-beam normalized, and setup_beam produces a map
-  // with a peak value of unity, the scaling is just one over
-  //  the maximum
+  //  beam (modifying map_fft) and then transforming back into bm.
+  //  Since we are per-beam normalized, and setup_beam produces a map
+  //  with a peak value of unity, the scaling is just one over
+  //  the maximum.  And the maximum should be where we put it -- in the 0
+  //  pixel.
   double rfilt, ifilt;
   for (unsigned int i = 0; i < nx * nyhalf; ++i) {
     rmap = map_fft[i][0]; // Still the FFTed beam -- until we modify
@@ -278,12 +283,18 @@ void fourierFilter::setup_matched() const {
     map_fft[i][1] = imap * rfilt + rmap * ifilt;
   }
   fftw_execute_dft_c2r(plan_inv, map_fft, bm);
+
+  // The matched filter shouldn't move the maximum, which was in the
+  //  0th pixel.
   double maxval = bm[0];
+  /*
+  // Test code
   for (unsigned int i = 1; i < nx * ny; ++i) {
     val = bm[i];
     if (val > maxval) maxval = val;
   }
-  
+  */
+
   if (maxval <= 0.0)
     throw pofdExcept("fourierFilter", "setup",
 		     "Invalid recovered maximum value", 3);
@@ -339,6 +350,9 @@ bool fourierFilter::setup(unsigned int NX, unsigned int NY) const {
   // Figure out if the size has changed
   bool resized = false;
   if ((NX != nx) || (NY != ny)) {
+    if ((!allowResize) && (nx != 0))
+      throw pofdExcept("fourierFilter", "filter",
+		       "Can only resize the first time this is called", 1);
     // Have to resize; clean up and mark as uninitialized.
     if (filt_fft != NULL) { fftw_free(filt_fft); filt_fft = NULL; }
     if (map_fft != NULL) { fftw_free(map_fft); map_fft = NULL; }
@@ -526,11 +540,12 @@ void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
 	map_fft[i][1] *= scalfac;
       }
     }
-
-    // Always 0 mean
-    map_fft[0][0] = 0.0;
-    map_fft[0][1] = 0.0;
   }
+
+
+  // Always 0 mean
+  map_fft[0][0] = 0.0;
+  map_fft[0][1] = 0.0;
 
   // Transform back -- same use of array execute versions
   // We don't have to rescale because that's already included

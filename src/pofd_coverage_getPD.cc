@@ -31,6 +31,7 @@ static struct option long_options[] = {
   {"nfwhm", required_argument, 0, 'N'},
   {"nkeep", required_argument, 0, '1'},
   {"oversamp", required_argument, 0, 'o'},
+  {"qfactor", required_argument, 0, 'q'},
   {"rfile", required_argument, 0, 'r'},
   {"sigma", required_argument, 0, 's'},
   {"sigma1", required_argument, 0, '3'},
@@ -42,9 +43,9 @@ static struct option long_options[] = {
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'},
   {"wisdom", required_argument, 0, 'w'},
-  {0,0,0,0}
+  {0, 0, 0, 0}
 };
-char optstring[] = "dhe:fF:Hlmn:N:1:0:o:r:s:3:4:5:6:7:8:vVw:";
+char optstring[] = "dhe:fF:Hlmn:N:1:0:o:q:r:s:3:4:5:6:7:8:vVw:";
 
 ///////////////////////////////
 
@@ -54,7 +55,7 @@ int getPDSingle(int argc, char **argv) {
   double n0; //Number of sources
   double maxflux, nkeep, fwhm, nfwhm, pixsize;
   double sigma; //Instrument noise
-  double filterscale, sigi, sigc; // Filtering parameters
+  double filterscale, qfactor, sigi, sigc; // Filtering parameters
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins;
   bool has_wisdom, verbose, return_log, matched;
@@ -76,6 +77,7 @@ int getPDSingle(int argc, char **argv) {
   write_r             = false;
   oversample          = 1;
   filterscale         = 0.0;
+  qfactor             = 0.1;
   matched             = false;
   sigi                = 0.0; // Means: use sigma
   sigc                = 0.006;
@@ -115,6 +117,9 @@ int getPDSingle(int argc, char **argv) {
       break;
     case 'o':
       oversample = static_cast<unsigned int>(atoi(optarg));
+      break;
+    case 'q':
+      qfactor = atof(optarg);
       break;
     case 'r':
       write_r = true;
@@ -198,16 +203,21 @@ int getPDSingle(int argc, char **argv) {
     std::cout << "Invalid (non-odd) oversampling " << oversample << std::endl;
     return 1;
   }
-  if (filterscale < 0.0) {
-    std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
-    return 1;
-  }
   if (nkeep < 0.0) {
     std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
     return 1;
   }
   if (write_as_hdf5 && write_fits) {
     std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
+  }
+  if (filterscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
+    return 1;
+  }
+  if (qfactor < 0.0) {
+    std::cout << "Invalid (negative) high-pass filter q factor" 
+	      << qfactor << std::endl;
+    return 1;
   }
   if (matched) {
     if (sigi <= 0.0) {
@@ -254,8 +264,10 @@ int getPDSingle(int argc, char **argv) {
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
       printf("   N0:                 %0.4e\n", n0);
       printf("   sigma:              %0.4f\n", sigma);
-      if (filterscale > 0.0)
+      if (filterscale > 0.0) {
 	printf("   filter scale:       %0.1f\n", filterscale);
+	printf("   filter q:           %0.2f\n", qfactor);
+      }
       if (matched) {
 	printf("   matched fwhm:       %0.1f\n", fwhm);
 	printf("   matched sigi:       %0.4f\n", sigi);
@@ -271,9 +283,9 @@ int getPDSingle(int argc, char **argv) {
     if (filterscale > 0) {
       if (matched) {
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
-				 filterscale, 0.1, true);
+				 filterscale, qfactor, true);
       } else
-	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+	filt = new fourierFilter(pixsize, filterscale, qfactor, true);
     } else if (matched)
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
 
@@ -348,7 +360,7 @@ int getPDDouble(int argc, char **argv) {
   double n0; //Number of sources
   double maxflux1, maxflux2; //Maximum fluxes requested
   double fwhm1, fwhm2, nfwhm, pixsize, nkeep;
-  double filterscale, sigi1, sigi2, sigc; // Filter params
+  double filterscale, qfactor, sigi1, sigi2, sigc; // Filter params
   double sigma1, sigma2; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins, oversample;
@@ -365,6 +377,7 @@ int getPDDouble(int argc, char **argv) {
   nfwhm               = 4.5;
   nkeep               = 0.0;
   filterscale         = 0.0;
+  qfactor             = 0.1;
   matched             = false;
   sigc                = 0.006;
   sigi1               = 0.0; // Means use sigma1
@@ -411,6 +424,9 @@ int getPDDouble(int argc, char **argv) {
       break;
     case 'o':
       oversample = static_cast<unsigned int>(atoi(optarg));
+      break;
+    case 'q':
+      qfactor = atof(optarg);
       break;
     case 'r':
       write_r = true;
@@ -507,11 +523,6 @@ int getPDDouble(int argc, char **argv) {
 	      << std::endl;
     return 1;
   }
-  if (filterscale < 0.0) {
-    std::cout << "Invalid (negative) filter scale: " << filterscale
-	      << std::endl;
-    return 1;
-  }
   if (oversample % 2 == 0) {
     std::cout << "Invalid (non-odd) oversampling " << oversample << std::endl;
     return 1;
@@ -522,6 +533,16 @@ int getPDDouble(int argc, char **argv) {
   }
   if (write_as_hdf5 && write_fits) {
     std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
+  }
+  if (filterscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale: " << filterscale
+	      << std::endl;
+    return 1;
+  }
+  if (qfactor < 0.0) {
+    std::cout << "Invalid (negative) high-pass filter q factor" 
+	      << qfactor << std::endl;
+    return 1;
   }
   if (matched) {
     if (sigi1 <= 0.0) {
@@ -581,8 +602,10 @@ int getPDDouble(int argc, char **argv) {
       printf("   N0:                 %0.4e\n", n0);
       printf("   sigma1:             %0.4f\n", sigma1);
       printf("   sigma2:             %0.4f\n", sigma2);
-      if (filterscale > 0.0)
+      if (filterscale > 0.0) {
 	printf("   filter scale:       %0.1f\n", filterscale);
+	printf("   filter q:           %0.2f\n", qfactor);
+      }
       if (matched) {
 	printf("   matched fwhm1:      %0.1f\n", fwhm1);
 	printf("   matched fwhm2:      %0.1f\n", fwhm2);
@@ -601,11 +624,11 @@ int getPDDouble(int argc, char **argv) {
     if (filterscale > 0) {
       if (matched) {
 	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
-				  filterscale, 0.1, true, true);
+				  filterscale, qfactor, true, true);
 	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
-				  filterscale, 0.1, true, true);
+				  filterscale, qfactor, true, true);
       } else
-	filt1 = new fourierFilter(pixsize, filterscale, 0.1, true);
+	filt1 = new fourierFilter(pixsize, filterscale, qfactor, true);
     } else if (matched) {
       filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc, true);
       filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc, true);
@@ -817,6 +840,10 @@ int main( int argc, char** argv ) {
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount to oversample the beam; must be odd integer."
 		<< " (def: 1)" << std::endl;
+      std::cout << "\t-q, --qfactor VALUE" << std::endl;
+      std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"
+		<< std::endl;
+      std::cout << "\t\tfiltscale. (def: 0.1)." << std::endl;
       std::cout << "\t-r, --rfile FILENAME" << std::endl;
       std::cout << "\t\tWrite the R used to this file as text." << std::endl;
       std::cout << "\t--sigc VALUE" << std::endl;

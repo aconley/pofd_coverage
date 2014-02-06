@@ -32,6 +32,7 @@ static struct option long_options[] = {
   {"n0rangefrac", required_argument, 0, '4'},
   {"oversample", required_argument, 0, 'o'},
   {"powspec", required_argument, 0, 'p'},
+  {"qfactor", required_argument, 0, 'q'},
   {"sigma", required_argument, 0, 's'},
   {"sigma1", required_argument, 0, '#'},
   {"sigma2", required_argument, 0, '$'},
@@ -44,7 +45,7 @@ static struct option long_options[] = {
   {0, 0, 0, 0}
 };
 
-char optstring[] = "hbde:!:@:f:F:1:mn:5:6:N2:3:4:o:p:s:#:$:8:%:S:vVw:";
+char optstring[] = "hbde:!:@:f:F:1:mn:5:6:N2:3:4:o:p:q:s:#:$:8:%:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -56,7 +57,7 @@ int runSimSingle(int argc, char **argv) {
   unsigned int nsims, nlike, n1, n2, fftsize, nbins;
   unsigned int oversample, sparcity, nbeambins;
   double pixsize, n0rangefrac, n0initrange, nfwhm;
-  double filtscale, sigc; //Filtering parameters
+  double filtscale, qfactor, sigc; //Filtering parameters
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; //Power spectrum file
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like, matched;
@@ -77,6 +78,7 @@ int runSimSingle(int argc, char **argv) {
   seed                = 1024;
   oversample          = 1;
   filtscale           = 0.0;
+  qfactor             = 0.1;
   matched             = false;
   sigc                = 0.006;
   sparcity            = 1;
@@ -137,6 +139,9 @@ int runSimSingle(int argc, char **argv) {
       break;
     case 'p':
       powerspecfile = std::string(optarg);
+      break;
+    case 'q':
+      qfactor = atof(optarg);
       break;
     case 's':
       sigma = atof(optarg);
@@ -215,10 +220,6 @@ int runSimSingle(int argc, char **argv) {
     std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
-  if (filtscale < 0.0) {
-    std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
-    return 1;
-  }
   if (n0 < 0.0) {
     std::cout << "Invalid (negative) n0" << std::endl;
     return 1;
@@ -241,6 +242,15 @@ int runSimSingle(int argc, char **argv) {
   }
   if (map_like && n0rangefrac >= 1.0) {
     std::cout << "Invalid n0rangefrac: must be < 1" << std::endl;
+    return 1;
+  }
+  if (filtscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
+    return 1;
+  }
+  if (qfactor < 0.0) {
+    std::cout << "Invalid (negative) high-pass filter q factor" 
+	      << qfactor << std::endl;
     return 1;
   }
   if (matched) {
@@ -285,8 +295,10 @@ int runSimSingle(int argc, char **argv) {
 	printf("   esmooth:            %0.2f\n",esmooth);
       if (oversample > 1)
 	printf("   oversampling:       %u\n", oversample);
-      if (filtscale > 0)
+      if (filtscale > 0) {
 	printf("   filtering scale:    %0.1f\n", filtscale);
+	printf("   filtering q:        %0.2f\n", qfactor);
+      }
       if (matched > 0) {
 	printf("   matched fwhm:       %0.1f\n", fwhm);
 	printf("   matched sigi:       %0.4f\n", sigma);
@@ -306,8 +318,9 @@ int runSimSingle(int argc, char **argv) {
 
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike, 
 		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, nfwhm,
-		   filtscale, matched, sigc, nbeambins, sigma, n0, esmooth, 
-		   oversample, powerspecfile, sparcity, use_binning, nbins);
+		   filtscale, qfactor, matched, sigc, nbeambins, sigma, n0, 
+		   esmooth, oversample, powerspecfile, sparcity, use_binning, 
+		   nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -343,7 +356,7 @@ int runSimDouble(int argc, char **argv) {
   unsigned int nbeambins, sparcity;
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like, matched;
   double pixsize, n0rangefrac, n0initrange, nfwhm;
-  double filtscale, sigc; // Filtering params
+  double filtscale, qfactor, sigc; // Filtering params
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; // Power spectrum file
 
@@ -366,6 +379,7 @@ int runSimDouble(int argc, char **argv) {
   seed                = 1024;
   oversample          = 1;
   filtscale           = 0.0;
+  qfactor             = 0.1;
   matched             = false;
   sigc                = 0.006;
   sparcity            = 1;
@@ -429,6 +443,9 @@ int runSimDouble(int argc, char **argv) {
       break;
     case 'p':
       powerspecfile = std::string(optarg);
+      break;
+    case 'q':
+      qfactor = atof(optarg);
       break;
     case '#':
       sigma1 = atof(optarg);
@@ -527,10 +544,6 @@ int runSimDouble(int argc, char **argv) {
 	      << nbeambins << std::endl;
     return 1;
   }
-  if (filtscale < 0.0) {
-    std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
-    return 1;
-  }
   if (n0 < 0.0) {
     std::cout << "Invalid (negative) n0" << std::endl;
     return 1;
@@ -553,6 +566,15 @@ int runSimDouble(int argc, char **argv) {
   }
   if (map_like && n0rangefrac >= 1.0) {
     std::cout << "Invalid n0rangefrac: must be < 1" << std::endl;
+    return 1;
+  }
+  if (filtscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
+    return 1;
+  }
+  if (qfactor < 0.0) {
+    std::cout << "Invalid (negative) high-pass filter q factor" 
+	      << qfactor << std::endl;
     return 1;
   }
   if (matched) {
@@ -606,8 +628,10 @@ int runSimDouble(int argc, char **argv) {
 	printf("   esmooth2:           %0.2f\n",esmooth2);
       if (oversample > 1)
 	printf("   oversampling:       %u\n",oversample);
-      if (filtscale > 0)
+      if (filtscale > 0) {
 	printf("   filtering scale:    %0.1f\n", filtscale);
+	printf("   filtering q:        %0.2f\n", qfactor);
+      }
       if (matched > 0) {
 	printf("   matched fwhm1:      %0.1f\n", fwhm1);
 	printf("   matched fwhm2:      %0.1f\n", fwhm2);
@@ -629,7 +653,7 @@ int runSimDouble(int argc, char **argv) {
 
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
-			 nfwhm, filtscale, matched, sigc,
+			 nfwhm, filtscale, qfactor, matched, sigc,
 			 nbeambins, sigma1, sigma2, n0, 
 			 esmooth1, esmooth2, oversample, powerspecfile, 
 			 sparcity, use_binning, nbins);
@@ -830,6 +854,10 @@ int main(int argc, char **argv) {
 		<< " If" << std::endl;
       std::cout << "\t\tnot specified, the sources are uniformly distributed."
 		<< std::endl;
+      std::cout << "\t-q, --qfactor VALUE" << std::endl;
+      std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"
+		<< std::endl;
+      std::cout << "\t\tfiltscale. (def: 0.1)." << std::endl;
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tSet user specified seed, otherwise taken from time."
 		<< std::endl;

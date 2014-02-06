@@ -23,6 +23,7 @@ static struct option long_options[] = {
   {"matched", no_argument, 0, 'm'},
   {"oversample", required_argument, 0, 'o'},
   {"powerspec", required_argument, 0, 'p'},
+  {"qfactor", required_argument, 0, 'q'},
   {"seed", required_argument, 0, 'S'},
   {"sigma", required_argument, 0, 's'},
   {"sigma1", required_argument, 0, '3'},
@@ -35,14 +36,14 @@ static struct option long_options[] = {
   {"version", no_argument, 0, 'V'},
   {0,0,0,0}
 };
-char optstring[] = "de:1:2:F:hmo:p:S:s:3:4:5:6:7:8:vV";
+char optstring[] = "de:1:2:F:hmo:p:q:S:s:3:4:5:6:7:8:vV";
 
 
 int makeSimSingle(int argc, char **argv) {
 
   unsigned int n1, n2;
   double n0, pixsize, sigma, fwhm;
-  double filterscale, sigi, sigc; // Filtering params
+  double filterscale, qfactor, sigi, sigc; // Filtering params
   double extra_smooth; //Additional smoothing
   std::string modelfile, outputfile, powspecfile;
   unsigned long long int user_seed;
@@ -53,6 +54,7 @@ int makeSimSingle(int argc, char **argv) {
   extra_smooth        = 0.0;
   sigma               = 0.0;
   filterscale         = 0.0;
+  qfactor             = 0.1;
   matched             = false;
   sigi                = 0.0; // Means: use sigma
   sigc                = 0.006;
@@ -82,6 +84,9 @@ int makeSimSingle(int argc, char **argv) {
       break;
     case 'p':
       powspecfile = std::string(optarg);
+      break;
+    case 'q':
+      qfactor = atof(optarg);
       break;
     case 'S':
       have_user_seed = true;
@@ -137,6 +142,11 @@ int makeSimSingle(int argc, char **argv) {
     std::cout << "Invalid (negative) filter scale: " << filterscale << std::endl;
     return 1;
   }
+  if (qfactor < 0.0) {
+    std::cout << "Invalid (negative) high-pass filter q factor" 
+	      << qfactor << std::endl;
+    return 1;
+  }
   if (extra_smooth < 0.0) {
     std::cout << "Invalid (non-positive) extra smoothing FWHM" << std::endl;
     return 1;
@@ -172,9 +182,9 @@ int makeSimSingle(int argc, char **argv) {
     if (filterscale > 0) {
       if (matched) {
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
-				 filterscale, 0.1, true);
+				 filterscale, qfactor, true);
       } else
-	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+	filt = new fourierFilter(pixsize, filterscale, qfactor, true);
     } else if (matched)
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
 
@@ -210,7 +220,7 @@ int makeSimDouble(int argc, char **argv) {
 
   unsigned int n1, n2;
   double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2;
-  double filterscale, sigi1, sigi2, sigc; //Filtering params
+  double filterscale, qfactor, sigi1, sigi2, sigc; //Filtering params
   double extra_smooth1, extra_smooth2; //Additional smoothing
   std::string modelfile, outputfile1, outputfile2, powerspecfile; 
   unsigned long long int user_seed;
@@ -223,6 +233,7 @@ int makeSimDouble(int argc, char **argv) {
   sigma1              = 0.0;
   sigma2              = 0.0;
   filterscale         = 0.0;
+  qfactor             = 0.1;
   matched             = false;
   sigc                = 0.006;
   sigi1               = 0.0; // Means: use sigma1
@@ -256,6 +267,9 @@ int makeSimDouble(int argc, char **argv) {
       break;
     case 'p':
       powerspecfile = std::string(optarg);
+      break;
+    case 'q':
+      qfactor = atof(optarg);
       break;
     case 'S':
       have_user_seed = true;
@@ -338,6 +352,15 @@ int makeSimDouble(int argc, char **argv) {
     std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
+  if (filterscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale: " << filterscale << std::endl;
+    return 1;
+  }
+  if (qfactor < 0.0) {
+    std::cout << "Invalid (negative) high-pass filter q factor" 
+	      << qfactor << std::endl;
+    return 1;
+  }
   if (matched) {
     if (sigi1 <= 0.0) {
       std::cout << "Invalid (non-positive) sigi1 for matched filter"
@@ -370,11 +393,11 @@ int makeSimDouble(int argc, char **argv) {
     if (filterscale > 0) {
       if (matched) {
 	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
-				  filterscale, 0.1, true);
+				  filterscale, qfactor, true);
 	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
-				  filterscale, 0.1, true);
+				  filterscale, qfactor, true);
       } else
-	filt1 = new fourierFilter(pixsize, filterscale, 0.1, true);
+	filt1 = new fourierFilter(pixsize, filterscale, qfactor, true);
     } else if (matched) {
       filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc, true);
       filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc, true);
@@ -533,6 +556,10 @@ int main( int argc, char** argv ) {
 		<< " If" << std::endl;
       std::cout << "\t\tnot specified, the sources are uniformly distributed."
 		<< std::endl;
+      std::cout << "\t-q, --qfactor VALUE" << std::endl;
+      std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"
+		<< std::endl;
+      std::cout << "\t\tfiltscale. (def: 0.1)." << std::endl;
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tUse this seed for the random number generator." 
 		<< std::endl;

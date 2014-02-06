@@ -91,7 +91,7 @@ class simManager {
 		      unsigned int N1=720, unsigned int N2=720,
 		      double PIXSIZE=5.0, double FWHM=15.0, 
 		      double NFWHM=15.0, double FILTSCALE=0.0, 
-		      bool MATCHED=false, double SIGC=0.006,
+		      double QFACTOR=0.1, bool MATCHED=false, double SIGC=0.006,
 		      unsigned int NBEAMBINS=100, double SIGI=0.005, 
 		      double N0=2.6e3, double ESMOOTH=0.0,
 		      unsigned int OVERSAMPLE=1, 

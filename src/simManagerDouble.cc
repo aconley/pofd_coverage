@@ -62,8 +62,10 @@ static double minfunc(double x, void* params) {
   \param[in] FWHM2 Fwhm of band 2 beam, in arcsec
   \param[in] NFWHM Number of FWHM out to go on beam.  This is the number
               after filtering (if filtering is applied)
-  \param[in] FILTSCALE Filtering scale, in arcsec.  If 0, no filtering is
-              applied.
+  \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If 0, no 
+              high-pass filtering is applied.
+  \param[in] QFACTOR High-pass Gaussian filtering apodization sigma as
+              a fraction of FILTSCALE.
   \param[in] MATCHED Apply matched filtering using the FWHM of the beam,
                the instrument noise (SIGI), and SIGC
   \param[in] SIGC The confusion noise, if matched filtering is used
@@ -90,7 +92,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   unsigned int N1, unsigned int N2, 
 				   double PIXSIZE, double FWHM1, double FWHM2, 
 				   double NFWHM, double FILTSCALE, 
-				   bool MATCHED, double SIGC,
+				   double QFACTOR, bool MATCHED, double SIGC,
 				   unsigned int NBEAMBINS, double SIGI1, 
 				   double SIGI2, double N0, 
 				   double ESMOOTH1, double ESMOOTH2,
@@ -143,17 +145,17 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   if (FILTSCALE > 0) {
     if (MATCHED) {// Hipass and matched
       filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGI1, SIGC, 
-				FILTSCALE, 0.1, false, true);
+				FILTSCALE, QFACTOR, false, true);
       if ((FWHM1 != FWHM2) || (SIGI1 != SIGI2))
 	filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGI2, SIGC, 
-				  FILTSCALE, 0.1, false, true);
+				  FILTSCALE, QFACTOR, false, true);
     } else // hipass only
-      filt1 = new fourierFilter(PIXSIZE, FILTSCALE, 0.1, false, true);
+      filt1 = new fourierFilter(PIXSIZE, FILTSCALE, QFACTOR, false, true);
   } else if (MATCHED) { // Matched only
     filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGI1, SIGC, false, true);
     if ((FWHM1 != FWHM2) || (SIGI1 != SIGI2))
       filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGI2, SIGC, 
-				FILTSCALE, 0.1, false, true);
+				FILTSCALE, QFACTOR, false, true);
   }
 
   // Set up the histogrammed beam.  We must go out farther if we are filtering

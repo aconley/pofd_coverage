@@ -64,8 +64,10 @@ static double minfunc(double x, void* params) {
   \param[in] FWHM Fwhm of beam, in arcsec
   \param[in] NFWHM Number of FWHM out to go on beam.  This is the number
               after filtering (if filtering is applied)
-  \param[in] FILTSCALE Filtering scale, in arcsec.  If 0, no filtering is
-              applied.
+  \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If 0, no 
+              high-pass filtering is applied.
+  \param[in] QFACTOR High-pass Gaussian filtering apodization sigma as
+              a fraction of FILTSCALE.
   \param[in] MATCHED Apply matched filtering using the FWHM of the beam,
                the instrument noise (SIGI), and SIGC
   \param[in] SIGC The confusion noise, if matched filtering is used
@@ -87,9 +89,9 @@ simManager::simManager(const std::string& MODELFILE,
 		       double N0RANGEFRAC, unsigned int FFTSIZE,
 		       unsigned int N1, unsigned int N2, 
 		       double PIXSIZE, double FWHM, double NFWHM,
-		       double FILTSCALE, bool MATCHED, double SIGC,
-		       unsigned int NBEAMBINS, double SIGI, double N0, 
-		       double ESMOOTH, unsigned int OVERSAMPLE, 
+		       double FILTSCALE, double QFACTOR, bool MATCHED, 
+		       double SIGC, unsigned int NBEAMBINS, double SIGI, 
+		       double N0, double ESMOOTH, unsigned int OVERSAMPLE, 
 		       const std::string& POWERSPECFILE,
 		       unsigned int SPARCITY,
 		       bool USEBIN, unsigned int NBINS) :
@@ -132,10 +134,10 @@ simManager::simManager(const std::string& MODELFILE,
   // Set up filter if needed
   if (FILTSCALE > 0) {
     if (MATCHED) // Hipass and matched
-      filt = new fourierFilter(PIXSIZE, FWHM, SIGI, SIGC, FILTSCALE, 0.1,
+      filt = new fourierFilter(PIXSIZE, FWHM, SIGI, SIGC, FILTSCALE, QFACTOR,
 			       false, true);
     else // hipass only
-      filt = new fourierFilter(PIXSIZE, FILTSCALE, 0.1, false, true);
+      filt = new fourierFilter(PIXSIZE, FILTSCALE, QFACTOR, false, true);
   } else if (MATCHED) // Matched only
     filt = new fourierFilter(PIXSIZE, FWHM, SIGI, SIGC, false, true);
 

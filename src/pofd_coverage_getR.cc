@@ -25,6 +25,7 @@ static struct option long_options[] = {
   {"nfwhm", required_argument, 0, 'N'},
   {"nkeep", required_argument, 0, '1'},
   {"oversamp", required_argument, 0, 'o'},
+  {"qfactor", required_argument, 0, 'q'},
   {"sigc", required_argument, 0, '3'},
   {"sigi", required_argument, 0, '2'},
   {"sigi1", required_argument, 0, '4'},
@@ -34,7 +35,7 @@ static struct option long_options[] = {
   {0,0,0,0}
 };
 
-char optstring[] = "hdF:Hmn:N:1:o:2:3:4:5:vV";
+char optstring[] = "hdF:Hmn:N:1:o:q:2:3:4:5:vV";
 
 //One-D version
 int getRSingle(int argc, char** argv) {
@@ -44,13 +45,14 @@ int getRSingle(int argc, char** argv) {
   bool verbose, write_to_hdf5, matched;
   double n0, nfwhm, pixsize, minflux, maxflux, fwhm, nkeep;
   unsigned int nflux, nbins, oversamp;
-  double filterscale, sigi, sigc;
+  double filterscale, qfactor, sigi, sigc;
 
   // Defaults
   verbose = false;
   nfwhm = 40.0;
   nbins = 120;
   filterscale = 0.0;
+  qfactor = 0.1;
   matched = false;
   sigi = 0.002;
   sigc = 0.006;
@@ -84,6 +86,9 @@ int getRSingle(int argc, char** argv) {
       break;
     case 'o':
       oversamp = atoi(optarg);
+      break;
+    case 'q':
+      qfactor = atof(optarg);
       break;
     case '2':
       sigi = atof(optarg);
@@ -128,10 +133,6 @@ int getRSingle(int argc, char** argv) {
 	      << std::endl;
     return 1;
   }
-  if (filterscale < 0.0) {
-    std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
-    return 1;
-  }
   if (oversamp % 2 == 0) {
     std::cout << "Invalid (non-odd) oversampling " << oversamp << std::endl;
     return 1;
@@ -146,6 +147,15 @@ int getRSingle(int argc, char** argv) {
   }
   if (nkeep < 0) {
     std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
+    return 1;
+  }
+  if (filterscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
+    return 1;
+  }
+  if (qfactor < 0.0) {
+    std::cout << "Invalid (negative) high-pass filter q factor" 
+	      << qfactor << std::endl;
     return 1;
   }
   if (matched) {
@@ -173,9 +183,9 @@ int getRSingle(int argc, char** argv) {
     if (filterscale > 0) {
       if (matched) {
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
-				 filterscale, 0.1, true, true);
+				 filterscale, qfactor, true, true);
       } else
-	filt = new fourierFilter(pixsize, filterscale, 0.1, true, true);
+	filt = new fourierFilter(pixsize, filterscale, qfactor, true, true);
     } else if (matched)
       filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true, true);
 
@@ -195,8 +205,10 @@ int getRSingle(int argc, char** argv) {
 	     model.getBaseFluxPerArea());
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
       printf("   N0:                 %0.4e\n", n0);
-      if (filterscale > 0.0)
-	printf("   filter scale:       %0.4f\n", filterscale);
+      if (filterscale > 0.0) {
+	printf("   filter scale:       %0.1f\n", filterscale);
+	printf("   filter q:           %0.2f\n", qfactor);
+      }
       if (matched) {
 	printf("   matched fwhm:       %0.1f\n", fwhm);
 	printf("   matched sigi:       %0.4f\n", sigi);
@@ -298,7 +310,7 @@ int getRSingle(int argc, char** argv) {
   return 0;
 }
 
-//One-D version
+//Two-D version
 int getRDouble(int argc, char** argv) {
 
   std::string modelfile; //Init file (having model we want)
@@ -307,13 +319,14 @@ int getRDouble(int argc, char** argv) {
   double minflux1, maxflux1, minflux2, maxflux2;
   double n0, nfwhm, pixsize, fwhm1, fwhm2, nkeep;
   unsigned int nflux1, nflux2, nbins, oversamp;
-  double filterscale, sigi1, sigi2, sigc;
+  double filterscale, qfactor, sigi1, sigi2, sigc;
 
   // Defaults
   verbose = false;
   nfwhm = 40.0;
   nbins = 150;
   filterscale = 0.0;
+  qfactor = 0.1;
   matched = false;
   sigc = 0.006;
   sigi1 = 0.002;
@@ -347,6 +360,9 @@ int getRDouble(int argc, char** argv) {
       break;
     case 'o':
       oversamp = atoi(optarg);
+      break;
+    case 'q':
+      qfactor = atof(optarg);
       break;
     case '3':
       sigc = atof(optarg);
@@ -407,10 +423,6 @@ int getRDouble(int argc, char** argv) {
 	      << std::endl;
     return 1;
   }
-  if (filterscale < 0.0) {
-    std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
-    return 1;
-  }
   if (oversamp % 2 == 0) {
     std::cout << "Invalid (non-odd) oversampling " << oversamp << std::endl;
     return 1;
@@ -431,6 +443,15 @@ int getRDouble(int argc, char** argv) {
   }
   if (nkeep < 0) {
     std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
+    return 1;
+  }
+  if (filterscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
+    return 1;
+  }
+  if (qfactor < 0.0) {
+    std::cout << "Invalid (negative) high-pass filter q factor" 
+	      << qfactor << std::endl;
     return 1;
   }
   if (matched) {
@@ -464,9 +485,9 @@ int getRDouble(int argc, char** argv) {
     if (filterscale > 0) {
       if (matched) {
 	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
-				  filterscale, 0.1, true, true);
+				  filterscale, qfactor, true, true);
 	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
-				  filterscale, 0.1, true, true);
+				  filterscale, qfactor, true, true);
       } else
 	filt1 = new fourierFilter(pixsize, filterscale, 0.1, true);
     } else if (matched) {
@@ -498,8 +519,10 @@ int getRDouble(int argc, char** argv) {
 	     model.getBaseFluxPerArea2());
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
       printf("   N0:                 %0.4e\n", n0);
-      if (filterscale > 0.0)
-	printf("   filter scale:       %0.4f\n", filterscale);
+      if (filterscale > 0.0) {
+	printf("   filter scale:       %0.1f\n", filterscale);
+	printf("   filter q:           %0.2f\n", qfactor);
+      }
       if (matched) {
 	printf("   matched fwhm1:      %0.1f\n", fwhm1);
 	printf("   matched fwhm2:      %0.1f\n", fwhm2);
@@ -771,6 +794,10 @@ int main(int argc, char** argv) {
       std::cout << "\t\tOversampling of pixels used to generate beam. One means"
 		<< std::endl;
       std::cout << "\t\tno oversampling.  Must be odd (def: 1)" << std::endl;
+      std::cout << "\t-q, --qfactor VALUE" << std::endl;
+      std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"
+		<< std::endl;
+      std::cout << "\t\tfiltscale. (def: 0.1)." << std::endl;
       std::cout << "\t--sigc VALUE" << std::endl;
       std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
 		<< " 0.006)" << std::endl;

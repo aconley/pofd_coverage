@@ -796,26 +796,24 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   unsigned int minidx1, maxidx1, minidx2, maxidx2;
   if (nfwhmkeep < nfwhm) {
     // We want to set up logical indexing into the array to only keep
-    //  the part we want.
+    //  the part we want.  Recall beam is centered at n1/2, n2/2 (integer)
     unsigned int nclippix = 
       static_cast<unsigned int>(nfwhmkeep * maxfwhm / pixsize + 0.9999999999);
-    nclippix = 2 * nclippix + 1;
-    if (nclippix < n1) {
-      if (nclippix > n1)
-	throw pofdExcept("doublebeam", "fill", 
-			 "Logical error in clipping dim 1", 1);
-      minidx1 = (n1 - nclippix) / 2;
-      maxidx1 = n1 - minidx1;
+    unsigned int nclippix_tot = 2 * nclippix + 1;
+    if (nclippix_tot < n1) {
+      minidx1 = n1 / 2 - nclippix; // Range is [minidx1, maxidx1)
+      maxidx1 = minidx1 + nclippix_tot;
+      // assert(minidx1 < n1); // unsigned, will wrap on problem
+      // assert(maxidx1 <= n1);
     } else {
       minidx1 = 0;
       maxidx1 = n1;
     }
-    if (nclippix < n2) {
-      if (nclippix > n2)
-	throw pofdExcept("doublebeam", "fill", 
-			 "Logical error in clipping dim 2", 2);
-      minidx2 = (n2 - nclippix) / 2;
-      maxidx2 = n2 - minidx2;
+    if (nclippix_tot < n2) {
+      minidx2 = n2 / 2 - nclippix;
+      maxidx2 = minidx2 + nclippix_tot;
+      // assert(minidx2 < n2);
+      // assert(maxidx2 <= n2);
     } else {
       minidx2 = 0;
       maxidx2 = n2;

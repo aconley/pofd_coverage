@@ -32,7 +32,8 @@ There are three intended purposes for this code:
     to get the statistical coverage right).
 
 Because this code is so strongly related to pofd_affine, the documentation
-is a bit sparser; some things may be better described there.
+is a bit sparser; some things may be better described there.  That's also
+where most of the unit tests live.
 */
 
 

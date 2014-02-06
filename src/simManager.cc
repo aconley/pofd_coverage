@@ -1,6 +1,7 @@
 #include<cstring>
 #include<cmath>
 #include<sstream>
+#include<limits>
 
 #include<gsl/gsl_errno.h>
 #include<fitsio.h>
@@ -65,6 +66,9 @@ static double minfunc(double x, void* params) {
               after filtering (if filtering is applied)
   \param[in] FILTSCALE Filtering scale, in arcsec.  If 0, no filtering is
               applied.
+  \param[in] MATCHED Apply matched filtering using the FWHM of the beam,
+               the instrument noise (SIGI), and SIGC
+  \param[in] SIGC The confusion noise, if matched filtering is used
   \param[in] NBEAMBINS Number of bins to use in beam histogram; def 100
   \param[in] SIGI Instrument noise (without smoothing or filtering) in Jy
   \param[in] N0 Simulated number of sources per sq deg.
@@ -83,19 +87,19 @@ simManager::simManager(const std::string& MODELFILE,
 		       double N0RANGEFRAC, unsigned int FFTSIZE,
 		       unsigned int N1, unsigned int N2, 
 		       double PIXSIZE, double FWHM, double NFWHM,
-		       double FILTSCALE, unsigned int NBEAMBINS,
-		       double SIGI, double N0, double ESMOOTH,
-		       unsigned int OVERSAMPLE, 
+		       double FILTSCALE, bool MATCHED, double SIGC,
+		       unsigned int NBEAMBINS, double SIGI, double N0, 
+		       double ESMOOTH, unsigned int OVERSAMPLE, 
 		       const std::string& POWERSPECFILE,
 		       unsigned int SPARCITY,
 		       bool USEBIN, unsigned int NBINS) :
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
   fftsize(FFTSIZE), n0(N0), fwhm(FWHM), pixsize(PIXSIZE), 
-  inv_bmhist(NBEAMBINS, FILTSCALE, false), 
-  simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, FILTSCALE, OVERSAMPLE, 
-	NBINS, POWERSPECFILE, false), 
-  use_binning(USEBIN), model(MODELFILE), esmooth(ESMOOTH) {
+  inv_bmhist(NBEAMBINS), 
+  simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, OVERSAMPLE, 
+	NBINS, POWERSPECFILE), 
+  use_binning(USEBIN), model(MODELFILE), filt(NULL), esmooth(ESMOOTH) {
 
 #ifdef TIMING
   initTime = getTime = getLikeTime = 0;
@@ -125,18 +129,27 @@ simManager::simManager(const std::string& MODELFILE,
     delta_n0 = NULL;
   }
 
-  // Set up the histogrammed beam
-  double nfwhm;
+  // Set up filter if needed
   if (FILTSCALE > 0) {
-    // Go all the way out to the image size so the filtering is
-    // accurate.  Expensive, but we only do this once after all.
-    unsigned int maxextent = N1 > N2 ? N1 : N2;
-    nfwhm = static_cast<double>(maxextent) * PIXSIZE / (2 * fwhm);
-  } else nfwhm = NFWHM;
-  inv_bmhist.fill(bm, nfwhm, PIXSIZE, true, OVERSAMPLE, NFWHM);
+    if (MATCHED) // Hipass and matched
+      filt = new fourierFilter(PIXSIZE, FWHM, SIGI, SIGC, FILTSCALE, 0.1,
+			       false, true);
+    else // hipass only
+      filt = new fourierFilter(PIXSIZE, FILTSCALE, 0.1, false, true);
+  } else if (MATCHED) // Matched only
+    filt = new fourierFilter(PIXSIZE, FWHM, SIGI, SIGC, false, true);
+
+  // Set up the histogrammed beam
+  //  If we are filtering take a large piece
+  if (filt != NULL)
+    inv_bmhist.fill(bm, N1, N2, PIXSIZE, true, OVERSAMPLE, filt, NFWHM);
+  else
+    inv_bmhist.fill(bm, NFWHM, PIXSIZE, true, OVERSAMPLE, filt, NFWHM);
 
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
+
+  sigi_final = std::numeric_limits<double>::quiet_NaN();
 }
 
 simManager::~simManager() {
@@ -150,6 +163,7 @@ simManager::~simManager() {
   }
   if (min_n0 != NULL) delete[] min_n0;
   if (delta_n0 != NULL) delete[] delta_n0;
+  if (filt != NULL) delete filt;
 }
 
 /*!
@@ -162,13 +176,13 @@ void simManager::doSims(bool verbose=false) {
   const unsigned int max_iter = 100; // Maximum number of iters for min
   const unsigned int max_expiter = 10; //!< Maximum number of bracket steps
   const double reltol = 0.001; // Relative tolerance in n0: 0.1%
-  double sigval, maxflux; // Params to pass to minimizer
+  double maxflux; // Params to pass to minimizer
   
   //Turn off gsl error handler during call
   gsl_error_handler_t *old_handler = gsl_set_error_handler_off();
 
   // Should only be computed the first time
-  sigval = simim.getFinalNoise(nnoisetrials);
+  sigi_final = simim.getFinalNoise(nnoisetrials, filt);
 
   //Now, set up the parameters to pass to the minimizer.  Ugly!
   varr[0] = static_cast<void*>(&pdfac);
@@ -195,7 +209,7 @@ void simManager::doSims(bool verbose=false) {
   starttime = std::clock();
 #endif
   maxflux = 1.05 * max_n0ratio * model.getMaxKnotPosition();
-  pdfac.initPD(fftsize, sigval, maxflux, init_b, model,
+  pdfac.initPD(fftsize, sigi_final, maxflux, init_b, model,
 	       inv_bmhist);
 #ifdef TIMING
   initTime += std::clock() - starttime;
@@ -212,7 +226,7 @@ void simManager::doSims(bool verbose=false) {
 		<< std::endl;
 
     //Make simulated image (mean subtracted, possibly with filtering)
-    simim.realize(model, n0, true, use_binning, like_sparcity);
+    simim.realize(model, n0, true, filt, use_binning, like_sparcity);
 
     //Now set up the minimization; note this involves calling minfunc
     // so we can't do it until all the arguments are ready
@@ -468,7 +482,7 @@ int simManager::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI"), &dtmp, 
 		 const_cast<char*>("Raw instrument noise"), 
 		 &status);
-  dtmp = simim.getFinalNoise();
+  dtmp = sigi_final;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL"), &dtmp, 
 		 const_cast<char*>("Final instrument noise"), 
 		 &status);
@@ -522,14 +536,36 @@ int simManager::writeToFits(const std::string& outputfile) const {
 		 const_cast<char*>("N0 range fraction for minimization"), 
 		 &status);
 
-  itmp = simim.isFiltered();
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp, 
+  itmp = simim.isHipassFiltered();
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp, 
 		 const_cast<char*>("Has hipass filtering been applied?"), 
 		 &status);
-  if (simim.isFiltered()) {
+  if (itmp) {
     dtmp = simim.getFiltScale();
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp, 
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL"), &dtmp, 
 		 const_cast<char*>("Hipass filtering scale [arcsec]"), 
+		 &status);
+    dtmp = simim.getFiltQFactor();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ"), &dtmp, 
+		 const_cast<char*>("Hipass filtering apodization"), 
+		 &status);
+  } 
+  itmp = simim.isMatchFiltered();
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp, 
+		 const_cast<char*>("Has matched filtering been applied?"), 
+		 &status);
+  if (itmp) {
+    dtmp = simim.getFiltFWHM();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTFWHM"), &dtmp, 
+		 const_cast<char*>("Matched filtering fwhm [arcsec]"), 
+		 &status);
+    dtmp = simim.getFiltSigInst();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGI"), &dtmp, 
+		 const_cast<char*>("Matched filtering sig_i [Jy]"), 
+		 &status);
+    dtmp = simim.getFiltSigConf();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGC"), &dtmp, 
+		 const_cast<char*>("Matched filtering sig_c [Jy]"), 
 		 &status);
   } 
 

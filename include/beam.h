@@ -6,7 +6,7 @@
 #define __beam__
 
 #include "../include/global_settings.h"
-#include "../include/hipassFilter.h"
+#include "../include/fourierFilter.h"
 
 /*!
   \brief Represents PSF parameters for single Gaussian beam
@@ -20,12 +20,13 @@ class beam {
   double fwhm; //!< FWHM of beam, in arcsec
   double rhosq; //!< Convenience variable \f$\rho = 4 \log\left(2\right) 3600^2/FWHM^2)\f$
   
-  /*!\brief Inner beam generator, no filtering*/
-  void getRawBeam(unsigned int n, double pixsize, double* const bm) const;
-
-  /*!\brief Inner beam generator, no filtering, with oversampling*/
-  void getRawBeam(unsigned int n, double pixsize, unsigned int oversamp,
+  /*!\brief Inner beam generator, no filtering, arbitrary extent*/
+  void getRawBeam(unsigned int n1, unsigned int n2, double pixsize, 
 		  double* const bm) const;
+
+  /*!\brief Inner beam generator, no filtering, with oversampling, arb extent*/
+  void getRawBeam(unsigned int n1, unsigned int n2, double pixsize, 
+		  unsigned int oversamp, double* const bm) const;
 
  public :
   beam(double FWHM=10.0); //!< Constructor with FWHM
@@ -41,18 +42,27 @@ class beam {
   /*!\brief Get factorized beam, no filtering*/
   void getBeamFac(unsigned int n, double pixsize, double* const fac) const; 
 
-  /*!\brief Get 2D beam*/
+  /*!\brief Get 2D beam, square*/
   void getBeam(unsigned int n, double pixsize, double* const, 
-	       hipassFilter* const=NULL) const;
+	       const fourierFilter* const=NULL) const;
 
-  /*!\brief Get 2D beam with oversampling*/
+  /*!\brief Get 2D beam, arbitrary size*/
+  void getBeam(unsigned int n1, unsigned int n2, double pixsize, double* const, 
+	       const fourierFilter* const=NULL) const;
+  
+  /*!\brief Get 2D beam with oversampling, square*/
   void getBeam(unsigned int n, double pixsize, unsigned int oversamp,
-	       double* const, hipassFilter* const=NULL) const;
+	       double* const, const fourierFilter* const=NULL) const;
+
+  /*!\brief Get 2D beam with oversampling, arbitrary size*/
+  void getBeam(unsigned int n1, unsigned int n2, double pixsize, 
+	       unsigned int oversamp, double* const, 
+	       const fourierFilter* const=NULL) const;
 
   /*!\brief Write the beam to a FITS file*/
   void writeToFits(const std::string& outfile, double pixsize, 
 		   double nfwhm=3.5, unsigned int oversamp=1,
-		   hipassFilter* const=NULL, bool inverse=false) const;
+		   const fourierFilter* const=NULL, bool inverse=false) const;
 };
 
 /*!
@@ -77,9 +87,14 @@ class beamHist {
   double eff_area; //!< Effective area of beam in deg^2
   unsigned int oversamp; //!< Oversampling factor
 
-  bool keep_filt; //!< Keep filt allocated, or dealloc between calls
-  double filtscale; //!< Filtering scale, in arcsec
-  hipassFilter* filt; //!< Hi pass filter, if any is being applied
+  bool isHipass; //!< Was hipass filtering applied during fill?
+  double filtscale; //!< High-pass filtering scale, in arcsec
+  double qfactor; //!< High-pass filtering apodization
+
+  bool isMatched; //!< Was matched filtering applied during the fill?
+  double matched_fwhm; //!< FWHM of matched filter (doesn't have to match this beam)
+  double matched_sigi; //!< Instrument sigma of matched filter
+  double matched_sigc; //!< Confusion sigma of matched filter
 
   unsigned int n_pos; //!< Number of positive beam histogram elements filled
   unsigned int* wt_pos; //!< Positive weights
@@ -93,8 +108,7 @@ class beamHist {
   dblpair minmax_neg; //!< Min/max value of |neg| beam (not inverse beam!)
 
  public:
-  beamHist(unsigned int NBINS, double FILTSCALE=0.0,
-	   bool KEEP_FILT_INMEM=true); //!< Constructor
+  beamHist(unsigned int NBINS); //!< Constructor
   ~beamHist(); //!< Destructor
   
   bool hasData() const { return has_data; }
@@ -117,17 +131,27 @@ class beamHist {
   const unsigned int* getWtNeg() const { return wt_neg; }
   const double* getBmNeg() const { return bm_neg; }
   
-  bool isFiltered() const { return filtscale>0; } //!< Is the beam filtered
+  bool isHipassFiltered() const { return isHipass; }
   double getFiltScale() const { return filtscale; } //!< Get filtering scale
+  double getFiltQFactor() const { return qfactor; } //!< Get filtering scale
+  bool isMatchFiltered() const { return isMatched; }
+  double getFiltFWHM() const { return matched_fwhm; }
+  double getFiltSigInst() const { return matched_sigi; }
+  double getFiltSigConf() const { return matched_sigc; }
 
   // Min/max values of real beam (not inverse)
   dblpair getMinMaxPos() const {return minmax_pos;} //!< Get min/max pos beam
   dblpair getMinMaxNeg() const {return minmax_neg;} //!< Get min/max neg beam
 
-  /*!\brief Fill from beam*/
+  /*!\brief Fill from beam, symmetric number of fwhm version*/
   void fill(const beam& bm, double nfwhm, double pixsize,
 	    bool inv=false, unsigned int oversamp=1,
-	    double num_fwhm_keep=0.0);
+	    const fourierFilter* const filt=NULL, double num_fwhm_keep=0.0);
+
+  /*!\brief Fill from beam, arbitrary size version */
+  void fill(const beam& bm, unsigned int n1, unsigned int n2, double pixsize,
+	    bool inv=false, unsigned int oversamp=1,
+	    const fourierFilter* const filt=NULL, double num_fwhm_keep=0.0);
 
   /*! \brief Write out as FITS file*/
   void writeToFits(const std::string&) const;

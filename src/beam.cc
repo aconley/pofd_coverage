@@ -79,25 +79,28 @@ void beam::getBeamFac(unsigned int n, double pixsize,
 
 
 /*!
-  \param[in] n  Number of pixels along each dimension.  Should be odd
+  \param[in] n1 Number of pixels along dimension 1
+  \param[in] n2 Number of pixels along dimension 2
   \param[in] pixsize Size of pixels in arcsec
   \param[out] bm Returns beam in row-major order.  Must be pre-allocated by
                    caller and be of length n * n
 
-  The beam is center normalized.  Filtering not supported	     
+  The beam is center normalized.  Filtering not supported.
+  The beam is centered as well as possible, but unless n1 and n2 are odd,
+   it can't quite be centered.
 */
-void beam::getRawBeam(unsigned int n, double pixsize,
+void beam::getRawBeam(unsigned int n1, unsigned int n2, double pixsize,
 		      double* const bm) const {
 
   //Input checks
-  if (n == 0) {
+  if (n1 == 0) {
     std::stringstream errstr;
-    errstr << "n (" << n << ") should be positive";
+    errstr << "n1 (" << n1 << ") should be positive";
     throw pofdExcept("beam", "getRawBeam", errstr.str(), 1);
   }
-  if (n % 2 == 0) {
+  if (n2 == 0) {
     std::stringstream errstr;
-    errstr << "n (" << n << ") should be odd";
+    errstr << "n2 (" << n1 << ") should be positive";
     throw pofdExcept("beam", "getRawBeam", errstr.str(), 2);
   }
   if (pixsize <= 0.0) {
@@ -108,38 +111,72 @@ void beam::getRawBeam(unsigned int n, double pixsize,
   if (bm == NULL)
     throw pofdExcept("beam", "getRawBeam", "bm is not allocated", 4);
 
-  if (n == 1) {
+  if ((n1 == 1) && (n2 == 1)) {
     bm[0] = 1.0;
     return;
   }
 
-  //Make factorized beam, then multiply
-  double* fac = new double[n];
   double sig = fwhm * pofd_coverage::fwhmfac / pixsize; //Gaussian sigma in pix
   double expfac = - 0.5 / (sig * sig);
-  int ni = static_cast<int>(n);
-  int no2 = ni / 2;
-  double dist;
-  for (int i = 0; i < ni; ++i) {
-    dist = fabs(i - no2);
-    fac[i] = exp(expfac * dist * dist);
-  }
 
-  double val;
-  double* rowptr;
-  for (unsigned int i = 0; i < n; ++i) {
-    val = fac[i];
-    rowptr = bm + i * n;
-    for (unsigned int j = 0; j < n; ++j)
-      rowptr[j] = val * fac[j];
-  }
+  // Include a special case for n1 and n2 the same, which can
+  // be more efficient
+  if (n1 == n2) {
+    //Make factorized beam, then multiply
+    double* fac = new double[n1];
+    int ni = static_cast<int>(n1);
+    int no2 = ni / 2;
+    double dist;
+    for (int i = 0; i < ni; ++i) {
+      dist = fabs(i - no2);
+      fac[i] = exp(expfac * dist * dist);
+    }
 
-  delete[] fac;
+    double val;
+    double* rowptr;
+    for (unsigned int i = 0; i < n1; ++i) {
+      val = fac[i];
+      rowptr = bm + i * n2;
+      for (unsigned int j = 0; j < n1; ++j)
+	rowptr[j] = val * fac[j];
+    }
+    
+    delete[] fac;
+  } else {
+    double* fac1 = new double[n1];
+    int ni = static_cast<int>(n1);
+    int no2 = ni / 2;
+    double dist;
+    for (int i = 0; i < ni; ++i) {
+      dist = fabs(i - no2);
+      fac1[i] = exp(expfac * dist * dist);
+    }
+    double* fac2 = new double[n2];
+    ni = static_cast<int>(n2);
+    no2 = ni / 2;
+    for (int i = 0; i < ni; ++i) {
+      dist = fabs(i - no2);
+      fac2[i] = exp(expfac * dist * dist);
+    }
+
+    double val;
+    double* rowptr;
+    for (unsigned int i = 0; i < n1; ++i) {
+      val = fac1[i];
+      rowptr = bm + i * n2;
+      for (unsigned int j = 0; j < n2; ++j)
+	rowptr[j] = val * fac2[j];
+    }
+    
+    delete[] fac1;
+    delete[] fac2;
+  }
 }
 
 
 /*!
-  \param[in] n  Number of pixels along each dimension.  Should be odd
+  \param[in] n1  Number of pixels along first dimension
+  \param[in] n2  Number of pixels along second dimension
   \param[in] pixsize Size of pixels in arcsec
   \param[in] oversamp Oversampling.  Must be odd
   \param[out] bm Returns beam in row-major order.  Must be pre-allocated by
@@ -151,25 +188,28 @@ void beam::getRawBeam(unsigned int n, double pixsize,
   repixelating.
 
   Filtering is not supported
+
+  The beam is centered as well as possible, but unless n1 and n2 are odd,
+   it can't quite be centered.
 */
-void beam::getRawBeam(unsigned int n, double pixsize, unsigned int oversamp,
+void beam::getRawBeam(unsigned int n1, unsigned int n2, 
+		      double pixsize, unsigned int oversamp,
 		      double* const bm) const {
 
-  //Quick return
   if (oversamp == 1) {
-    getRawBeam(n, pixsize, bm);
+    getRawBeam(n1, n2, pixsize, bm);
     return;
   }
 
   //Input checks
-  if (n == 0) {
+  if (n1 == 0) {
     std::stringstream errstr;
-    errstr << "n (" << n << ") should be positive";
+    errstr << "n1 (" << n1 << ") should be positive";
     throw pofdExcept("beam", "getRawBeam", errstr.str(), 1);
   }
-  if (n % 2 == 0) {
+  if (n2 == 0) {
     std::stringstream errstr;
-    errstr << "n (" << n << ") should be odd";
+    errstr << "n2 (" << n2 << ") should be positive";
     throw pofdExcept("beam", "getRawBeam", errstr.str(), 2);
   }
   if (pixsize <= 0.0) {
@@ -190,83 +230,153 @@ void beam::getRawBeam(unsigned int n, double pixsize, unsigned int oversamp,
   if (bm == NULL)
     throw pofdExcept("beam", "getRawBeam", "bm is not allocated", 6);
 
-  //Make factorized beam, then multiply and sum
-  unsigned int ngen = oversamp * n;
   double pixgen = pixsize / static_cast<double>(oversamp);
-  double* fac = new double[ngen];
   double sig = fwhm * pofd_coverage::fwhmfac / pixgen; //Gaussian sigma in pix
   double expfac = - 0.5 / (sig * sig);
+
+  // Zero out
+  std::memset(bm, 0, n1 * n2 * sizeof(double));
+
+  //Make factorized beam, then multiply and sum
+  // Allow special case of n1 == n2, which can be more efficient
+  double *fac1, *fac2;
+  fac1 = fac2 = NULL;
+
+  unsigned int ngen = oversamp * n1;
+
+  fac1 = new double[ngen];
   int ni = static_cast<int>(ngen);
   int no2 = ni / 2;
   double dist;
   double normfac = 1.0 / static_cast<double>(oversamp);
   for (int i = 0; i < ni; ++i) {
     dist = fabs(i - no2);
-    fac[i] = normfac * exp(expfac * dist * dist);
+    fac1[i] = normfac * exp(expfac * dist * dist);
   }
-
-  // Zero out
-  for (unsigned int i = 0; i < n * n; ++i)
-    bm[i] = 0.0;
+  
+  if (n1 != n2) {
+    // Need a different fac2
+    ngen = oversamp * n2;
+    ni = static_cast<int>(ngen);
+    no2 = ni / 2;
+    for (int i = 0; i < ni; ++i) {
+      dist = fabs(i - no2);
+      fac2[i] = normfac * exp(expfac * dist * dist);  
+    } 
+  } else fac2 = fac1; //Re-use -- but be careful to clean up correctly!
 
   // Form the sum
   double val;
   double* rowptr;
   unsigned int minip, maxip, minjp, maxjp;
-  for (unsigned int i = 0; i < n; ++i) {
-    rowptr = bm + i * n;
+  for (unsigned int i = 0; i < n1; ++i) {
+    rowptr = bm + i * n2;
     minip = i * oversamp;
     maxip = minip + oversamp;
     for (unsigned int i_p = minip; i_p < maxip; ++i_p) {
-      val = fac[i_p];
-      for (unsigned int j = 0; j < n; ++j) {
+      val = fac1[i_p];
+      for (unsigned int j = 0; j < n2; ++j) {
 	minjp = j * oversamp;
 	maxjp = minjp + oversamp;
 	for (unsigned int j_p = minjp; j_p < maxjp; ++j_p)
-	  rowptr[j] += val * fac[j_p];
+	  rowptr[j] += val * fac2[j_p];
       }
     }
   }
 
-  delete[] fac;
+  delete[] fac1; // Always allocated
+  if (n1 != n2) delete[] fac2; // Only allocated if this is true
 }
 
 /*!
   \param[in] n  Number of pixels along each dimension.  Should be odd
   \param[in] pixsize Size of pixels in arcsec
   \param[in] bm Beam. Must be pre-allocated by caller and be of length n * n
-  \param[in] filter Hi-pass filter to apply.  If null, don't apply filter
+  \param[in] filter Hi-pass/matched filter to apply.  If null, don't apply 
+                     filtering
+
+  This is only properly centered if n is odd.
 */
 void beam::getBeam(unsigned int n, double pixsize, double* const bm, 
-		   hipassFilter* const filter) const {
+		   const fourierFilter* const filter) const {
 
   // pre-filtered beam
-  getRawBeam(n, pixsize, bm);
+  getRawBeam(n, n, pixsize, bm);
 
-  // Apply filtering
+  // Apply filtering to beam
   if (filter != NULL)
-    filter->filter(pixsize, n, n, bm);
+    filter->filter(n, n, pixsize, bm);
+}
+
+/*!
+  \param[in] n1 Number of pixels along dimension 1
+  \param[in] n2 Number of pixels along dimension 2
+  \param[in] pixsize Size of pixels in arcsec
+  \param[in] bm Beam. Must be pre-allocated by caller and be of length n * n
+  \param[in] filter Hi-pass/matched filter to apply.  If null, don't apply 
+                     filtering
+
+  This is only properly centered if n1 and n2 are odd.
+*/
+void beam::getBeam(unsigned int n1, unsigned int n2, 
+		   double pixsize, double* const bm, 
+		   const fourierFilter* const filter) const {
+
+  // pre-filtered beam
+  getRawBeam(n1, n2, pixsize, bm);
+
+  // Apply filtering to beam
+  if (filter != NULL)
+    filter->filter(n1, n2, pixsize, bm);
 }
 
 
 /*!
-  \param[in] n  Number of pixels along each dimension.  Should be odd
+  \param[in] n  Number of pixels along each dimension.  
   \param[in] pixsize Size of pixels in arcsec
   \param[in] oversamp Oversampling.  Must be odd
   \param[in] bm Beam. Must be pre-allocated by
                    caller and be of length n * n
-  \param[in] filter Hi-pass filter to apply.  If null, don't apply filter
+  \param[in] filter Hi-pass/Matched filter to apply.  If null, don't 
+                apply filter
+
+  This is only properly centered if n is odd.		
 */
 void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
-		   double* const bm, hipassFilter* const filter) const {
+		   double* const bm, const fourierFilter* const filter) const {
 
   // Pre-filtered beam
-  getRawBeam(n, pixsize, oversamp, bm);
+  getRawBeam(n, n, pixsize, oversamp, bm);
 
   // Apply filtering
   if (filter != NULL)
-    filter->filter(pixsize, n, n, bm);
+    filter->filter(n, n, pixsize, bm);
 }
+
+/*!
+  \param[in] n1 Number of pixels along dimension 1
+  \param[in] n2 Number of pixels along dimension 2
+  \param[in] pixsize Size of pixels in arcsec
+  \param[in] oversamp Oversampling.  Must be odd
+  \param[in] bm Beam. Must be pre-allocated by
+                   caller and be of length n * n
+  \param[in] filter Hi-pass/Matched filter to apply.  If null, don't 
+                apply filter
+
+  This is only properly centered if n is odd.		
+*/
+void beam::getBeam(unsigned int n1, unsigned int n2, double pixsize, 
+		   unsigned int oversamp, double* const bm, 
+		   const fourierFilter* const filter) const {
+
+  // Pre-filtered beam
+  getRawBeam(n1, n2, pixsize, oversamp, bm);
+
+  // Apply filtering
+  if (filter != NULL)
+    filter->filter(n1, n2, pixsize, bm);
+}
+
 
 
 /*!
@@ -279,7 +389,7 @@ void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
 */
 void beam::writeToFits(const std::string& outputfile, double pixsize, 
 		       double nfwhm, unsigned int oversamp,
-		       hipassFilter* const filt, bool inverse) const {
+		       const fourierFilter* const filt, bool inverse) const {
   if (nfwhm <= 0.0)
     throw pofdExcept("beam", "writeToFits", "Invalid (non-positive) nfwhm", 1);
   if (pixsize <= 0.0)
@@ -313,6 +423,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
   
   // Header
+  bool ubl;
   double dtmp;
   unsigned int utmp;
   fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &inverse,
@@ -327,10 +438,43 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
 		 const_cast<char*>("Number of FWHM out"), &status);
   if (filt != NULL) {
-    dtmp = filt->getFiltScale();
-    if (dtmp > 0)
-      fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
-		     const_cast<char*>("Filtering scale [arcsec]"), &status);
+    ubl = true;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
+		   const_cast<char*>("Filtered?"), &status);
+    ubl = filt->isHipass();
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIPASS"), &ubl,
+		   const_cast<char*>("Hipass filtered?"), &status);
+    if (ubl) {
+      dtmp = filt->getFiltScale();
+      if (dtmp > 0)
+	fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
+		       const_cast<char*>("Hipass filtering scale [arcsec]"), 
+		       &status);
+      dtmp = filt->getQFactor();
+      if (dtmp > 0)
+	fits_write_key(fp, TDOUBLE, const_cast<char*>("QFACTOR"), &dtmp,
+		       const_cast<char*>("Hipass filtering apodization"), 
+		       &status);
+    }
+    ubl = filt->isMatched();
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MATCHED"), &ubl,
+		   const_cast<char*>("Match filtered?"), &status);
+    if (ubl) {
+      dtmp = filt->getSigInst();
+      if (dtmp > 0)
+	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGI"), &dtmp,
+		       const_cast<char*>("Matched filtering sig_i [Jy]"), 
+		       &status);
+      dtmp = filt->getSigConf();
+      if (dtmp > 0)
+	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGC"), &dtmp,
+		       const_cast<char*>("Matched filtering sig_c [Jy]"),
+		       &status);
+    }
+  } else {
+    ubl = false;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
+		   const_cast<char*>("Filtered?"), &status);
   }
   if (oversamp > 1) {
     utmp = oversamp;
@@ -375,17 +519,8 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
 
 /*!
   \param[in] NBINS Number of bins in histogram
-  \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If zero, no 
-             filtering is applied.
-  \param[in] KEEP_FILT_INMEM If true (and FILTSCALE is not zero), keep
-             hipassFilter allocated.  Otherwise it is allocated/deallocated
-	     as called.  
-
-  If you are only planning on calling fill once, setting KEEP_FILT_INMEM
-  to false is more memory efficient.
 */
-beamHist::beamHist(unsigned int NBINS, double FILTSCALE,
-		   bool KEEP_FILT_INMEM) : 
+beamHist::beamHist(unsigned int NBINS):
   has_data(false), inverse(false), nbins(0), fwhm(0.0), nfwhm(4.0),
   nfwhmkeep(4.0), pixsize(0.0), eff_area(0.0), oversamp(1), 
   n_pos(0), n_neg(0) {
@@ -403,12 +538,13 @@ beamHist::beamHist(unsigned int NBINS, double FILTSCALE,
   minmax_neg = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			      std::numeric_limits<double>::quiet_NaN());
 
-  keep_filt = KEEP_FILT_INMEM;
-  filtscale = FILTSCALE;
-  if (filtscale > 0.0 && KEEP_FILT_INMEM)
-    filt = new hipassFilter(FILTSCALE, 0.1, false);
-  else
-    filt = NULL;
+  isHipass = false;
+  filtscale = std::numeric_limits<double>::quiet_NaN();
+  qfactor = std::numeric_limits<double>::quiet_NaN();
+  isMatched = false;
+  matched_fwhm = std::numeric_limits<double>::quiet_NaN();
+  matched_sigi = std::numeric_limits<double>::quiet_NaN();
+  matched_sigc = std::numeric_limits<double>::quiet_NaN();
 }
 
 beamHist::~beamHist() {
@@ -416,7 +552,6 @@ beamHist::~beamHist() {
   delete[] bm_pos;
   delete[] wt_neg;
   delete[] bm_neg;
-  if (filt != NULL) delete filt;
 }
 
 /*!
@@ -425,11 +560,39 @@ beamHist::~beamHist() {
   \param[in] pixsz Pixel size (arcseconds)
   \param[in] inv Histogram the inverse beam
   \param[in] oversampling Oversampling of beam. Must be odd
+  \param[in] filt Fourier space filter to apply
   \param[in] num_fwhm_keep How many FWHM to keep in the histogram
               after filtering.  If 0 (the default), keeps everything.
 */
 void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
 		    bool inv, unsigned int oversampling,
+		    const fourierFilter* const filt,
+		    double num_fwhm_keep) {
+
+  // Get how many pixels we will go out
+  unsigned int npix = 
+    static_cast<unsigned int>(num_fwhm * bm.getFWHM() / pixsz +
+			      0.9999999999);
+  npix = 2 * npix + 1;
+  fill(bm, npix, npix, pixsz, inv, oversampling, filt, num_fwhm_keep);
+}
+
+/*!
+  \param[in] bm Beam we are getting the histogram for
+  \param[in] n1 Size to build beam from, dimension 1
+  \param[in] n2 Size to build beam from, dimension 2
+  \param[in] pixsz Pixel size (arcseconds)
+  \param[in] inv Histogram the inverse beam
+  \param[in] oversampling Oversampling of beam. Must be odd
+  \param[in] filt Fourier space filter to apply
+  \param[in] num_fwhm_keep How many FWHM to keep in the histogram
+              after filtering.  If 0 (the default), keeps everything.
+	      Note that if this is applied, a symmetric part of
+	      the beam is kept.
+*/
+void beamHist::fill(const beam& bm, unsigned int n1, unsigned int n2,
+		    double pixsz, bool inv, unsigned int oversampling,
+		    const fourierFilter* const filt,
 		    double num_fwhm_keep) {
 
   const double minval = 1e-5; //Always ignore beam values below this
@@ -438,54 +601,78 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   pixsize = pixsz;
   fwhm = bm.getFWHM();
   oversamp = oversampling;
-  nfwhm = num_fwhm;
+  unsigned int minn = std::min(n1, n2);
+  nfwhm = static_cast<double>(minn-1) / (2.0 * fwhm);
   eff_area = bm.getEffectiveArea();
   if (num_fwhm_keep == 0) nfwhmkeep = nfwhm;
-  else nfwhmkeep = std::min(num_fwhm, num_fwhm_keep);
-
-  // Get how many pixels we will go out
-  unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
-						0.9999999999);
-  npix = 2 * npix + 1;
+  else nfwhmkeep = std::min(nfwhm, num_fwhm_keep);
 
   // Get 2D beam
   // Temporary beam storage.  Must use fftw_malloc since we may filter
   double val;
-  double *bmtmp = (double*) fftw_malloc(sizeof(double) * npix * npix);
-  // Setup filter if needed
-  if ((filtscale > 0.0) && !(keep_filt))
-    filt = new hipassFilter(filtscale, 0.0, true); //HACK
-  // Get the beam
-  bm.getBeam(npix, pixsize, oversamp, bmtmp, filt); // Also filters
-  // Clean up filter if not permanent
-  if ((filtscale > 0.0) && !(keep_filt)) {
-    delete filt;
-    filt = NULL;
+  double *bmtmp = (double*) fftw_malloc(sizeof(double) * n1 * n2);
+  // Get the beam, filtering as needed
+  bm.getBeam(n1, n2, pixsize, oversamp, bmtmp, filt);
+
+  // Store information about the filtering.  This is done purely
+  //  in case we want to write the beam out.
+  isHipass = false;
+  filtscale = std::numeric_limits<double>::quiet_NaN();
+  qfactor = std::numeric_limits<double>::quiet_NaN();
+  isMatched = false;
+  matched_fwhm = std::numeric_limits<double>::quiet_NaN();
+  matched_sigi = std::numeric_limits<double>::quiet_NaN();
+  matched_sigc = std::numeric_limits<double>::quiet_NaN();
+  if (filt != NULL) {
+    if (filt->isHipass()) {
+      isHipass = true;
+      filtscale = filt->getFiltScale();
+      qfactor = filt->getQFactor();
+    }
+    if (filt->isMatched()) {
+      isMatched = true;
+      matched_fwhm = filt->getFWHM();
+      matched_sigi = filt->getSigInst();
+      matched_sigc = filt->getSigConf();
+    } 
   }
+
   minmax_pos = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			      std::numeric_limits<double>::quiet_NaN());
   minmax_neg = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			      std::numeric_limits<double>::quiet_NaN());
 
   // Set up the part we will actually use (which may mean clipping)
-  unsigned int minidx;
-  unsigned int maxidx;
-  if (nfwhmkeep < num_fwhm) {
+  unsigned int minidx1, minidx2, maxidx1, maxidx2;
+  if (nfwhmkeep < nfwhm) {
     // We want to set up logical indexing into the array to only keep
-    //  the part we want.
+    //  the part we want.  Recall the beam is centered at n1/2, n2/2 (integer)
     unsigned int nclippix = 
       static_cast<unsigned int>(nfwhmkeep * fwhm / pixsize + 0.9999999999);
-    nclippix = 2 * nclippix + 1;
-    if (nclippix < npix) {
-      minidx = (npix - nclippix) / 2;
-      maxidx = npix - minidx;
+    unsigned int nclippix_tot = 2 * nclippix + 1;
+    // Recall that the beam is centered at n1/2, n2/2
+    if (nclippix_tot < n1) {
+      minidx1 = n1 / 2 - nclippix; // Range is [minidx1, maxidx1)
+      maxidx1 = minidx1 + nclippix_tot; 
+      // assert(minidx1 < n1); // unsigned, will wrap on problem
+      // assert(maxidx1 <= n1);
     } else {
-      minidx = 0;
-      maxidx = npix;
+      minidx1 = 0;
+      maxidx1 = n1;
+    }
+    if (nclippix_tot < n2) {
+      minidx2 = n2 / 2 - nclippix;
+      maxidx2 = minidx2 + nclippix_tot;
+      // assert(minidx2 < n2);
+      // assert(maxidx2 <= n2);
+    } else {
+      minidx2 = 0;
+      maxidx2 = n2;
     }
   } else {
-    minidx = 0;
-    maxidx = npix;
+    minidx1 = minidx2 = 0;
+    maxidx1 = n1;
+    maxidx2 = n2;
   }
     
   // Histogram
@@ -496,9 +683,9 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   minbinval_pos = minbinval_neg = 1e100; // Will definitely never be this large
   maxbinval_pos = maxbinval_neg = -1.0;
   double *rowptr;
-  for (unsigned int i = minidx; i < maxidx; ++i) {
-    rowptr = bmtmp + i * npix; // Logical size npix by npix
-    for (unsigned int j = minidx; j < maxidx; ++j) {
+  for (unsigned int i = minidx1; i < maxidx1; ++i) {
+    rowptr = bmtmp + i * n2; // Logical size npix by npix
+    for (unsigned int j = minidx2; j < maxidx2; ++j) {
       val = rowptr[j];
       // Ignore anything within [-minval, minval]
       if (val > minval) { // Positive part
@@ -513,6 +700,10 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
       }
     }
   }
+
+  if (!(has_pos || has_neg))
+    throw pofdExcept("beamHist", "fill", 
+		     "No pos or negative components", 1);
 
   if (has_pos) minmax_pos = std::make_pair(minbinval_pos, maxbinval_pos);
   if (has_pos) minmax_neg = std::make_pair(minbinval_neg, maxbinval_neg);
@@ -549,9 +740,9 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   if (has_pos) {
     std::memset(tmpwt, 0, nbins * sizeof(unsigned int));
     std::memset(tmphist, 0, nbins * sizeof(double));
-    for (unsigned int i = minidx; i < maxidx; ++i) {
-      rowptr = bmtmp + i * npix;
-      for (unsigned int j = minidx; j < maxidx; ++j) {
+    for (unsigned int i = minidx1; i < maxidx1; ++i) {
+      rowptr = bmtmp + i * n2;
+      for (unsigned int j = minidx2; j < maxidx2; ++j) {
 	val = rowptr[j];
 	if (val <= minval) continue;  //skip: too close to zero or negative
 	lval = log2(val);
@@ -588,9 +779,9 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
     std::memset(tmpwt, 0, nbins * sizeof(unsigned int));
     std::memset(tmphist, 0, nbins * sizeof(double));
     double testval = -minval;
-    for (unsigned int i = minidx; i < maxidx; ++i) {
-      rowptr = bmtmp + i * npix;
-      for (unsigned int j = minidx; j < maxidx; ++j) {
+    for (unsigned int i = minidx1; i < maxidx1; ++i) {
+      rowptr = bmtmp + i * n2;
+      for (unsigned int j = minidx2; j < maxidx2; ++j) {
 	val = rowptr[j];
 	if (val > testval) continue;  //skip; too close to 0 or positive
 	val = fabs(val); // Work with abs value
@@ -621,6 +812,7 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
   // Clean up
   fftw_free(bmtmp);
 }
+
 
 /*!
   \param[in] outputfile Name of FITS file to write to
@@ -669,17 +861,39 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHMKP"), &dtmp,
 		 const_cast<char*>("Number of FWHM kept"), &status);
   
-  if (filtscale > 0.0) {
+  if (isHipass) {
     itmp = 1;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
-		   const_cast<char*>("Is beam filtered?"), &status);
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
+		   const_cast<char*>("Is beam hipass filtered?"), &status);
     dtmp = filtscale;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL"), &dtmp,
 		   const_cast<char*>("Filtering scale [arcsec]"), &status);
+    dtmp = qfactor;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ"), &dtmp,
+		   const_cast<char*>("Filtering apodization"), &status);
   } else {
     itmp = 0;
-    fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
-		   const_cast<char*>("Is beam filtered?"), &status);
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
+		   const_cast<char*>("Is beam hipass filtered?"), &status);
+  }
+  if (isMatched) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
+		   const_cast<char*>("Is beam match filtered?"), &status);
+    dtmp = matched_fwhm;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITFWHM"), &dtmp,
+		   const_cast<char*>("Matched filtering FWHM [arcsec]"), 
+		   &status);
+    dtmp = matched_sigi;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGI"), &dtmp,
+		   const_cast<char*>("Matched filtering sigi"), &status);
+    dtmp = matched_sigc;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGC"), &dtmp,
+		   const_cast<char*>("Matched filtering sigc"), &status);
+  } else {
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
+		   const_cast<char*>("Is beam match filtered?"), &status);
   }
   
   if (oversamp > 1) {

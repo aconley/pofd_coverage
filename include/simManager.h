@@ -65,8 +65,13 @@ class simManager {
   mutable PDFactory pdfac; //!< Computes P(D)
   mutable numberCounts model; //!< Model variable
 
+  fourierFilter *filt; //!< Fourier space filter
+
   //Additional smoothing
   double esmooth; //!< Additional smoothing
+
+  // Final noise
+  double sigi_final; //!< final noise value
 
   //Stuff for GSL minimization call
   void **varr; //!< Internal evil casting array for minimization
@@ -85,7 +90,8 @@ class simManager {
 		      double N0RANGEFRAC=0.1, unsigned int FFTSIZE=262144, 
 		      unsigned int N1=720, unsigned int N2=720,
 		      double PIXSIZE=5.0, double FWHM=15.0, 
-		      double NFWHM=10.0, double FILTSCALE=0.0, 
+		      double NFWHM=15.0, double FILTSCALE=0.0, 
+		      bool MATCHED=false, double SIGC=0.006,
 		      unsigned int NBEAMBINS=100, double SIGI=0.005, 
 		      double N0=2.6e3, double ESMOOTH=0.0,
 		      unsigned int OVERSAMPLE=1, 

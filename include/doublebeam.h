@@ -6,7 +6,7 @@
 #define __doublebeam__
 
 #include "../include/global_settings.h"
-#include "../include/hipassFilter.h"
+#include "../include/fourierFilter.h"
 
 /*!
   \brief Represents PSF parameters for two Gaussian beams.
@@ -23,18 +23,20 @@ class doublebeam {
   double rhosq2; //!< Convenience variable \f$\rho = 4 \log\left(2\right) 3600^2/FWHM^2)\f$, band 2
   
   /*!\brief Inner beam generator, no filtering*/
-  void getRawBeam(unsigned int band, unsigned int n, double pixsize, 
-		  double* const bm) const;
+  void getRawBeam(unsigned int band, unsigned int n1, unsigned int n2, 
+		  double pixsize, double* const bm) const;
 
   /*!\brief Inner beam generator, no filtering, with oversampling*/
-  void getRawBeam(unsigned int band, unsigned int n, double pixsize, 
-		  unsigned int oversamp, double* const bm) const;
+  void getRawBeam(unsigned int band, unsigned int n1, unsigned int n2, 
+		  double pixsize, unsigned int oversamp, 
+		  double* const bm) const;
 
  public :
   doublebeam(double FWHM1=10.0, double FWHM2=15.0); //!< Constructor with FWHM
 
   void setFWHM(double, double); //!< Set the FWHM values
 
+  double getMaxFWHM() const { return std::max(fwhm1, fwhm2); }
   dblpair getFWHM() const { return std::make_pair(fwhm1, fwhm2); }
   dblpair getRhoSq() const {return std::make_pair(rhosq1, rhosq2);}
 
@@ -47,18 +49,30 @@ class doublebeam {
   void getBeamFac(unsigned int band, unsigned int n, 
 		  double pixsize, double* const fac) const;
 
-  /*!\brief Get 2D beam*/
+  /*!\brief Get 2D beam, square*/
   void getBeam(unsigned int band, unsigned int n, double pixsize, 
-	       double* const, hipassFilter* const=NULL) const;
-  /*!\brief Get 2D beam with oversampling*/
+	       double* const, const fourierFilter* const=NULL) const;
+  /*!\brief Get 2D beam, arb size*/
+  void getBeam(unsigned int band, unsigned int n1, unsigned int n2, 
+	       double pixsize, double* const, 
+	       const fourierFilter* const=NULL) const;
+
+  /*!\brief Get 2D beam with oversampling, square*/
   void getBeam(unsigned int band, unsigned int n, double pixsize, 
 	       unsigned int oversamp, double* const, 
-	       hipassFilter* const=NULL) const;
+	       const fourierFilter* const=NULL) const;
+
+  /*!\brief Get 2D beam with oversampling, arb size*/
+  void getBeam(unsigned int band, unsigned int n1, unsigned int n2, 
+	       double pixsize, unsigned int oversamp, double* const, 
+	       const fourierFilter* const=NULL) const;
 
   /*!\brief Write the beams to a FITS file*/
   void writeToFits(const std::string& outfile, double pixsize, 
 		   double nfwhm=3.5, unsigned int oversamp=1,
-		   hipassFilter* const=NULL, bool inverse=false) const;
+		   const fourierFilter* const filt1=NULL, 
+		   const fourierFilter* const filt2=NULL,
+		   bool inverse=false) const;
 };
 
 /*!
@@ -90,9 +104,14 @@ class doublebeamHist {
   double eff_area2; //!< Effective area of beam in deg^2, band 2
   unsigned int oversamp; //!< Oversampling factor
 
-  bool keep_filt; //!< Keep filt allocated, or dealloc between calls
-  double filtscale; //!< Filtering scale, in arcsec
-  hipassFilter* filt; //!< Hi pass filter, if any is being applied
+  std::pair<bool, bool> isHipass; //!< Was hipass filtering applied during fill?
+  dblpair filtscale; //!< High-pass filtering scale, in arcsec
+  dblpair qfactor; //!< High-pass filtering apodization
+
+  std::pair<bool, bool> isMatched; //!< Was matched filtering applied during the fill?
+  dblpair matched_fwhm; //!< FWHM of matched filter, band 1 (doesn't have to match this beam)
+  dblpair matched_sigi; //!< Instrument sigma of matched filter
+  dblpair matched_sigc; //!< Confusion sigma of matched filter
 
   unsigned int n[4]; //!< Number of histogram elements filled in pp, pn, np, nn
   unsigned int* wt[4]; //!< Weights
@@ -103,8 +122,7 @@ class doublebeamHist {
   dblpair minmax2[4]; //!< Min/max beam (not inverse beam!) in each sign component, band 2
  public:
 
-  doublebeamHist(unsigned int NBINS, double FILTSCALE=0.0,
-		 bool KEEP_FILT_INMEM=true); //!< Constructor
+  doublebeamHist(unsigned int NBINS); //!< Constructor
   ~doublebeamHist(); //!< Destructor
   
   bool hasData() const { return has_data; }
@@ -124,8 +142,14 @@ class doublebeamHist {
   const double* getBm1(unsigned int idx) const { return bm1[idx]; }
   const double* getBm2(unsigned int idx) const { return bm2[idx]; }
   
-  bool isFiltered() const { return filtscale>0; } //!< Is the beam filtered
-  double getFiltScale() const { return filtscale; } //!< Get filtering scale
+  std::pair<bool, bool> isHipassFiltered() const { return isHipass; }
+  /*!\brief Get High-Pass filtering scale*/
+  dblpair getFiltScale() const { return filtscale; } 
+  dblpair getFiltQFactor() const { return qfactor; }
+  std::pair<bool, bool> isMatchFiltered() const { return isMatched; }
+  dblpair getFiltFWHM() const { return matched_fwhm; }
+  dblpair getFiltSigInst() const { return matched_sigi; }
+  dblpair getFiltSigConf() const { return matched_sigc; }
 
   // Min/max values
   /*!\brief Get min/max band 1 (non-inverse beam)*/
@@ -133,9 +157,19 @@ class doublebeamHist {
   /*!\brief Get min/max band 2 (non-inverse beam)*/
   dblpair getMinMax2(unsigned int i) const {return minmax2[i];}
 
-  /*!\brief Fill from beam*/
+  /*!\brief Fill from beam, number of FWHM version*/
   void fill(const doublebeam& bm, double nfwhm, double pixsize,
-	    bool inv=false, unsigned int oversamp=1, double num_fwhm_keep=0);
+	    bool inv=false, unsigned int oversamp=1, 
+	    const fourierFilter* const filt1=NULL, 
+	    const fourierFilter* const filt2=NULL, 
+	    double num_fwhm_keep=0);
+
+  /*!\brief Fill from beam, arb size version*/
+  void fill(const doublebeam& bm, unsigned int n1, unsigned int n2, 
+	    double pixsize, bool inv=false, unsigned int oversamp=1, 
+	    const fourierFilter* const filt1=NULL, 
+	    const fourierFilter* const filt2=NULL, 
+	    double num_fwhm_keep=0);
 
   /*! \brief Write out as FITS file*/
   void writeToFits(const std::string&) const;

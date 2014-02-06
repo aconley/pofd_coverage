@@ -20,33 +20,42 @@ static struct option long_options[] = {
   {"extra_smooth2", required_argument, 0, '2'},
   {"filtscale", required_argument, 0, 'F'},
   {"help", no_argument, 0, 'h'},
+  {"matched", no_argument, 0, 'm'},
   {"oversample", required_argument, 0, 'o'},
   {"powerspec", required_argument, 0, 'p'},
   {"seed", required_argument, 0, 'S'},
   {"sigma", required_argument, 0, 's'},
   {"sigma1", required_argument, 0, '3'},
   {"sigma2", required_argument, 0, '4'},
+  {"sigc", required_argument, 0, '6'},
+  {"sigi", required_argument, 0, '5'},
+  {"sigi1", required_argument, 0, '7'},
+  {"sigi2", required_argument, 0, '8'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'},
   {0,0,0,0}
 };
-char optstring[] = "de:1:2:F:ho:p:S:s:3:4:vV";
+char optstring[] = "de:1:2:F:hmo:p:S:s:3:4:5:6:7:8:vV";
 
 
 int makeSimSingle(int argc, char **argv) {
 
   unsigned int n1, n2;
-  double n0, pixsize, sigma, fwhm, filtscale;
+  double n0, pixsize, sigma, fwhm;
+  double filterscale, sigi, sigc; // Filtering params
   double extra_smooth; //Additional smoothing
   std::string modelfile, outputfile, powspecfile;
   unsigned long long int user_seed;
-  bool verbose, have_user_seed;
+  bool verbose, have_user_seed, matched;
   unsigned int oversample;
 
   //Defaults
   extra_smooth        = 0.0;
   sigma               = 0.0;
-  filtscale           = 0.0;
+  filterscale         = 0.0;
+  matched             = false;
+  sigi                = 0.0; // Means: use sigma
+  sigc                = 0.006;
   verbose             = false;
   user_seed           = 0;
   have_user_seed      = false;
@@ -59,11 +68,14 @@ int makeSimSingle(int argc, char **argv) {
   while ((c = getopt_long(argc, argv, optstring, long_options,
 			  &option_index)) != -1) 
     switch(c) {
-    case 'e' :
+    case 'e':
       extra_smooth = atof(optarg);
       break;
     case 'F':
-      filtscale = atof(optarg);
+      filterscale = atof(optarg);
+      break;
+    case 'm':
+      matched = true;
       break;
     case 'o':
       oversample = atoi(optarg);
@@ -71,14 +83,20 @@ int makeSimSingle(int argc, char **argv) {
     case 'p':
       powspecfile = std::string(optarg);
       break;
-    case 'S' :
+    case 'S':
       have_user_seed = true;
       user_seed = static_cast<unsigned long long int>( atoi(optarg) );
       break;
-    case 's' :
+    case 's':
       sigma = atof(optarg);
       break;
-    case 'v' :
+    case '5':
+      sigi = atof(optarg);
+      break;
+    case '6':
+      sigc = atof(optarg);
+      break;
+    case 'v':
       verbose = true;
       break;
     }
@@ -97,6 +115,8 @@ int makeSimSingle(int argc, char **argv) {
   n2         = atoi(argv[optind + 5]);
   outputfile = std::string(argv[optind + 6]);
 
+  if (matched && (sigi == 0)) sigi = sigma;
+
   if (n0 < 0.0) {
     std::cout << "Invalid (negative) n0: " << n0 << std::endl;
     return 1;
@@ -113,8 +133,8 @@ int makeSimSingle(int argc, char **argv) {
     std::cout << "Invalid (non-positive) FWHM" << std::endl;
     return 1;
   }
-  if (filtscale < 0.0) {
-    std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
+  if (filterscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale: " << filterscale << std::endl;
     return 1;
   }
   if (extra_smooth < 0.0) {
@@ -125,7 +145,19 @@ int makeSimSingle(int argc, char **argv) {
     std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
-  
+  if (matched) {
+    if (sigi <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc for matched filter"
+		<< std::endl;
+      return 1;
+    }
+  }
+
   try {
     numberCounts model(modelfile);
     if (n0 == 0) {
@@ -136,13 +168,24 @@ int makeSimSingle(int argc, char **argv) {
       std::cout << "Base model n0: " << model.getBaseN0()
 		<< " Your value: " << n0 << std::endl;
 
+    fourierFilter *filt = NULL;
+    if (filterscale > 0) {
+      if (matched) {
+	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
+				 filterscale, 0.1, true);
+      } else
+	filt = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched)
+	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
+
     simImage dim(n1, n2, pixsize, fwhm, sigma, extra_smooth,
-		 filtscale, oversample, 1000, powspecfile, true);
+		 oversample, 1000, powspecfile);
     if (have_user_seed) dim.setSeed(user_seed);
 
-
     // Generate with mean subtraction
-    dim.realize(model, n0, true, false); 
+    dim.realize(model, n0, true, filt, false); 
+
+    if (filt != NULL) delete filt;
 
     //Write it
     if (verbose) std::cout << "Writing simulated image to " << outputfile
@@ -166,11 +209,12 @@ int makeSimSingle(int argc, char **argv) {
 int makeSimDouble(int argc, char **argv) {
 
   unsigned int n1, n2;
-  double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2, filtscale;
+  double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2;
+  double filterscale, sigi1, sigi2, sigc; //Filtering params
   double extra_smooth1, extra_smooth2; //Additional smoothing
   std::string modelfile, outputfile1, outputfile2, powerspecfile; 
   unsigned long long int user_seed;
-  bool verbose, have_user_seed;
+  bool verbose, have_user_seed, matched;
   unsigned int oversample;
 
   //Defaults
@@ -178,7 +222,11 @@ int makeSimDouble(int argc, char **argv) {
   extra_smooth2       = 0.0;
   sigma1              = 0.0;
   sigma2              = 0.0;
-  filtscale           = 0.0;
+  filterscale         = 0.0;
+  matched             = false;
+  sigc                = 0.006;
+  sigi1               = 0.0; // Means: use sigma1
+  sigi2               = 0.0; // Means: use sigma2
   verbose             = false;
   user_seed           = 0;
   have_user_seed      = false;
@@ -191,14 +239,17 @@ int makeSimDouble(int argc, char **argv) {
   while ((c = getopt_long(argc, argv, optstring, long_options,
 			  &option_index)) != -1) 
     switch(c) {
-    case '1' :
+    case '1':
       extra_smooth1 = atof(optarg);
       break;
-    case '2' :
+    case '2':
       extra_smooth2 = atof(optarg);
       break;
     case 'F':
-      filtscale = atof(optarg);
+      filterscale = atof(optarg);
+      break;
+    case 'm':
+      matched = true;
       break;
     case 'o':
       oversample = atoi(optarg);
@@ -206,17 +257,26 @@ int makeSimDouble(int argc, char **argv) {
     case 'p':
       powerspecfile = std::string(optarg);
       break;
-    case 'S' :
+    case 'S':
       have_user_seed = true;
       user_seed = static_cast<unsigned long long int>( atoi(optarg) );
       break;
-    case '3' :
+    case '3':
       sigma1 = atof(optarg);
       break;
-    case '4' :
+    case '4':
       sigma2 = atof(optarg);
       break;
-    case 'v' :
+    case '6':
+      sigc = atof(optarg);
+      break;
+    case '7':
+      sigi1 = atof(optarg);
+      break;
+    case '8':
+      sigi2 = atof(optarg);
+      break;
+    case 'v':
       verbose = true;
       break;
     }
@@ -236,6 +296,9 @@ int makeSimDouble(int argc, char **argv) {
   n2         = atoi(argv[optind + 6]);
   outputfile1= std::string(argv[optind + 7]);
   outputfile2= std::string(argv[optind + 8]);
+
+  if (matched && (sigi1 == 0)) sigi1 = sigma1;
+  if (matched && (sigi2 == 0)) sigi2 = sigma2;
 
   if (n0 < 0.0) {
     std::cout << "Invalid (negative) n0: " << n0 << std::endl;
@@ -275,7 +338,23 @@ int makeSimDouble(int argc, char **argv) {
     std::cout << "Invalid (non-positive) oversampling" << std::endl;
     return 1;
   }
-  
+  if (matched) {
+    if (sigi1 <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi1 for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigi2 <= 0.0) {
+      std::cout << "Invalid (non-positive) sigi2 for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc for matched filter"
+		<< std::endl;
+      return 1;
+    }
+  }
 
   try {
     numberCountsDouble model(modelfile);
@@ -287,13 +366,30 @@ int makeSimDouble(int argc, char **argv) {
       std::cout << "Base model n0: " << model.getBaseN0()
 		<< " Your value: " << n0 << std::endl;
 
+    fourierFilter *filt1 = NULL, *filt2 = NULL;
+    if (filterscale > 0) {
+      if (matched) {
+	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
+				  filterscale, 0.1, true);
+	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
+				  filterscale, 0.1, true);
+      } else
+	filt1 = new fourierFilter(pixsize, filterscale, 0.1, true);
+    } else if (matched) {
+      filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc, true);
+      filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc, true);
+    }
+
     simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, 
-		       extra_smooth1, extra_smooth2, filtscale, oversample, 
-		       1000, powerspecfile, true);
-    if (have_user_seed) dim.setSeed( user_seed );
+		       extra_smooth1, extra_smooth2, oversample, 
+		       1000, powerspecfile);
+    if (have_user_seed) dim.setSeed(user_seed);
     
     // Generate with mean subtraction
-    dim.realize(model, n0, true, false);
+    dim.realize(model, n0, true, filt1, filt2, false);
+
+    if (filt1 != NULL) delete filt1;
+    if (filt2 != NULL) delete filt2;
 
     //Write it
     if (verbose) std::cout << "Writing simulated images to " << outputfile1
@@ -326,7 +422,7 @@ int main( int argc, char** argv ) {
   while ( ( c = getopt_long(argc,argv,optstring,long_options,
 			    &option_index ) ) != -1 ) 
     switch(c) {
-    case 'h' :
+    case 'h':
       std::cout << "NAME" << std::endl;
       std::cout << "\tpofd_coverage_makeSim -- make simulated images for"
 		<< " a" << std::endl;
@@ -419,6 +515,11 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
 		<< std::endl;
       std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
+      std::cout << "\t-m, --matched" << std::endl;
+      std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
+		<< " matching the" << std::endl;
+      std::cout << "\t\tbeam (in each band for the 2D case).  Off by default." 
+		<< std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount of oversampling to use (integral) when " 
 		<< "generating" << std::endl;
@@ -435,6 +536,9 @@ int main( int argc, char** argv ) {
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tUse this seed for the random number generator." 
 		<< std::endl;
+      std::cout << "\t--sigc VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
+		<< " 0.006)" << std::endl;
       std::cout << "\t-v, --verbose" << std::endl;
       std::cout << "\t\tPrint informational messages while running"
 		<< std::endl;
@@ -448,6 +552,10 @@ int main( int argc, char** argv ) {
 		<< std::endl;
       std::cout << "\t-s, --sigma NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (def: 0)." << std::endl;
+      std::cout << "\t--sigi VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def: "
+		<< std::endl;
+      std::cout << "\t\tThe instrument noise)" << std::endl;
       std::cout << "TWO-D MODEL OPTIONS" << std::endl;
       std::cout << "\t--extra_smooth1 FWHM" << std::endl;
       std::cout << "\t\tApply additional smoothing in band 1 with a Gaussian of"
@@ -465,12 +573,20 @@ int main( int argc, char** argv ) {
       std::cout << "\t--sigma2 NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise, band 2 (def: 0)." 
 		<< std::endl;
+      std::cout << "\t--sigi1 VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, band 1, in Jy."
+		<< std::endl;
+      std::cout << "\t\t(Def: The instrument noise in band 1)." << std::endl;
+      std::cout << "\t--sigi2 VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, band 2, in Jy."
+		<< std::endl;
+      std::cout << "\t\t(Def: The instrument noise in band 2)." << std::endl;
       return 0;
       break;
-    case 'd' :
+    case 'd':
       twod = true;
       break;
-    case 'V' :
+    case 'V':
       std::cout << "pofd_coverage version number: " << pofd_coverage::version 
 		<< std::endl;
       return 0;

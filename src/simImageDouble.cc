@@ -30,24 +30,18 @@
               additional smoothing is applied.
   \param[in] ESMOOTH2 Additional Gaussian smoothing FWHM, band 2.  If non-zero,
               additional smoothing is applied.
-  \param[in] FILTERSCALE High-pass filtering scale, in arcseconds.
-              Zero means no filtering.
   \param[in] OVERSAMPLE Oversampling of simulated image.  Must be odd.
               1 means no additional oversampling.
   \param[in] NBINS Number of bins, if binning is applied.
   \param[in] powerspecfile File containing power spectrum.  If set, the
               source positions are generated using this P(k).  If not set, they
 	      are uniformly distributed across the image.
-  \param[in] quickfft Set to true to use FFTW_ESTIMATE rather than FFTW_MEASURE
-              when filtering; suitable if you only plan to call this once.
 */
 simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 			       double FWHM1, double FWHM2, double SIGI1, 
 			       double SIGI2, double ESMOOTH1, double ESMOOTH2,
-			       double FILTERSCALE, unsigned int OVERSAMPLE, 
-			       unsigned int NBINS,
-			       const std::string& powerspecfile,
-			       bool quickfft) {
+			       unsigned int OVERSAMPLE, unsigned int NBINS,
+			       const std::string& powerspecfile) {
 
   if (N1 == 0)
     throw pofdExcept("simImageDouble", "simImageDouble", 
@@ -112,9 +106,10 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   rangen.set_seed(seed);
 
   // Filtering
-  if (FILTERSCALE > 0.0)
-    filt = new hipassFilter(FILTERSCALE, 0.1, quickfft);
-  else filt = NULL;
+  isHipass = isMatched = std::make_pair(false, false);
+  dblpair NaNpr =  std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+				  std::numeric_limits<double>::quiet_NaN());
+  filtscale = qfactor = matched_fwhm = matched_sigi = matched_sigc = NaNpr;
 
   // Position generator if needed
   use_clustered_pos = false;
@@ -176,7 +171,6 @@ simImageDouble::~simImageDouble() {
   if (gen_1 != NULL) fftw_free(gen_1);
   if (gen_2 != NULL) fftw_free(gen_2);
   if (posgen != NULL) delete posgen;
-  if (filt != NULL) delete filt;
   delete[] gauss1;
   delete[] gauss2;
   if (ngauss_add1 > 0) delete[] gauss_add1;
@@ -405,12 +399,13 @@ void simImageDouble::convolveWithAdd() {
 }
 
 
-double simImageDouble::getFinalNoiseHelper(unsigned int ntrials,
-					   double* const data, double sigi,
-					   double fwhm, double esmooth, 
-					   unsigned int ngauss_add,
-					   const double* const gauss_add,
-					   hipassFilter* const filt) const {
+double 
+simImageDouble::getFinalNoiseHelper(unsigned int ntrials,
+				    double* const data, double sigi,
+				    double fwhm, double esmooth, 
+				    unsigned int ngauss_add,
+				    const double* const gauss_add,
+				    const fourierFilter* const filt) const {
   // Compute esmooth prefactor if needed
   const double prefac = 4 * std::log(2) / pofd_coverage::pi;
   double normval = 1.0;
@@ -437,7 +432,7 @@ double simImageDouble::getFinalNoiseHelper(unsigned int ntrials,
     }
 
     // Now filtering
-    filt->filter(pixsize, n1, n2, data);
+    filt->filter(n1, n2, pixsize, data);
 
     // Measure using two pass algorithm
     mn = data[0];
@@ -461,6 +456,9 @@ double simImageDouble::getFinalNoiseHelper(unsigned int ntrials,
 
 /*
   \param[in] ntrials Number of trials to do if measuring filtered noise.
+  \param[in] filt1 Fourier space filter for band1, maybe band 2
+  \param[in] filt2 Fourier space filter for band2
+
   \returns Instrument noise including effects of filtering, etc.
   
   This can include both filtering and additional Gaussian smoothing.
@@ -469,10 +467,14 @@ double simImageDouble::getFinalNoiseHelper(unsigned int ntrials,
   equal to the size of the image.  
 
   This is not particularly cheap the first time it is called.
-  After that it uses the previously computed value if possible.  
+  After that it uses the previously computed value if possible.
+
+  If filt1 is set but filt2 is not set, filt1 is used for both
 */
 std::pair<double, double> 
-simImageDouble::getFinalNoise(unsigned int ntrials) const {
+simImageDouble::getFinalNoise(unsigned int ntrials,
+			      const fourierFilter* const filt1,
+			      const fourierFilter* const filt2) const {
 
   // esmooth normalization factor input, when analyticity is possible
   const double noise_prefac = sqrt(2 * std::log(2) / pofd_coverage::pi);
@@ -480,7 +482,7 @@ simImageDouble::getFinalNoise(unsigned int ntrials) const {
   bool recompute = true;
   if (sigi_final_computed) {
     // Decide if we can re-use the previous value
-    if (filt == NULL) recompute = false; // Ignore ntrials -- not needed
+    if ((filt1 == NULL) && (filt2 == NULL)) recompute = false; // Ignore ntrials -- not needed
     else if (ntrials <= sigi_final_ntrials) recompute = false;
   }
   if (!recompute)
@@ -488,17 +490,26 @@ simImageDouble::getFinalNoise(unsigned int ntrials) const {
 
   // Figure out if we need temporary storage for sims
   double *tmpdata;
-  if (filt != NULL) {
+  if ((filt1 != NULL) && (filt2 != NULL)) {
     if (ntrials == 0)
       throw pofdExcept("simImageDouble", "getFinalNoise",
 		       "Invalid (non-positive) ntrials", 1);
     tmpdata = (double*) fftw_malloc(sizeof(double) * n1 * n2);
   } else tmpdata = NULL;
 
+  const fourierFilter *f1, *f2;
+  if (filt1 != NULL) {
+    f1 = filt1;
+    if (filt2 == NULL) f2 = filt2; else f2 = filt1;
+  } else if (filt2 != NULL) {
+    f1 = NULL;
+    f2 = filt2;
+  } else f1 = f2 = NULL;
+
   // First, sigi1
   if (sigi1 == 0)
     sigi_final1 = 0.0;
-  else if (filt == NULL) {
+  else if (f1 == NULL) {
     if (esmooth1 <= 0.0) 
       sigi_final1 = sigi1;
     else {
@@ -513,11 +524,11 @@ simImageDouble::getFinalNoise(unsigned int ntrials) const {
     // noise, etc.  This is why this function may not be cheap,
     // and why we support multiple trials
     sigi_final1 = getFinalNoiseHelper(ntrials, tmpdata, sigi1, fwhm1, esmooth1, 
-				      ngauss_add1, gauss_add1, filt);
+				      ngauss_add1, gauss_add1, f1);
   }
   if (sigi2 == 0)
     sigi_final2 = 0.0;
-  else if (filt == NULL) {
+  else if (f2 == NULL) {
     if (esmooth2 <= 0.0) 
       sigi_final2 = sigi2;
     else {
@@ -527,7 +538,7 @@ simImageDouble::getFinalNoise(unsigned int ntrials) const {
     }
   } else {
     sigi_final2 = getFinalNoiseHelper(ntrials, tmpdata, sigi2, fwhm2, esmooth2, 
-				      ngauss_add2, gauss_add2, filt);
+				      ngauss_add2, gauss_add2, f2);
   }
   if (tmpdata != NULL) fftw_free(tmpdata);
 
@@ -546,12 +557,20 @@ double simImageDouble::getArea() const {
   \params[in] model Base number counts model
   \params[in] n0 Number of sources per area to generate
   \params[in] meansub Do mean subtraction
+  \param[in] filt1 Fourier space filter to apply to band 1, maybe band 2.  
+             If NULL, no filtering.
+  \param[in] filt2 Fourier space filter to apply to band 2	     
   \params[in] bin Create binned image data
   \params[in] sparsebin Only take every this many pixels in binned image.
                          Does nothing if no binning.
- */
+
+  If filt1 is set but filt2 is not, then filt1 is applied to both.
+  There is no way to filter only the first one.
+*/
 void simImageDouble::realize(const numberCountsDouble& model,
 			     double n0, bool meansub, 
+			     const fourierFilter* const filt1, 
+			     const fourierFilter* const filt2,
 			     bool bin, unsigned int sparsebin) {
 
   if (!isValid())
@@ -645,12 +664,51 @@ void simImageDouble::realize(const numberCountsDouble& model,
 
   // Apply filtering.  Note this is done after adding noise and
   // downsampling to the final resolution (if oversampling is used).
-  // Filtering will always result in mean subtraction since
-  // it is a hipass filter.
-  if (filt != NULL) {
-    filt->filter(pixsize, n1, n2, data1);
-    filt->filter(pixsize, n1, n2, data2);
-  } else if (meansub) meanSubtract();
+  // Filtering will always result in mean subtraction, so no need to
+  // do that twice.
+  isHipass = isMatched = std::make_pair(false, false);
+  dblpair NaNpr = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+				 std::numeric_limits<double>::quiet_NaN());
+  filtscale = qfactor = matched_fwhm = matched_sigi = matched_sigc = NaNpr;
+  const fourierFilter *f1, *f2;
+  if (filt1 != NULL) {
+    f1 = filt1;
+    if (filt2 == NULL) f2 = f1; else f2 = filt2;
+  } else if (filt2 != NULL) {
+    f1 = NULL;
+    f2 = filt2;
+  } else f1 = f2 = NULL;
+  // Deal with band 1
+  if (f1 != NULL) {
+    f1->filter(n1, n2, pixsize, data1);
+    if (f1->isHipass()) {
+      isHipass.first = true;
+      filtscale.first = f1->getFiltScale();
+      qfactor.first = f1->getQFactor();
+    } 
+    if (f1->isMatched()) {
+      isMatched.first = true;
+      matched_fwhm.first = f1->getFWHM();
+      matched_sigi.first = f1->getSigInst();
+      matched_sigc.first = f1->getSigConf();
+    } 
+  }
+  // And band 2
+  if (f2 != NULL) {
+    f2->filter(n1, n2, pixsize, data2);
+    if (f2->isHipass()) {
+      isHipass.second = true;
+      filtscale.second = f2->getFiltScale();
+      qfactor.second = f2->getQFactor();
+    } 
+    if (f2->isMatched()) {
+      isMatched.second = true;
+      matched_fwhm.second = f2->getFWHM();
+      matched_sigi.second = f2->getSigInst();
+      matched_sigc.second = f2->getSigConf();
+    } 
+  }
+  if (meansub && ((f1 == NULL) || (f2 == NULL))) meanSubtract();
 
   //bin
   is_binned = false;
@@ -798,11 +856,6 @@ std::pair<double,double> simImageDouble::getBeamSumSq() const {
   return std::make_pair(sum1D_1 * sum1D_1, sum1D_2 * sum1D_2);
 }
 
-double simImageDouble::getFiltScale() const {
-  if (filt == NULL) return std::numeric_limits<double>::quiet_NaN();
-  return filt->getFiltScale();
-}
-
 /*!
   \param[in] sparsebin Only take every this many pixels when binning. 1 means
                         fully sampled (0 is also interpreted to mean the same
@@ -939,16 +992,16 @@ int simImageDouble::writeFits(const std::string& outputfile,
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &tmpval, 
 		 const_cast<char*>("Raw instrument noise, band 2"), 
 		 &status);
-  std::pair<double, double> tmppair;
-  tmppair = getFinalNoise();
-  tmpval = tmppair.first;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL1"), &tmpval, 
-		 const_cast<char*>("Final instrument noise, band 1"), 
-		 &status);
-  tmpval = tmppair.second;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL2"), &tmpval, 
-		 const_cast<char*>("Final instrument noise, band 2"), 
-		 &status);
+  if (sigi_final_computed) {
+    tmpval = sigi_final1;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL1"), &tmpval, 
+		   const_cast<char*>("Final instrument noise, band 1"), 
+		   &status);
+    tmpval = sigi_final2;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL2"), &tmpval, 
+		   const_cast<char*>("Final instrument noise, band 2"), 
+		   &status);
+  }
   
   if (oversample > 1) {
     unsigned int utmp = oversample;
@@ -961,14 +1014,75 @@ int simImageDouble::writeFits(const std::string& outputfile,
   fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &itmp,
 		 const_cast<char*>("Use clustered positions"), &status);
 
-  if (filt != NULL) itmp = 1; else itmp = 0;
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("FILTERED"), &itmp,
-		 const_cast<char*>("Hipass filtering applied"), &status);
-  if (filt != NULL) {
-    tmpval = filt->getFiltScale();
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &tmpval,
-		   const_cast<char*>("Hipass filtering scale [arcsec]"), 
+  if (isHipass.first) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT1"), &itmp,
+		   const_cast<char*>("Is band1 hipass filtered?"), 
 		   &status);
+    tmpval = filtscale.first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL1"), &tmpval,
+		   const_cast<char*>("Filtering scale1 [arcsec]"), &status);
+    tmpval = qfactor.first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ1"), &tmpval,
+		   const_cast<char*>("Filtering apodization1"), &status);
+  } else {
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT1"), &itmp,
+		   const_cast<char*>("Is band1 hipass filtered?"), &status);
+  }
+  if (isHipass.second) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT2"), &itmp,
+		   const_cast<char*>("Is band2 hipass filtered?"), 
+		   &status);
+    tmpval = filtscale.second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL2"), &tmpval,
+		   const_cast<char*>("Filtering scale2 [arcsec]"), &status);
+    tmpval = qfactor.second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ2"), &tmpval,
+		   const_cast<char*>("Filtering apodization2"), &status);
+  } else {
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT2"), &itmp,
+		   const_cast<char*>("Is band2 hipass filtered?"), &status);
+  }
+  if (isMatched.first) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT1"), &itmp,
+		   const_cast<char*>("Is band1 match filtered?"), &status);
+    tmpval = matched_fwhm.first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITFWHM1"), &tmpval,
+		   const_cast<char*>("Matched filtering FWHM1 [arcsec]"), 
+		   &status);
+    tmpval = matched_sigi.first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGI1"), &tmpval,
+		   const_cast<char*>("Matched filtering sigi1"), &status);
+    tmpval = matched_sigc.first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGC1"), &tmpval,
+		   const_cast<char*>("Matched filtering sigc1"), &status);
+  } else {
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT1"), &itmp,
+		   const_cast<char*>("Is band1 match filtered?"), &status);
+  }
+  if (isMatched.second) {
+    itmp = 1;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT2"), &itmp,
+		   const_cast<char*>("Is band1 match filtered?"), &status);
+    tmpval = matched_fwhm.second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITFWHM2"), &tmpval,
+		   const_cast<char*>("Matched filtering FWHM2 [arcsec]"), 
+		   &status);
+    tmpval = matched_sigi.second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGI2"), &tmpval,
+		   const_cast<char*>("Matched filtering sigi2"), &status);
+    tmpval = matched_sigc.second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGC2"), &tmpval,
+		   const_cast<char*>("Matched filtering sigc2"), &status);
+  } else {
+    itmp = 0;
+    fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT2"), &itmp,
+		   const_cast<char*>("Is band2 match filtered?"), &status);
   }
 
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),

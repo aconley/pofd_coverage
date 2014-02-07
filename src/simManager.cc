@@ -5,6 +5,7 @@
 
 #include<gsl/gsl_errno.h>
 #include<fitsio.h>
+#include<hdf5.h>
 
 #include "../include/simManager.h"
 #include "../include/global_settings.h"
@@ -679,4 +680,348 @@ int simManager::writeToFits(const std::string& outputfile) const {
     return status;
   }
   return status;
+}
+
+/*!
+  \param[in] outputfile Name of file to write to as HDF5
+*/
+void simManager::writeToHDF5(const std::string& outputfile) const {
+
+  hid_t file_id;
+  file_id = H5Fcreate(outputfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
+		      H5P_DEFAULT);
+  if (H5Iget_ref(file_id) < 0) {
+    H5Fclose(file_id);
+    throw pofdExcept("simManager", "writeToHDF5",
+		     "Failed to open HDF5 file to write", 1);
+  }
+
+  // Properties (e.g., metadata)
+  hsize_t adims;
+  hid_t mems_id, att_id, dat_id;
+
+  // Single item attributes
+  adims = 1;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+
+  // Model info (as a group)
+  hid_t group_id;
+  group_id = H5Gcreate(file_id, "Model", H5P_DEFAULT, H5P_DEFAULT, 
+		      H5P_DEFAULT);
+  if (H5Iget_ref(group_id) < 0)
+    throw pofdExcept("simManager", "writeToHDF5",
+		     "Failed to create HDF5 model group", 2);
+
+  const char modeltype[] = "numberCountsDoubleLogNormal";
+  hid_t datatype = H5Tcopy(H5T_C_S1);
+  H5Tset_size(datatype, strlen(modeltype)); 
+  att_id = H5Acreate1(group_id, "ModelType", datatype,
+		      mems_id, H5P_DEFAULT);
+  H5Awrite(att_id, datatype, modeltype);
+  H5Aclose(att_id);
+
+  double dtmp = model.getBaseN0();
+  att_id = H5Acreate2(group_id, "BaseN0", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+  H5Aclose(att_id);  
+
+  unsigned int utmp = model.getNKnots();
+  att_id = H5Acreate2(group_id, "NKnots", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
+  H5Aclose(att_id);  
+
+  H5Sclose(mems_id);
+  
+  // Knot positions and values
+  utmp = model.getNKnots();
+  adims = utmp;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+
+  double *ktmp = new double[utmp];
+  for (unsigned int i = 0; i < utmp; ++i)
+    ktmp[i] = model.getKnotPosition(i);
+  att_id = H5Acreate2(group_id, "KnotPositions", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, ktmp);
+  H5Aclose(att_id);  
+
+  for (unsigned int i = 0; i < utmp; ++i)
+    ktmp[i] = model.getLog10KnotValue(i);
+  att_id = H5Acreate2(group_id, "KnotLog10Values", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, ktmp);
+  H5Aclose(att_id);
+  
+  delete[] ktmp;
+  H5Sclose(mems_id);
+
+  H5Gclose(group_id);  // Model group
+
+  // Sim group
+  adims = 1; 
+  mems_id = H5Screate_simple(1, &adims, NULL);
+
+  group_id = H5Gcreate(file_id, "Simulations", H5P_DEFAULT, H5P_DEFAULT, 
+		      H5P_DEFAULT);
+  if (H5Iget_ref(group_id) < 0)
+    throw pofdExcept("simManager", "writeToHDF5",
+		     "Failed to create HDF5 simulation group", 2);
+
+  att_id = H5Acreate2(group_id, "N0", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0);
+  H5Aclose(att_id);  
+
+  att_id = H5Acreate2(group_id, "FWHM", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &fwhm);
+  H5Aclose(att_id);  
+
+  dtmp = inv_bmhist.getNFWHMKeep();
+  att_id = H5Acreate2(group_id, "NFWHMKept", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+  H5Aclose(att_id);  
+
+  utmp = inv_bmhist.getNbins();
+  att_id = H5Acreate2(group_id, "NBeamBins", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
+  H5Aclose(att_id);  
+
+  dtmp = simim.getBeamSum();
+  att_id = H5Acreate2(group_id, "BeamPixArea", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+  H5Aclose(att_id);  
+
+  dtmp = simim.getBeamSumSq();
+  att_id = H5Acreate2(group_id, "BeamSqPixArea", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+  H5Aclose(att_id);  
+
+  hbool_t bl = static_cast<hbool_t>(simim.isSmoothed());
+  att_id = H5Acreate2(group_id, "Smoothed", H5T_NATIVE_HBOOL,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
+  H5Aclose(att_id);  
+  if (bl) {
+    dtmp = simim.getEsmooth();
+    att_id = H5Acreate2(group_id, "ExtraSmoothing", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);  
+  }
+
+  dtmp = simim.getInstNoise();
+  att_id = H5Acreate2(group_id, "SigmaInst", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+  H5Aclose(att_id);  
+
+  dtmp = sigi_final;
+  att_id = H5Acreate2(group_id, "SigmaInstFinal", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+  H5Aclose(att_id); 
+
+  if (simim.isOversampled()) {
+    utmp = simim.getOversampling();
+    att_id = H5Acreate2(group_id, "Oversampling", H5T_NATIVE_UINT,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
+    H5Aclose(att_id); 
+  }
+
+  bl = static_cast<hbool_t>(simim.isClustered());
+  att_id = H5Acreate2(group_id, "Clustered", H5T_NATIVE_HBOOL,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
+  H5Aclose(att_id); 
+
+  bl = static_cast<hbool_t>(use_binning);
+  att_id = H5Acreate2(group_id, "DataBinned", H5T_NATIVE_HBOOL,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
+  H5Aclose(att_id); 
+  if (use_binning) {
+    utmp = simim.getNBins();
+    att_id = H5Acreate2(group_id, "NDataBins", H5T_NATIVE_UINT,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
+    H5Aclose(att_id); 
+  } 
+
+  utmp = getN1();
+  att_id = H5Acreate2(group_id, "N1", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
+  H5Aclose(att_id); 
+
+  utmp = getN2();
+  att_id = H5Acreate2(group_id, "N2", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
+  H5Aclose(att_id); 
+
+  dtmp = simim.getPixSize();
+  att_id = H5Acreate2(group_id, "PixelSize", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+  H5Aclose(att_id);
+
+  dtmp = simim.getArea();
+  att_id = H5Acreate2(group_id, "SimAreaSqDeg", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+  H5Aclose(att_id);
+
+  att_id = H5Acreate2(group_id, "NSims", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, &nsims);
+  H5Aclose(att_id); 
+
+  att_id = H5Acreate2(group_id, "FFTSize", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, &fftsize);
+  H5Aclose(att_id); 
+
+  att_id = H5Acreate2(group_id, "N0InitRange", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0initrange);
+  H5Aclose(att_id);
+
+  bl = static_cast<hbool_t>(simim.isHipassFiltered());
+  att_id = H5Acreate2(group_id, "IsHighPassFiltered", H5T_NATIVE_HBOOL,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
+  H5Aclose(att_id); 
+  if (bl) {
+    dtmp = simim.getFiltScale();
+    att_id = H5Acreate2(group_id, "HighPassFiltScale", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);
+
+    dtmp = simim.getFiltQFactor();
+    att_id = H5Acreate2(group_id, "HighPassQFactor", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);
+  } 
+  bl = static_cast<hbool_t>(simim.isMatchFiltered());
+  att_id = H5Acreate2(group_id, "IsMatchFiltered", H5T_NATIVE_HBOOL,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
+  H5Aclose(att_id); 
+  if (bl) {
+    dtmp = simim.getFiltFWHM();
+    att_id = H5Acreate2(group_id, "MatchedFiltFWHM", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);
+
+    dtmp = simim.getFiltSigInst();
+    att_id = H5Acreate2(group_id, "MatchedFiltSigInst", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);
+
+    dtmp = simim.getFiltSigConf();
+    att_id = H5Acreate2(group_id, "MatchedFiltSigConf", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);
+  } 
+
+  if (like_sparcity > 1) {
+    att_id = H5Acreate2(group_id, "LikelihoodSparcity", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_UINT, &like_sparcity);
+    H5Aclose(att_id); 
+  }
+
+  bl = static_cast<hbool_t>(do_map_like);
+  att_id = H5Acreate2(group_id, "DoMapLike", H5T_NATIVE_HBOOL,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
+  H5Aclose(att_id); 
+  if (do_map_like) {
+    att_id = H5Acreate2(group_id, "NLike", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_UINT, &nlike);
+    H5Aclose(att_id); 
+
+    att_id = H5Acreate2(group_id, "N0LikeRangeFraction", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0rangefrac);
+    H5Aclose(att_id);
+  }  
+
+  H5Sclose(mems_id); // The rest is not scalar
+
+  // Write the data
+  adims = nsims;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+
+  dat_id = H5Dcreate2(group_id, "BestN0", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	   H5P_DEFAULT, bestn0);
+  H5Dclose(dat_id);
+
+  dat_id = H5Dcreate2(group_id, "BestLike", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	   H5P_DEFAULT, bestlike);
+  H5Dclose(dat_id);
+  
+  if (do_map_like) {
+    dat_id = H5Dcreate2(group_id, "min_n0", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	     H5P_DEFAULT, min_n0);
+    H5Dclose(dat_id);
+    dat_id = H5Dcreate2(group_id, "delta_n0", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	     H5P_DEFAULT, delta_n0);
+    H5Dclose(dat_id);
+  }
+  H5Sclose(mems_id); 
+
+  // Multi-D.  We will write the likelihood as float after
+  //  subtracting of bestlike to save space
+  hsize_t cdims[2] = {nsims, nlike};
+  float *wrk, *wrowptr;
+  wrk = new float[nsims * nlike];
+  double cmin, *rowptr;
+  for (unsigned int i = 0; i < nsims; ++i) {
+    cmin = min_n0[i];
+    rowptr = likearr[i];
+    wrowptr = wrk + i * nlike;
+    for (unsigned int j = 0; j < nlike; ++j)
+      wrowptr[j] = static_cast<float>(rowptr[j] - cmin);
+  }
+  // We further write with compression
+  hid_t plist;
+  mems_id = H5Screate_simple(2, cdims, NULL);
+  plist = H5Pcreate(H5P_DATASET_CREATE);
+  H5Pset_chunk(plist, 2, cdims);
+  H5Pset_deflate(plist, 6); // Gzip, compression 6
+  dat_id = H5Dcreate2(group_id, "Likelihood", H5T_NATIVE_FLOAT, 
+		      mems_id, H5P_DEFAULT, plist, H5P_DEFAULT); 
+  H5Dwrite(dat_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, wrk);
+  H5Dclose(dat_id);
+  H5Pclose(plist);
+  H5Sclose(mems_id);
+  delete[] wrk;
+
+  H5Gclose(group_id);  // Simulation group
+
+  H5Fclose(file_id); // File
+
 }

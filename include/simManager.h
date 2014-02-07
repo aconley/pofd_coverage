@@ -116,8 +116,8 @@ class simManager {
 
   void doSims(bool verbose); //!< Run a set of simulations
 
-  int writeToFits(const std::string& file) const; //!< Write out results
-
+  int writeToFits(const std::string& file) const; //!< Write out results as FITS
+  void writeToHDF5(const std::string& file) const; //!< Write out results as HDF5
 };
 
 #endif

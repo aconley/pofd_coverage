@@ -913,26 +913,19 @@ void simImageDouble::applyBinning(unsigned int sparsebin) {
 }
 
 /*!
-  Writes a single band to a fits file
+  Writes a single band to an already open fits file, creating the extension
 
   \param[in] outfile File to write to
   \param[in] idx Which band to write (1 or 2)
   \returns 0 on success, an error code (!=0) for anything else
 */
-int simImageDouble::writeFits(const std::string& outputfile, 
-			      unsigned int idx) const {
+int simImageDouble::writeFits(fitsfile* fp, unsigned int idx) const {
 
   if (idx < 1 || idx > 2)
     throw pofdExcept("simImageDouble", "writeFits",
 		     "Invalid index", 1);
 
   int status = 0;
-  fitsfile *fp;
-  fits_create_file(&fp, outputfile.c_str(), &status);
-  if (status) {
-    fits_report_error(stderr,status);
-    return status;
-  }
 
   //Make image array
   long axissize[2];
@@ -1139,7 +1132,6 @@ int simImageDouble::writeFits(const std::string& outputfile,
 		     &status);
   fits_write_date(fp, &status);
 
-
   //Do data writing.  We have to make a transposed copy of the
   // data to do this, which is irritating as hell
   double *tmpdata = new double[n1];
@@ -1153,36 +1145,45 @@ int simImageDouble::writeFits(const std::string& outputfile,
     fits_write_pix(fp, TDOUBLE, fpixel, n1, tmpdata, &status);
   }
   delete[] tmpdata;
-
-  // Close up
-  fits_close_file(fp, &status);
-  if (status)
-    fits_report_error(stderr, status);
+  
   return status;
 }
 
 /*!
-  \param[in] outputfile1 File to write to
-  \param[in] outputfile2 File to write band 2 map to
+  \param[in] outputfile1 File to write to.  
   \returns 0 on success, an error code (!=0) for anything else
 
-  Write to two files rather than one with two extensions so that the files
-  produced by this code can be input to pofd_affine.
+  Written as two image extensions.
 */
-int simImageDouble::writeToFits(const std::string& outputfile1,
-				const std::string& outputfile2) const {
+int simImageDouble::writeToFits(const std::string& outputfile) const {
 
   if (!is_full)
     throw pofdExcept("simImageDouble", "writeToFits",
 		     "Trying to write image without realizing", 1);
 
-  int status = writeFits(outputfile1, 1);
+  int status = 0;
+  fitsfile *fp;
+  fits_create_file(&fp, outputfile.c_str(), &status);
+  if (status) {
+    fits_report_error(stderr, status);
+    return status;
+  }
+
+  status = writeFits(fp, 1);
   if (status)
     throw pofdExcept("simImageDouble", "writeToFits",
 		     "Failure writing band 1 map", 2);
-  status = writeFits(outputfile2, 2);
-  if (status)
+
+  status = writeFits(fp, 2);
+  if (status) {
     throw pofdExcept("simImageDouble", "writeToFits",
 		     "Failure writing band 2 map", 3);
+    return status;
+  }
+
+  // Close up
+  fits_close_file(fp, &status);
+  if (status)
+    fits_report_error(stderr, status);
   return status;
 }

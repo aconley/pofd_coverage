@@ -459,12 +459,12 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
   fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
   
   // Deal with filtering.
-  const fourierFilter *f1, *f2;
+  const fourierFilter *f1 = NULL, *f2 = NULL;
   if (filt1 != NULL) {
     f1 = filt1;
     if (filt2 == NULL) f2 = filt1;
     else f2 = filt2;
-  } else f1 = f2 = NULL;
+  } else if (filt2 != NULL) f2 = filt2;
 
   // Header for first band
   bool ubl;
@@ -535,7 +535,7 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
 		 const_cast<char*>(pofd_coverage::version), 
 		 const_cast<char*>("pofd_coverage version"),
 		 &status);
-  fits_write_history(fp,const_cast<char*>("Beam from pofd_coverage"),
+  fits_write_history(fp, const_cast<char*>("Beam from pofd_coverage"),
 		     &status);
   fits_write_date(fp, &status);
   

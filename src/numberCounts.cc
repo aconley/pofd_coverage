@@ -406,7 +406,7 @@ void numberCounts::writeToHDF5Handle(hid_t obj_id) const {
   adims = 1;
   mems_id = H5Screate_simple(1, &adims, NULL);
 
-  const char modeltype[] = "numberCountsDoubleLogNormal";
+  const char modeltype[] = "numberCounts";
   hid_t datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, strlen(modeltype)); 
   att_id = H5Acreate1(obj_id, "ModelType", datatype,

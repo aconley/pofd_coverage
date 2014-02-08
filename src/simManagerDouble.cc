@@ -102,8 +102,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   bool USEBIN, unsigned int NBINS) :
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
-  fftsize(FFTSIZE), n0(N0), fwhm1(FWHM1), fwhm2(FWHM2), pixsize(PIXSIZE),
-  inv_bmhist(NBEAMBINS), 
+  fftsize(FFTSIZE), n0(N0), inv_bmhist(NBEAMBINS), 
   simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, 
 	OVERSAMPLE, NBINS, POWERSPECFILE), 
   use_binning(USEBIN), model(MODELFILE), filt1(NULL), filt2(NULL),
@@ -117,10 +116,10 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   if (esmooth1 > 0.0 || esmooth2 > 0.0) do_extra_smooth = true;
   else do_extra_smooth = false;
   if (do_extra_smooth)
-    bm.setFWHM(std::sqrt(fwhm1 * fwhm1 + esmooth1 * esmooth1),
-	       std::sqrt(fwhm2 * fwhm2 + esmooth2 * esmooth2));
+    bm.setFWHM(std::sqrt(FWHM1 * FWHM1 + esmooth1 * esmooth1),
+	       std::sqrt(FWHM2 * FWHM2 + esmooth2 * esmooth2));
   else
-    bm.setFWHM(fwhm1, fwhm2);
+    bm.setFWHM(FWHM1, FWHM2);
   
   if (nsims > 0) {
     bestn0 = new double[nsims];
@@ -463,11 +462,11 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
 		 &status);
 
   //Sim params
-  dtmp = fwhm1;
+  dtmp = inv_bmhist.getFWHM().first;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp, 
 		 const_cast<char*>("Beam fwhm, band 1 [arcsec]"), 
 		 &status);
-  dtmp = fwhm2;
+  dtmp = inv_bmhist.getFWHM().second;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp, 
 		 const_cast<char*>("Beam fwhm, band 2 [arcsec]"), 
 		 &status);

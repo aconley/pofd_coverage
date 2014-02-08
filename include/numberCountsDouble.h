@@ -11,6 +11,7 @@
 #include<gsl/gsl_spline.h>
 #include<gsl/gsl_interp.h>
 #include<gsl/gsl_integration.h>
+#include<hdf5.h>
 
 #include "../include/global_settings.h"
 #include "../include/doublebeam.h"
@@ -177,6 +178,7 @@ class numberCountsDouble {
   dblpair genSource(double udev, double gdev) const;
 
   bool writeToStream(std::ostream& os) const; //!< Output to stream
+  void writeToHDF5Handle(hid_t) const; //!< Write to HDF5 handle
 };
 
 /*! \brief Write to stream */

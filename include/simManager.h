@@ -55,8 +55,6 @@ class simManager {
   double n0; //!< Number of sources per sq deg in input model
 
   //Stuff for doing individual sims
-  double fwhm; //!< FWHM of image beam
-  double pixsize; //!< Pixel size of image and beam
   beam bm; //!< Beam
   beamHist inv_bmhist; //!< Histogrammed inverse beam
   mutable simImage simim; //!< Simulated image

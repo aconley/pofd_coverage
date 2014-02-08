@@ -11,6 +11,8 @@
 #include<gsl/gsl_interp.h>
 #include<gsl/gsl_integration.h>
 
+#include<hdf5.h>
+
 #include "../include/global_settings.h"
 #include "../include/beam.h"
 
@@ -94,7 +96,7 @@ class numberCounts {
     return logknotvals[idx] * pofd_coverage::ilogfac; }
 
   bool writeToStream(std::ostream& os) const; //!< Output to stream
-
+  void writeToHDF5Handle(hid_t) const; //<! Write to HDF5 handle
 };
 
 /*! Stream output operator */

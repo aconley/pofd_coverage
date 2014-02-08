@@ -387,6 +387,67 @@ bool numberCounts::writeToStream(std::ostream& os) const {
   return true;
 }
 
+/*!
+  \param[in] objid HDF5 object ID to write to
+*/
+void numberCounts::writeToHDF5Handle(hid_t obj_id) const {
+  if (H5Iget_ref(obj_id) < 0)
+    throw pofdExcept("numberCounts", "writeToHDF5Handle",
+		     "Given non-open objid to write to", 1);
+
+  if (!isValid())
+    throw pofdExcept("numberCounts", "writeToHDF5Handle",
+		     "Asked to write invalid model", 2);
+
+  hsize_t adims;
+  hid_t mems_id, att_id, dat_id;
+
+  // Single item attributes
+  adims = 1;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+
+  const char modeltype[] = "numberCountsDoubleLogNormal";
+  hid_t datatype = H5Tcopy(H5T_C_S1);
+  H5Tset_size(datatype, strlen(modeltype)); 
+  att_id = H5Acreate1(obj_id, "ModelType", datatype,
+		      mems_id, H5P_DEFAULT);
+  H5Awrite(att_id, datatype, modeltype);
+  H5Aclose(att_id);
+
+  att_id = H5Acreate2(obj_id, "BaseN0", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &base_n0);
+  H5Aclose(att_id);  
+
+  att_id = H5Acreate2(obj_id, "NKnots", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, &nknots);
+  H5Aclose(att_id);  
+
+  H5Sclose(mems_id);
+  
+  // Knot positions and values as data
+  adims = nknots;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  dat_id = H5Dcreate2(obj_id, "KnotPositions", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+	   H5P_DEFAULT, knotpos);
+  H5Dclose(dat_id);
+
+  // Copy over knot values to temp variable to make log10
+  double *ktmp = new double[nknots];
+  for (unsigned int i = 0; i < nknots; ++i)
+    ktmp[i] = getLog10KnotValue(i);
+  dat_id = H5Dcreate2(obj_id, "Log10KnotValues", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+	   H5P_DEFAULT, ktmp);
+  H5Dclose(dat_id);
+
+  delete[] ktmp;
+  H5Sclose(mems_id);
+}
 
 std::ostream& operator<<(std::ostream& os, const numberCounts& b) {
   b.writeToStream(os);

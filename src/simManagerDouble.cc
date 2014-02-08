@@ -402,7 +402,9 @@ void simManagerDouble::summarizeTime() const {
 #endif
 
 
-//Output
+/*!
+  \param[in] outputfile Filename to write data to as FITS
+*/
 int simManagerDouble::writeToFits(const std::string& outputfile) const {
   //Make the fits file
   int status = 0;

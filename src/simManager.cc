@@ -98,8 +98,7 @@ simManager::simManager(const std::string& MODELFILE,
 		       bool USEBIN, unsigned int NBINS) :
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
-  fftsize(FFTSIZE), n0(N0), fwhm(FWHM), pixsize(PIXSIZE), 
-  inv_bmhist(NBEAMBINS), 
+  fftsize(FFTSIZE), n0(N0), inv_bmhist(NBEAMBINS), 
   simim(N1, N2, PIXSIZE, FWHM, SIGI, ESMOOTH, OVERSAMPLE, 
 	NBINS, POWERSPECFILE), 
   use_binning(USEBIN), model(MODELFILE), filt(NULL), esmooth(ESMOOTH) {
@@ -109,9 +108,9 @@ simManager::simManager(const std::string& MODELFILE,
 #endif
 
   if (simim.isSmoothed())
-    bm.setFWHM(std::sqrt(fwhm * fwhm + esmooth * esmooth));
+    bm.setFWHM(std::sqrt(FWHM * FWHM + esmooth * esmooth));
   else 
-    bm.setFWHM(fwhm);
+    bm.setFWHM(FWHM);
 
   if (nsims > 0) {
     bestn0 = new double[nsims];
@@ -445,7 +444,7 @@ int simManager::writeToFits(const std::string& outputfile) const {
 		 &status);
 
   //Sim params
-  dtmp = fwhm;
+  dtmp = inv_bmhist.getFWHM();
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &dtmp, 
 		 const_cast<char*>("Beam fwhm [arcsec]"), 
 		 &status);
@@ -697,12 +696,6 @@ void simManager::writeToHDF5(const std::string& outputfile) const {
   }
 
   // Properties (e.g., metadata)
-  hsize_t adims;
-  hid_t mems_id, att_id, dat_id;
-
-  // Single item attributes
-  adims = 1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
 
   // Model info (as a group)
   hid_t group_id;
@@ -711,55 +704,14 @@ void simManager::writeToHDF5(const std::string& outputfile) const {
   if (H5Iget_ref(group_id) < 0)
     throw pofdExcept("simManager", "writeToHDF5",
 		     "Failed to create HDF5 model group", 2);
-
-  const char modeltype[] = "numberCountsDoubleLogNormal";
-  hid_t datatype = H5Tcopy(H5T_C_S1);
-  H5Tset_size(datatype, strlen(modeltype)); 
-  att_id = H5Acreate1(group_id, "ModelType", datatype,
-		      mems_id, H5P_DEFAULT);
-  H5Awrite(att_id, datatype, modeltype);
-  H5Aclose(att_id);
-
-  double dtmp = model.getBaseN0();
-  att_id = H5Acreate2(group_id, "BaseN0", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
-  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
-  H5Aclose(att_id);  
-
-  unsigned int utmp = model.getNKnots();
-  att_id = H5Acreate2(group_id, "NKnots", H5T_NATIVE_UINT,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
-  H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
-  H5Aclose(att_id);  
-
-  H5Sclose(mems_id);
-  
-  // Knot positions and values
-  utmp = model.getNKnots();
-  adims = utmp;
-  mems_id = H5Screate_simple(1, &adims, NULL);
-
-  double *ktmp = new double[utmp];
-  for (unsigned int i = 0; i < utmp; ++i)
-    ktmp[i] = model.getKnotPosition(i);
-  att_id = H5Acreate2(group_id, "KnotPositions", H5T_NATIVE_UINT,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
-  H5Awrite(att_id, H5T_NATIVE_UINT, ktmp);
-  H5Aclose(att_id);  
-
-  for (unsigned int i = 0; i < utmp; ++i)
-    ktmp[i] = model.getLog10KnotValue(i);
-  att_id = H5Acreate2(group_id, "KnotLog10Values", H5T_NATIVE_UINT,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
-  H5Awrite(att_id, H5T_NATIVE_UINT, ktmp);
-  H5Aclose(att_id);
-  
-  delete[] ktmp;
-  H5Sclose(mems_id);
-
-  H5Gclose(group_id);  // Model group
+  model.writeToHDF5Handle(group_id);
+  H5Gclose(group_id); 
 
   // Sim group
+  hsize_t adims = 1;
+  hid_t mems_id, att_id, dat_id;
+  unsigned int utmp;
+  double dtmp;
   adims = 1; 
   mems_id = H5Screate_simple(1, &adims, NULL);
 
@@ -774,9 +726,10 @@ void simManager::writeToHDF5(const std::string& outputfile) const {
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0);
   H5Aclose(att_id);  
 
+  dtmp = inv_bmhist.getFWHM();
   att_id = H5Acreate2(group_id, "FWHM", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
-  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &fwhm);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
   H5Aclose(att_id);  
 
   dtmp = inv_bmhist.getNFWHMKeep();

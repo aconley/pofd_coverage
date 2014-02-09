@@ -67,7 +67,7 @@ class numberCountsDouble {
   double *knotpos; //!< Locations of knots, band 1
   double* logknotpos; //!< Log2 of band 1 knot positions, length nknots
   double* knotvals; //!< Values of differential number counts at knotpos, 
-  double *logknotvals; //!< Ln values of differential number counts at knots, band 1
+  double *logknotvals; //!< Log2 values of differential number counts at knots, band 1
 
   gsl_interp_accel *acc; //!< Spline lookup accelerator
   gsl_spline *splinelog; //!< Spline in log/log space

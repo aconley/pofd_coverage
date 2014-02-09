@@ -117,7 +117,7 @@ class simManagerDouble {
   void doSims(bool verbose); //!< Run a set of simulations
 
   int writeToFits(const std::string& file) const; //!< Write out results
-
+  void writeToHDF5(const std::string& file) const; //!< Write to HDF5
 };
 
 #endif

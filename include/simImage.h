@@ -145,7 +145,7 @@ class simImage {
   unsigned int getN1() const { return n1; } //!< Gets number of pixels in band1
   unsigned int getN2() const { return n2; } //!< Gets number of pixels in band2
   bool isOversampled() const { return oversample > 1; } 
-  double getOversampling() const { return oversample; } //!< Gets amount of oversampling
+  unsigned int getOversampling() const { return oversample; } //!< Gets amount of oversampling
   double getPixSize() const { return pixsize; } //!< Gets pixel size (arcsec)
   const double* const getData() const { return data; } //!< Gets data pointer
   const unsigned int* const getBinnedData() const { return binval; } //!< Gets binned data

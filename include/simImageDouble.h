@@ -181,7 +181,7 @@ class simImageDouble {
   unsigned int getN1() const { return n1; } //!< Get image extent, band 1
   unsigned int getN2() const { return n2; } //!< Get image extent, band 1
   bool isOversampled() const { return oversample > 1; }
-  double getOversampling() const { return oversample; } //!< Gets amount of oversampling
+  unsigned int getOversampling() const { return oversample; } //!< Gets amount of oversampling
 
   double getPixSize() const { return pixsize; } //!< Get pixel size (arcsec)
   const double* const getData1() const { return data1; } //!< Band 1 data access

@@ -948,30 +948,32 @@ void simManager::writeToHDF5(const std::string& outputfile) const {
 
   // Multi-D.  We will write the likelihood as float after
   //  subtracting of bestlike to save space
-  hsize_t cdims[2] = {nsims, nlike};
-  float *wrk, *wrowptr;
-  wrk = new float[nsims * nlike];
-  double cmin, *rowptr;
-  for (unsigned int i = 0; i < nsims; ++i) {
-    cmin = min_n0[i];
-    rowptr = likearr[i];
-    wrowptr = wrk + i * nlike;
-    for (unsigned int j = 0; j < nlike; ++j)
-      wrowptr[j] = static_cast<float>(rowptr[j] - cmin);
+  if (do_map_like) {
+    hsize_t cdims[2] = {nsims, nlike};
+    float *wrk, *wrowptr;
+    wrk = new float[nsims * nlike];
+    double cmin, *rowptr;
+    for (unsigned int i = 0; i < nsims; ++i) {
+      cmin = min_n0[i];
+      rowptr = likearr[i];
+      wrowptr = wrk + i * nlike;
+      for (unsigned int j = 0; j < nlike; ++j)
+	wrowptr[j] = static_cast<float>(rowptr[j] - cmin);
+    }
+    // We further write with compression
+    hid_t plist;
+    mems_id = H5Screate_simple(2, cdims, NULL);
+    plist = H5Pcreate(H5P_DATASET_CREATE);
+    H5Pset_chunk(plist, 2, cdims);
+    H5Pset_deflate(plist, 6); // Gzip, compression 6
+    dat_id = H5Dcreate2(group_id, "Likelihood", H5T_NATIVE_FLOAT, 
+			mems_id, H5P_DEFAULT, plist, H5P_DEFAULT); 
+    H5Dwrite(dat_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, wrk);
+    H5Dclose(dat_id);
+    H5Pclose(plist);
+    H5Sclose(mems_id);
+    delete[] wrk;
   }
-  // We further write with compression
-  hid_t plist;
-  mems_id = H5Screate_simple(2, cdims, NULL);
-  plist = H5Pcreate(H5P_DATASET_CREATE);
-  H5Pset_chunk(plist, 2, cdims);
-  H5Pset_deflate(plist, 6); // Gzip, compression 6
-  dat_id = H5Dcreate2(group_id, "Likelihood", H5T_NATIVE_FLOAT, 
-		      mems_id, H5P_DEFAULT, plist, H5P_DEFAULT); 
-  H5Dwrite(dat_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, wrk);
-  H5Dclose(dat_id);
-  H5Pclose(plist);
-  H5Sclose(mems_id);
-  delete[] wrk;
 
   H5Gclose(group_id);  // Simulation group
 

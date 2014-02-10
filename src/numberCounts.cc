@@ -2,6 +2,7 @@
 #include<iomanip>
 #include<cmath>
 #include<fstream>
+#include<cstring>
 #include<string>
 #include<sstream>
 

@@ -37,7 +37,12 @@ static struct option long_options[] = {
   {"sigma", required_argument, 0, 's'},
   {"sigma1", required_argument, 0, '#'},
   {"sigma2", required_argument, 0, '$'},
-  {"sigc", required_argument, 0, '8'},
+  {"sigc", required_argument, 0, ','},
+  {"sigc1", required_argument, 0, '.'},
+  {"sigc2", required_argument, 0, '/'},
+  {"sigma_matched", required_argument, 0, '7'},
+  {"sigma_matched1", required_argument, 0, '9'},
+  {"sigma_matched2", required_argument, 0, '0'},
   {"sparcity", required_argument, 0, '%'},
   {"seed", required_argument, 0, 'S'},
   {"verbose", no_argument, 0, 'v'},
@@ -46,7 +51,7 @@ static struct option long_options[] = {
   {0, 0, 0, 0}
 };
 
-char optstring[] = "hbde:!:@:f:F:H1:mn:5:6:N2:3:4:o:p:q:s:#:$:8:%:S:vVw:";
+char optstring[] = "hbde:!:@:f:F:H1:mn:5:6:N2:3:4:o:p:q:s:#:$:,:.:/:7:9:0:%:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -58,7 +63,7 @@ int runSimSingle(int argc, char **argv) {
   unsigned int nsims, nlike, n1, n2, fftsize, nbins;
   unsigned int oversample, sparcity, nbeambins;
   double pixsize, n0rangefrac, n0initrange, nfwhm;
-  double filtscale, qfactor, sigc; //Filtering parameters
+  double filtscale, qfactor, sigmc, sigmi; //Filtering parameters
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; //Power spectrum file
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like, matched;
@@ -82,7 +87,8 @@ int runSimSingle(int argc, char **argv) {
   filtscale           = 0.0;
   qfactor             = 0.1;
   matched             = false;
-  sigc                = 0.006;
+  sigmi               = 0.0;  // Means: use sigma
+  sigmc               = 0.006;
   sparcity            = 1;
   nbins               = 1000;
   use_binning         = false;
@@ -152,8 +158,11 @@ int runSimSingle(int argc, char **argv) {
     case 's':
       sigma = atof(optarg);
       break;
-    case '8':
-      sigc = atof(optarg);
+    case ',':
+      sigmc = atof(optarg);
+      break;
+    case '7':
+      sigmi = atof(optarg);
       break;
     case '%':
       sparcity = atoi(optarg);
@@ -184,6 +193,8 @@ int runSimSingle(int argc, char **argv) {
   n1         = atoi(argv[optind + 4]);
   n2         = atoi(argv[optind + 5]);
   outputfile = std::string(argv[optind + 6]);
+
+  if (matched && sigmi == 0) sigmi = sigma;
 
   if (sigma < 0.0) {
     std::cout << "Invalid instrument noise level: must be >= 0.0" << std::endl;
@@ -260,13 +271,13 @@ int runSimSingle(int argc, char **argv) {
     return 1;
   }
   if (matched) {
-    if (sigma == 0) {
-      std::cout << "Invalid (non-positive) sigma for matched filtering"
-		<< std::endl;
+    if (sigmi == 0) {
+      std::cout << "Invalid (non-positive) sigma instrument for matched "
+		<< "filtering" << std::endl;
       return 1;
     }
-    if (sigc <= 0.0) {
-      std::cout << "Invalid (non-positive) sigc for matched filter"
+    if (sigmc <= 0.0) {
+      std::cout << "Invalid (non-positive) sigma confusion for matched filter"
 		<< std::endl;
       return 1;
     }
@@ -307,8 +318,8 @@ int runSimSingle(int argc, char **argv) {
       }
       if (matched > 0) {
 	printf("   matched fwhm:       %0.1f\n", fwhm);
-	printf("   matched sigi:       %0.4f\n", sigma);
-	printf("   matched sigc:       %0.4f\n", sigc);
+	printf("   matched sigi:       %0.4f\n", sigmi);
+	printf("   matched sigc:       %0.4f\n", sigmc);
       }
       if (sparcity > 1)
 	printf("   sparcity:           %u\n", sparcity);
@@ -324,9 +335,9 @@ int runSimSingle(int argc, char **argv) {
 
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike, 
 		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, nfwhm,
-		   filtscale, qfactor, matched, sigc, nbeambins, sigma, n0, 
-		   esmooth, oversample, powerspecfile, sparcity, use_binning, 
-		   nbins);
+		   sigma, filtscale, qfactor, matched, sigmc, sigmi, nbeambins, 
+		   n0, esmooth, oversample, powerspecfile, sparcity, 
+		   use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -367,7 +378,7 @@ int runSimDouble(int argc, char **argv) {
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like, matched;
   bool write_as_hdf5;
   double pixsize, n0rangefrac, n0initrange, nfwhm;
-  double filtscale, qfactor, sigc; // Filtering params
+  double filtscale, qfactor, sigmc1, sigmc2, sigmi1, sigmi2; // Filtering params
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; // Power spectrum file
 
@@ -392,7 +403,10 @@ int runSimDouble(int argc, char **argv) {
   filtscale           = 0.0;
   qfactor             = 0.1;
   matched             = false;
-  sigc                = 0.006;
+  sigmi1              = 0.0; // Means use sigma1
+  sigmi2              = 0.0; // Means use sigma2
+  sigmc1              = 0.006;
+  sigmc2              = 0.006;
   sparcity            = 1;
   nbins               = 1000;
   use_binning         = false;
@@ -468,8 +482,17 @@ int runSimDouble(int argc, char **argv) {
     case '$':
       sigma2 = atof(optarg);
       break;
-    case '8':
-      sigc = atof(optarg);
+    case '.':
+      sigmc1 = atof(optarg);
+      break;
+    case '/':
+      sigmc2 = atof(optarg);
+      break;
+    case '9':
+      sigmi1 = atof(optarg);
+      break;
+    case '0':
+      sigmi2 = atof(optarg);
       break;
     case '%':
       sparcity = atoi(optarg);
@@ -502,6 +525,8 @@ int runSimDouble(int argc, char **argv) {
   n2         = atoi(argv[optind + 6]);
   outputfile = std::string(argv[optind + 7]);
 
+  if (matched && sigmi1 == 0.0) sigmi1 = sigma1;
+  if (matched && sigmi2 == 0.0) sigmi2 = sigma2;
   if (sigma1 < 0.0) {
     std::cout << "Invalid instrument noise level, band 1: must be >= 0.0 "
 	      << "but is: " << sigma1 << std::endl;
@@ -593,18 +618,23 @@ int runSimDouble(int argc, char **argv) {
     return 1;
   }
   if (matched) {
-    if (sigma1 == 0) {
-      std::cout << "Invalid (non-positive) sigma1 for matched filtering"
+    if (sigmi1 == 0) {
+      std::cout << "Invalid (non-positive) sigma_matched1 for matched filtering"
 		<< std::endl;
       return 1;
     }
-    if (sigma2 == 0) {
-      std::cout << "Invalid (non-positive) sigma2 for matched filtering"
+    if (sigmi2 == 0) {
+      std::cout << "Invalid (non-positive) sigma_matched2 for matched filtering"
 		<< std::endl;
       return 1;
     }
-    if (sigc <= 0.0) {
-      std::cout << "Invalid (non-positive) sigc for matched filter"
+    if (sigmc1 <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc1 for matched filter"
+		<< std::endl;
+      return 1;
+    }
+    if (sigmc2 <= 0.0) {
+      std::cout << "Invalid (non-positive) sigc2 for matched filter"
 		<< std::endl;
       return 1;
     }
@@ -650,9 +680,10 @@ int runSimDouble(int argc, char **argv) {
       if (matched > 0) {
 	printf("   matched fwhm1:      %0.1f\n", fwhm1);
 	printf("   matched fwhm2:      %0.1f\n", fwhm2);
-	printf("   matched sigi1:      %0.4f\n", sigma1);
-	printf("   matched sigi2:      %0.4f\n", sigma2);
-	printf("   matched sigc:       %0.4f\n", sigc);
+	printf("   matched sigi1:      %0.4f\n", sigmi1);
+	printf("   matched sigi2:      %0.4f\n", sigmi2);
+	printf("   matched sigc1:      %0.4f\n", sigmc1);
+	printf("   matched sigc2:      %0.4f\n", sigmc2);
       }
       if (sparcity > 1)
 	printf("   sparcity:           %u\n", sparcity);
@@ -668,10 +699,10 @@ int runSimDouble(int argc, char **argv) {
 
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
-			 nfwhm, filtscale, qfactor, matched, sigc,
-			 nbeambins, sigma1, sigma2, n0, 
-			 esmooth1, esmooth2, oversample, powerspecfile, 
-			 sparcity, use_binning, nbins);
+			 nfwhm, sigma1, sigma2, filtscale, qfactor, 
+			 matched, sigmi1, sigmi2, sigmc1, sigmc2,
+			 nbeambins, n0, esmooth1, esmooth2, oversample, 
+			 powerspecfile, sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -826,14 +857,10 @@ int main(int argc, char **argv) {
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
 		<< " matching the" << std::endl;
-      std::cout << "\t\tbeam, instrument noise matching the unfiltered"
-		<< " instrument" << std::endl;
-      std::cout << "\t\tnoise, and confusion noise controlled by --sigc.  In"
-		<< " the" << std::endl;
-      std::cout << "\t\ttwo-d case, a different filter is applied in each band"
-		<< std::endl;
-      std::cout << "\t\tmatching the properties of that band.  Off by default."
-		<< std::endl;
+      std::cout << "\t\tbeam.  In the two-d case, a different filter is "
+		<< "applied in" << std::endl;
+      std::cout << "\t\teach band matching the properties of that band.  Off"
+		<< " by default." << std::endl;
       std::cout << "\t--nbeambins NBINS" << std::endl;
       std::cout << "\t\tNumber of histogram bins to use for beams. (def: 100"
 		<< std::endl;
@@ -883,9 +910,6 @@ int main(int argc, char **argv) {
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tSet user specified seed, otherwise taken from time."
 		<< std::endl;
-      std::cout << "\t--sigc VALUE" << std::endl;
-      std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
-		<< " 0.006)" << std::endl;
       std::cout << "\t--sparcity SPARCITY" << std::endl;
       std::cout << "\t\tOnly sample the simulated maps every this many pixels"
 		<< std::endl;
@@ -906,6 +930,12 @@ int main(int argc, char **argv) {
 		<< " is" << std::endl;
       std::cout << "\t\tthe level before any extra smoothing (def: 0.002)."
 		<< std::endl;
+      std::cout << "\t--sigc VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
+		<< " 0.006)" << std::endl;
+      std::cout << "\t--sigma_matched VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
+		<< " sigma)" << std::endl;
       std::cout << "TWO-DIMENSIONAL OPTIONS" << std::endl;
       std::cout << "\t---esmooth1 ESMOOTH" << std::endl;
       std::cout << "\t\tExtra smoothing FWHM (in arcsec), band 1" << std::endl;
@@ -921,6 +951,22 @@ int main(int argc, char **argv) {
 		<< " This" << std::endl;
       std::cout << "\t\tis the level before any extra smoothing (def: 0.002)."
 		<< std::endl;
+      std::cout << "\t--sigc1 VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, in Jy, band 1."
+		<< std::endl;
+      std::cout << "\t\t(Def: 0.006)" << std::endl;
+      std::cout << "\t--sigc2 VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, in Jy, band 2."
+		<< std::endl;
+      std::cout << "\t\t(Def: 0.006)" << std::endl;
+      std::cout << "\t--sigma_matched1 VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, band 1, in Jy."
+		<< std::endl;
+      std::cout << "\t\t(Def: sigma1)" << std::endl;
+      std::cout << "\t--sigma_matched2 VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, band 2, in Jy."
+		<< std::endl;
+      std::cout << "\t\t(Def: sigma2)" << std::endl;
       return 0;
       break;
     case 'd':

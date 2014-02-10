@@ -65,15 +65,18 @@ static double minfunc(double x, void* params) {
   \param[in] FWHM Fwhm of beam, in arcsec
   \param[in] NFWHM Number of FWHM out to go on beam.  This is the number
               after filtering (if filtering is applied)
+  \param[in] SIGI Instrument noise (without smoothing or filtering) in Jy
   \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If 0, no 
               high-pass filtering is applied.
   \param[in] QFACTOR High-pass Gaussian filtering apodization sigma as
               a fraction of FILTSCALE.
   \param[in] MATCHED Apply matched filtering using the FWHM of the beam,
                the instrument noise (SIGI), and SIGC
-  \param[in] SIGC The confusion noise, if matched filtering is used
+  \param[in] SIGMI The matched filter instrument noise, if matched filtering 
+              is used.  If zero, defaults to SIGI
+  \param[in] SIGMC The matched filter confusion noise, if matched filtering 
+              is used
   \param[in] NBEAMBINS Number of bins to use in beam histogram; def 100
-  \param[in] SIGI Instrument noise (without smoothing or filtering) in Jy
   \param[in] N0 Simulated number of sources per sq deg.
   \param[in] ESMOOTH Amount of extra Gaussian smoothing to apply
   \param[in] OVERSAMPLE Amount of oversampling to use when simulating image
@@ -90,9 +93,10 @@ simManager::simManager(const std::string& MODELFILE,
 		       double N0RANGEFRAC, unsigned int FFTSIZE,
 		       unsigned int N1, unsigned int N2, 
 		       double PIXSIZE, double FWHM, double NFWHM,
-		       double FILTSCALE, double QFACTOR, bool MATCHED, 
-		       double SIGC, unsigned int NBEAMBINS, double SIGI, 
-		       double N0, double ESMOOTH, unsigned int OVERSAMPLE, 
+		       double SIGI, double FILTSCALE, double QFACTOR, 
+		       bool MATCHED, double SIGMI, double SIGMC, 
+		       unsigned int NBEAMBINS, double N0, 
+		       double ESMOOTH, unsigned int OVERSAMPLE, 
 		       const std::string& POWERSPECFILE,
 		       unsigned int SPARCITY,
 		       bool USEBIN, unsigned int NBINS) :
@@ -132,14 +136,15 @@ simManager::simManager(const std::string& MODELFILE,
   }
 
   // Set up filter if needed
+  if (MATCHED && SIGMI == 0) SIGMI = SIGI;
   if (FILTSCALE > 0) {
     if (MATCHED) // Hipass and matched
-      filt = new fourierFilter(PIXSIZE, FWHM, SIGI, SIGC, FILTSCALE, QFACTOR,
-			       false, true);
+      filt = new fourierFilter(PIXSIZE, FWHM, SIGMI, SIGMC, FILTSCALE, 
+			       QFACTOR, false, true);
     else // hipass only
       filt = new fourierFilter(PIXSIZE, FILTSCALE, QFACTOR, false, true);
   } else if (MATCHED) // Matched only
-    filt = new fourierFilter(PIXSIZE, FWHM, SIGI, SIGC, false, true);
+    filt = new fourierFilter(PIXSIZE, FWHM, SIGMI, SIGMC, false, true);
 
   // Set up the histogrammed beam
   //  If we are filtering take a large piece
@@ -696,6 +701,11 @@ void simManager::writeToHDF5(const std::string& outputfile) const {
   }
 
   // Properties (e.g., metadata)
+  hsize_t adims = 1;
+  hid_t mems_id, att_id, dat_id;
+  hbool_t bl;
+  unsigned int utmp;
+  double dtmp;
 
   // Model info (as a group)
   hid_t group_id;
@@ -707,24 +717,14 @@ void simManager::writeToHDF5(const std::string& outputfile) const {
   model.writeToHDF5Handle(group_id);
   H5Gclose(group_id); 
 
-  // Sim group
-  hsize_t adims = 1;
-  hid_t mems_id, att_id, dat_id;
-  unsigned int utmp;
-  double dtmp;
-  adims = 1; 
-  mems_id = H5Screate_simple(1, &adims, NULL);
-
-  group_id = H5Gcreate(file_id, "Simulations", H5P_DEFAULT, H5P_DEFAULT, 
-		      H5P_DEFAULT);
+  // Beam group
+  group_id = H5Gcreate(file_id, "Beam", H5P_DEFAULT, H5P_DEFAULT, 
+		       H5P_DEFAULT);
   if (H5Iget_ref(group_id) < 0)
     throw pofdExcept("simManager", "writeToHDF5",
-		     "Failed to create HDF5 simulation group", 2);
-
-  att_id = H5Acreate2(group_id, "N0", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
-  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0);
-  H5Aclose(att_id);  
+		     "Failed to create HDF5 beam group", 3);
+  adims = 1; 
+  mems_id = H5Screate_simple(1, &adims, NULL);
 
   dtmp = inv_bmhist.getFWHM();
   att_id = H5Acreate2(group_id, "FWHM", H5T_NATIVE_DOUBLE,
@@ -755,8 +755,79 @@ void simManager::writeToHDF5(const std::string& outputfile) const {
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
   H5Aclose(att_id);  
+  H5Sclose(mems_id);
+  H5Gclose(group_id); 
 
-  hbool_t bl = static_cast<hbool_t>(simim.isSmoothed());
+  // Filter group
+  group_id = H5Gcreate(file_id, "Filter", H5P_DEFAULT, H5P_DEFAULT, 
+		       H5P_DEFAULT);
+  if (H5Iget_ref(group_id) < 0)
+    throw pofdExcept("simManager", "writeToHDF5",
+		     "Failed to create HDF5 filter group", 4);
+  adims = 1; 
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  bl = static_cast<hbool_t>(simim.isHipassFiltered());
+  att_id = H5Acreate2(group_id, "IsHighPassFiltered", H5T_NATIVE_HBOOL,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
+  H5Aclose(att_id); 
+  if (bl) {
+    dtmp = simim.getFiltScale();
+    att_id = H5Acreate2(group_id, "HighPassFiltScale", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);
+
+    dtmp = simim.getFiltQFactor();
+    att_id = H5Acreate2(group_id, "HighPassQFactor", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);
+  } 
+  bl = static_cast<hbool_t>(simim.isMatchFiltered());
+  att_id = H5Acreate2(group_id, "IsMatchFiltered", H5T_NATIVE_HBOOL,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
+  H5Aclose(att_id); 
+  if (bl) {
+    dtmp = simim.getFiltFWHM();
+    att_id = H5Acreate2(group_id, "MatchedFiltFWHM", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);
+
+    dtmp = simim.getFiltSigInst();
+    att_id = H5Acreate2(group_id, "MatchedFiltSigInst", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);
+
+    dtmp = simim.getFiltSigConf();
+    att_id = H5Acreate2(group_id, "MatchedFiltSigConf", H5T_NATIVE_DOUBLE,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
+    H5Aclose(att_id);
+  } 
+  H5Gclose(group_id); 
+  H5Sclose(mems_id);
+
+  // Sim group
+  adims = 1; 
+  mems_id = H5Screate_simple(1, &adims, NULL);
+
+  group_id = H5Gcreate(file_id, "Simulations", H5P_DEFAULT, H5P_DEFAULT, 
+		      H5P_DEFAULT);
+  if (H5Iget_ref(group_id) < 0)
+    throw pofdExcept("simManager", "writeToHDF5",
+		     "Failed to create HDF5 simulation group", 5);
+
+  att_id = H5Acreate2(group_id, "N0", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0);
+  H5Aclose(att_id);  
+
+
+  bl = static_cast<hbool_t>(simim.isSmoothed());
   att_id = H5Acreate2(group_id, "Smoothed", H5T_NATIVE_HBOOL,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
@@ -846,49 +917,6 @@ void simManager::writeToHDF5(const std::string& outputfile) const {
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0initrange);
   H5Aclose(att_id);
-
-  bl = static_cast<hbool_t>(simim.isHipassFiltered());
-  att_id = H5Acreate2(group_id, "IsHighPassFiltered", H5T_NATIVE_HBOOL,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
-  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
-  H5Aclose(att_id); 
-  if (bl) {
-    dtmp = simim.getFiltScale();
-    att_id = H5Acreate2(group_id, "HighPassFiltScale", H5T_NATIVE_DOUBLE,
-			mems_id, H5P_DEFAULT, H5P_DEFAULT);
-    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
-    H5Aclose(att_id);
-
-    dtmp = simim.getFiltQFactor();
-    att_id = H5Acreate2(group_id, "HighPassQFactor", H5T_NATIVE_DOUBLE,
-			mems_id, H5P_DEFAULT, H5P_DEFAULT);
-    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
-    H5Aclose(att_id);
-  } 
-  bl = static_cast<hbool_t>(simim.isMatchFiltered());
-  att_id = H5Acreate2(group_id, "IsMatchFiltered", H5T_NATIVE_HBOOL,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
-  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
-  H5Aclose(att_id); 
-  if (bl) {
-    dtmp = simim.getFiltFWHM();
-    att_id = H5Acreate2(group_id, "MatchedFiltFWHM", H5T_NATIVE_DOUBLE,
-			mems_id, H5P_DEFAULT, H5P_DEFAULT);
-    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
-    H5Aclose(att_id);
-
-    dtmp = simim.getFiltSigInst();
-    att_id = H5Acreate2(group_id, "MatchedFiltSigInst", H5T_NATIVE_DOUBLE,
-			mems_id, H5P_DEFAULT, H5P_DEFAULT);
-    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
-    H5Aclose(att_id);
-
-    dtmp = simim.getFiltSigConf();
-    att_id = H5Acreate2(group_id, "MatchedFiltSigConf", H5T_NATIVE_DOUBLE,
-			mems_id, H5P_DEFAULT, H5P_DEFAULT);
-    H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
-    H5Aclose(att_id);
-  } 
 
   if (like_sparcity > 1) {
     att_id = H5Acreate2(group_id, "LikelihoodSparcity", H5T_NATIVE_UINT,

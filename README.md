@@ -13,6 +13,9 @@ curve.  This can be used to determine the right normalization in order
 to obtain the correct statistical coverage for a P(D) analysis.
 Unfortunately, the correct expression is not known from theory.
 
+Additionally, a python library (analyze_coverage) is provided
+to process the results of pofd_coverage runs.
+
 ### Installation
 
 Installation is via the standard UNIX `configure` and
@@ -22,9 +25,28 @@ Installation is via the standard UNIX `configure` and
   file will speed up the code signficantly.
 * [cfitsio](http://heasarc.gsfc.nasa.gov/fitsio/)
 * The [GNU scientific library](http://www.gnu.org/software/gsl/)
+* [HDF5](http://www.hdfgroup.org/HDF5/)
 
 It may be necessary to tell configure where to look for these
 libraries -- see `configure --help`.
+
+The python library (analyze_coverage) depends on the python
+packages depends on having a recent version of python (tested on
+3.3 and above) as well as:
+* [numpy](http://numpy.scipy.org/)
+* [scipy](http://numpy.scipy.org/)
+* [astropy](http://www.astropy.org/)
+* [h5py](http://www.h5py.org/)
+This library can be installed by going into the analyze_coverage
+directory and executing the standard python setup script:
+
+        python setup.py install
+
+which provides (and installs) a analyze_coverage.py script, some
+description of which can be accessed via
+
+        analyze_coverage.py --help
+
 
 ### Documentation
 
@@ -33,7 +55,11 @@ generated using
 
 	make docs
 
-but that isn't really all that helpful.   
+but that isn't really all that helpful.   All of the command line
+routines (e.g., pofd_coverage_runSim) come with some documentation
+invoked by providing the --help option:
+
+        pofd_coverage_runSim --help
 
 ### References
 * The original P(D) paper is [Scheuer (1957)](http://dx.doi.org/10.1017/S0305004100032825),

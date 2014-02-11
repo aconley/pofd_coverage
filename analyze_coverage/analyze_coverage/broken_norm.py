@@ -12,7 +12,7 @@ class simdata1D:
         import os.path
 
         # Figure out how to process based on file extension
-        splfl = os.path.spitext(filename)
+        splfl = os.path.splitext(filename)
         if len(splfl) < 2:
             raise IOError("Didn't find extension for {0:s}".format(filename))
         extension = splfl[1][1:].strip().lower()
@@ -548,7 +548,7 @@ class simdata2D:
         import os.path
 
         # Figure out how to process based on file extension
-        splfl = os.path.spitext(filename)
+        splfl = os.path.splitext(filename)
         if len(splfl) < 2:
             raise IOError("Didn't find extension for {0:s}".format(filename))
         extension = splfl[1][1:].strip().lower()

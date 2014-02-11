@@ -12,7 +12,7 @@ setup(
     author="Alexander Conley",
     author_email="alexander.conley@colorado.edu",
     packages=["analyze_coverage"],
-    scripts=["analyze_coverage/analyze_sims.py"],
+    scripts=["analyze_coverage/analyze_coverage.py"],
     license="GPL",
     description="Analyze output from pofd_coverage",
     classifiers=[

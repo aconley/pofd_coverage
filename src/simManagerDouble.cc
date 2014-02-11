@@ -1124,12 +1124,12 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
   H5Dclose(dat_id);
   
   if (do_map_like) {
-    dat_id = H5Dcreate2(group_id, "min_n0", H5T_NATIVE_DOUBLE,
+    dat_id = H5Dcreate2(group_id, "MinN0", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
 	     H5P_DEFAULT, min_n0);
     H5Dclose(dat_id);
-    dat_id = H5Dcreate2(group_id, "delta_n0", H5T_NATIVE_DOUBLE,
+    dat_id = H5Dcreate2(group_id, "DeltaN0", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
 	     H5P_DEFAULT, delta_n0);
@@ -1157,7 +1157,7 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
     plist = H5Pcreate(H5P_DATASET_CREATE);
     H5Pset_chunk(plist, 2, cdims);
     H5Pset_deflate(plist, 6); // Gzip, compression 6
-    dat_id = H5Dcreate2(group_id, "Likelihood", H5T_NATIVE_FLOAT, 
+    dat_id = H5Dcreate2(group_id, "LogLikelihood", H5T_NATIVE_FLOAT, 
 			mems_id, H5P_DEFAULT, plist, H5P_DEFAULT); 
     H5Dwrite(dat_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, wrk);
     H5Dclose(dat_id);

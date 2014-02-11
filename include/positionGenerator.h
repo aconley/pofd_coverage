@@ -13,6 +13,8 @@
 #include<gsl/gsl_spline.h>
 #include<gsl/gsl_interp.h>  
 
+#include<hdf5.h>
+
 #include "../include/ran.h"
 
 /*!
@@ -41,6 +43,8 @@ class powerSpectrum {
 
   double getPk(double) const; //!< Get P_k for specified k
   double getLogPk(double) const; //!< Get Log P_k for specified k
+
+  void writeToHDF5Handle(hid_t objid) const;
 };
 
 // In principle, we could also have a uniform position generator,
@@ -56,6 +60,10 @@ class positionGeneratorClustered {
   unsigned int ny; //!< y dimension to generate over
   unsigned int nyhalf; //!< ny / 2 + 1
   double pixsize; //!< Pixel size in arcsec (square pixels assumed)
+
+  // Power spectrum
+  powerSpectrum powspec;
+
   //Internal storage -- only allocated when needed
   double *scl; //!< Power spectrum scaling array (row major 2D nx by ny)
   double *probarr; //!< Normalized probability array (row major 2D nx by ny)
@@ -76,6 +84,8 @@ class positionGeneratorClustered {
   std::pair<unsigned int, unsigned int> getPosition(ran&) const;
 
   int writeProbToFits(const std::string&) const; //!< Write prob image to FITS file
+
+  void writeToHDF5Handle(hid_t objid) const;
 
 };
 

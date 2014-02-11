@@ -860,11 +860,8 @@ void simManager::writeToHDF5(const std::string& outputfile) const {
     H5Aclose(att_id); 
   }
 
-  bl = static_cast<hbool_t>(simim.isClustered());
-  att_id = H5Acreate2(group_id, "Clustered", H5T_NATIVE_HBOOL,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
-  H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
-  H5Aclose(att_id); 
+  // Write information about positions
+  simim.writePositionGeneratorToHDF5Handle(group_id);
 
   bl = static_cast<hbool_t>(use_binning);
   att_id = H5Acreate2(group_id, "DataBinned", H5T_NATIVE_HBOOL,

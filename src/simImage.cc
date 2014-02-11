@@ -907,3 +907,47 @@ int simImage::writeToFits(const std::string& outputfile) const {
   return status;
 }
 
+/*!
+  \param[in] obj_id Open HDF5 handle to write to.
+
+  Writes information about the position generator to the open handle,
+  creating a group called "PositionGenerator"
+*/
+void simImage::writePositionGeneratorToHDF5Handle(hid_t obj_id) const {
+
+  if (H5Iget_ref(obj_id) < 0)
+    throw pofdExcept("simImage", "writePositionGeneratorToHDF5Handle",
+		     "Given non-open obj_id to write to", 1);
+
+  hid_t group_id;
+  group_id = H5Gcreate(obj_id, "PositionGenerator", H5P_DEFAULT, H5P_DEFAULT, 
+		      H5P_DEFAULT);
+  if (H5Iget_ref(group_id) < 0)
+    throw pofdExcept("simImage", "writePositionGeneratorToHDF5",
+		     "Failed to create HDF5 model group", 2);
+
+  hsize_t adims;
+  hid_t mems_id, att_id;
+  adims = 1;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  if (use_clustered_pos) {
+    const char postype[] = "Clustered";
+    hid_t datatype = H5Tcopy(H5T_C_S1);
+    H5Tset_size(datatype, strlen(postype)); 
+    att_id = H5Acreate1(group_id, "PositionType", datatype,
+			mems_id, H5P_DEFAULT);
+    H5Awrite(att_id, datatype, postype);
+    H5Aclose(att_id);
+    posgen->writeToHDF5Handle(group_id);
+  } else {
+    const char postype[] = "Uniform";
+    hid_t datatype = H5Tcopy(H5T_C_S1);
+    H5Tset_size(datatype, strlen(postype)); 
+    att_id = H5Acreate1(group_id, "PositionType", datatype,
+			mems_id, H5P_DEFAULT);
+    H5Awrite(att_id, datatype, postype);
+    H5Aclose(att_id);
+  }
+  H5Sclose(mems_id);
+  H5Gclose(group_id); 
+}

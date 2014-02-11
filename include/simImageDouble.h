@@ -197,6 +197,7 @@ class simImageDouble {
 
   int writeToFits(const std::string& outfile) const; //!< Write as fits file
 
+  void writePositionGeneratorToHDF5Handle(hid_t obj_id) const;
 };
 
 #endif

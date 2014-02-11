@@ -4,6 +4,7 @@
 #define __simImage__
 
 #include<string>
+#include<hdf5.h>
 
 #include "../include/ran.h"
 #include "../include/numberCounts.h"
@@ -157,6 +158,7 @@ class simImage {
 
   int writeToFits(const std::string& file) const; //!< Write as fits file
 
+  void writePositionGeneratorToHDF5Handle(hid_t obj_id) const;
 };
 
 #endif

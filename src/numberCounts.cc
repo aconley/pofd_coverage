@@ -389,7 +389,7 @@ bool numberCounts::writeToStream(std::ostream& os) const {
 }
 
 /*!
-  \param[in] objid HDF5 object ID to write to
+  \param[in] obj_id HDF5 object ID to write to
 */
 void numberCounts::writeToHDF5Handle(hid_t obj_id) const {
   if (H5Iget_ref(obj_id) < 0)

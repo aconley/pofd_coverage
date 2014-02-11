@@ -115,26 +115,70 @@ double powerSpectrum::getLogPk(double k) const {
   return gsl_spline_eval(spline_logpk, log(k), acc);
 }
 
-/////////////////// positionGeneratorClustered ///////////////////
-positionGeneratorClustered::positionGeneratorClustered(unsigned int NX, 
-						       unsigned int NY, 
-						       double PIXSIZE,
-						       const std::string& powerfile) {
+/*!
+  \param[in] objid HDF5 object ID to write to.  Must already be open
+*/
+void powerSpectrum::writeToHDF5Handle(hid_t obj_id) const {
+  if (H5Iget_ref(obj_id) < 0)
+    throw pofdExcept("powerSpectrum", "writeToHDF5Handle",
+		     "Given non-open obj_id to write to", 1);
 
-  if (NX == 0)
+  hsize_t adims;
+  hid_t mems_id, att_id, dat_id;
+
+  // Single item attributes
+  adims = 1;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+
+  att_id = H5Acreate2(obj_id, "Mink", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &mink);
+  H5Aclose(att_id);  
+  att_id = H5Acreate2(obj_id, "Maxk", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &maxk);
+  H5Aclose(att_id);  
+  H5Sclose(mems_id);
+
+  // Knot positions and values as data
+  double* tmp = new double[nk];
+  adims = nk;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+  dat_id = H5Dcreate2(obj_id, "k", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  for (unsigned int i = 0; i < nk; ++i)
+    tmp[i] = exp(logk[i]);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+	   H5P_DEFAULT, tmp);
+  H5Dclose(dat_id);
+
+  dat_id = H5Dcreate2(obj_id, "Pk", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  for (unsigned int i = 0; i < nk; ++i)
+    tmp[i] = exp(logpk[i]);
+  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+	   H5P_DEFAULT, tmp);
+  H5Dclose(dat_id);
+  H5Sclose(mems_id);
+  delete[] tmp;
+}
+
+
+/////////////////// positionGeneratorClustered ///////////////////
+positionGeneratorClustered::
+positionGeneratorClustered(unsigned int NX, unsigned int NY, 
+			   double PIXSIZE, const std::string& powerfile) :
+  nx(NX), ny(NY), pixsize(PIXSIZE), powspec(powerfile), probarr(NULL),
+  probarr_trans(NULL) {
+
+  if (nx == 0)
     throw pofdExcept("positionGeneratorClustered", 
 		     "positionGeneratorClustered", 
 		     "invalid (0) x dimension", 1);
-  if (NY == 0)
+  if (ny == 0)
     throw pofdExcept("positionGeneratorClustered", 
 		     "positionGeneratorClustered", 
 		     "invalid (0) y dimension", 1);
-
-  nx = NX;
-  ny = NY;
-  pixsize = PIXSIZE;
-  probarr = NULL;
-  probarr_trans = NULL;
 
   if (pixsize <= 0.0)
     throw pofdExcept("positionGeneratorClustered", 
@@ -142,8 +186,6 @@ positionGeneratorClustered::positionGeneratorClustered(unsigned int NX,
 		     "Invalid (non-positive) pixel size", 1);
 
   // Now, generate the scaling factor
-  powerSpectrum powspec(powerfile);
-
   // First we generate the k values, and store them in scl
   double tail_invk = 60.0 / pixsize;
   unsigned int nkx = nx / 2 + 1;
@@ -368,4 +410,38 @@ positionGeneratorClustered::writeProbToFits(const std::string& outfile) const {
   }
 
   return status;
+}
+
+/*!
+  \param[in] obj_id Open HDF5 handle to write to.
+
+  Writes summary of power spectrum properties
+*/
+void positionGeneratorClustered::writeToHDF5Handle(hid_t obj_id) const {
+  if (H5Iget_ref(obj_id) < 0)
+    throw pofdExcept("positionGeneratorClustered", "writeToHDF5Handle",
+		     "Given non-open obj_id to write to", 1);
+
+  // Single item attributes
+  hsize_t adims;
+  hid_t mems_id, att_id;
+
+  adims = 1;
+  mems_id = H5Screate_simple(1, &adims, NULL);
+
+  att_id = H5Acreate2(obj_id, "nx", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, &nx);
+  H5Aclose(att_id);  
+  att_id = H5Acreate2(obj_id, "ny", H5T_NATIVE_UINT,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_UINT, &ny);
+  H5Aclose(att_id);  
+  att_id = H5Acreate2(obj_id, "pixsize", H5T_NATIVE_DOUBLE,
+		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &pixsize);
+  H5Aclose(att_id);
+  H5Sclose(mems_id);
+
+  powspec.writeToHDF5Handle(obj_id);
 }

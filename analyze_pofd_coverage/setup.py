@@ -7,12 +7,12 @@ if (major < 3) and (minor1 < 7):
     raise SystemExit("analyze_coverage requires at least python 2.7")
 
 setup(
-    name="analyze_coverage",
+    name="analyze_pofd_coverage",
     version="0.1.0",
     author="Alexander Conley",
     author_email="alexander.conley@colorado.edu",
-    packages=["analyze_coverage"],
-    scripts=["analyze_coverage/analyze_coverage.py"],
+    packages=["analyze_pofd_coverage"],
+    scripts=["analyze_pofd_coverage/analyze_coverage.py"],
     license="GPL",
     description="Analyze output from pofd_coverage",
     classifiers=[

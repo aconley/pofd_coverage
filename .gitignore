@@ -43,4 +43,4 @@ autom4te.cache/
 m4/
 missing
 doc/
-analyze_coverage/build
+analyze_pofd_coverage/build

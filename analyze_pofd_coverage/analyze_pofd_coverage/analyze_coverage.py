@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-from analyze_coverage import find_norm1D, find_norm2D
+from analyze_pofd_coverage import find_norm1D, find_norm2D
 
 import math
 from collections import OrderedDict

@@ -13,8 +13,9 @@ curve.  This can be used to determine the right normalization in order
 to obtain the correct statistical coverage for a P(D) analysis.
 Unfortunately, the correct expression is not known from theory.
 
-Additionally, a python library (analyze_coverage) is provided
-to process the results of pofd_coverage runs.
+Additionally, a python library (analyze_pofd_coverage) is provided
+to process the results of pofd_coverage runs, which should be
+accessed through the script analyze_coverage.py.
 
 ### Installation
 
@@ -30,14 +31,14 @@ Installation is via the standard UNIX `configure` and
 It may be necessary to tell configure where to look for these
 libraries -- see `configure --help`.
 
-The python library (analyze_coverage) depends on the python
+The python library (analyze_pofd_coverage) depends on the python
 packages depends on having a recent version of python (tested on
 3.3 and above) as well as:
 * [numpy](http://numpy.scipy.org/)
 * [scipy](http://numpy.scipy.org/)
 * [astropy](http://www.astropy.org/)
 * [h5py](http://www.h5py.org/)
-This library can be installed by going into the analyze_coverage
+This library can be installed by going into the analyze_pofd_coverage
 directory and executing the standard python setup script:
 
         python setup.py install

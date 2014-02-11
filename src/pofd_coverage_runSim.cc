@@ -335,7 +335,7 @@ int runSimSingle(int argc, char **argv) {
 
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike, 
 		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, nfwhm,
-		   sigma, filtscale, qfactor, matched, sigmc, sigmi, nbeambins, 
+		   sigma, filtscale, qfactor, matched, sigmi, sigmc, nbeambins, 
 		   n0, esmooth, oversample, powerspecfile, sparcity, 
 		   use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);

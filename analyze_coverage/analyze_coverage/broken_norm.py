@@ -159,9 +159,9 @@ class simdata1D:
             self.best_loglike = h['Simulations/BestLike'][:]
             if self.maplike:
                 self.n0likefrac = h['Simulations'].attrs['N0LikeRangeFraction'][0]
-                self.min_n0 = h['Simulations/min_n0'][:]
-                self.delta_n0 = h['Simulations/delta_n0'][:]
-                self.loglike = h['Simulations/Likelihood'][:, :]
+                self.min_n0 = h['Simulations/MinN0'][:]
+                self.delta_n0 = h['Simulations/DeltaN0'][:]
+                self.loglike = h['Simulations/LogLikelihood'][:, :]
         finally:
             h.close()
 
@@ -724,9 +724,9 @@ class simdata2D:
             self.best_loglike = h['Simulations/BestLike'][:]
             if self.maplike:
                 self.n0likefrac = h['Simulations'].attrs['N0LikeRangeFraction'][0]
-                self.min_n0 = h['Simulations/min_n0'][:]
-                self.delta_n0 = h['Simulations/delta_n0'][:]
-                self.loglike = h['Simulations/Likelihood'][:, :]
+                self.min_n0 = h['Simulations/MinN0'][:]
+                self.delta_n0 = h['Simulations/DeltaN0'][:]
+                self.loglike = h['Simulations/LogLikelihood'][:, :]
         finally:
             h.close()
 

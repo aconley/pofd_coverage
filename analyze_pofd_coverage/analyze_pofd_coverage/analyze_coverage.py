@@ -2,8 +2,6 @@
 
 from __future__ import print_function
 
-from analyze_pofd_coverage import find_norm1D, find_norm2D
-
 import math
 from collections import OrderedDict
 
@@ -11,6 +9,8 @@ def evaluate_sim1D(filenames, donorm=True):
     """Does the actual evaluation of the likelihood, and returns
     a dictionary of information about the model and results."""
     
+    from analyze_pofd_coverage import find_norm1D
+
     normobj = find_norm1D(filenames, domap=donorm)
 
     retdict = {}
@@ -62,6 +62,8 @@ def evaluate_sim2D(filenames, donorm=True):
     """Does the actual evaluation of the likelihood, and returns
     a dictionary of information about the model and results."""
     
+    from analyze_pofd_coverage import find_norm2D
+
     normobj = find_norm2D(filenames, domap=donorm)
 
     retdict = {}
@@ -175,6 +177,67 @@ def printsum(info, twod=False):
                               info [key]['n0_bias'] / info[key]['n0'] * 100.0, 
                               info[key]['nsims']))        
           
+def do_analysis(filename, nonorm=False, verbose=False, twod=False, 
+                datadir=None):
+    """ Analyze the new results specified in filename"""
+
+    import glob
+    if not os.path.exists(filename):
+        errstr = "Filename {0:s} not found".format(filename)
+        raise IOError(errstr)
+
+    if results.verbose:
+        print("Processing new files specified in {0:s}".format(filename))
+
+    with open(filename, 'r') as fl:
+        sets = []
+        files = []
+        for line in fl.readlines():
+            ln = line.strip()
+            if len(ln) == 0 or ln[0] == "#":
+                continue
+            lspl = ln.split()
+            sets.append(lspl[0]) #dataset number
+            files.append(lspl[1:]) #Files associated, glob patterns
+
+    nsets = len(sets)    
+    if nsets == 0:
+        errstr = "No data sets to process from {0:s}".format(filename)
+        raise ValueError(errstr)
+
+    #Main analysis loop
+    donorm = not nonorm
+    percstr = "Doing set {0:3d} [{1:5.1f}%]: {2:s}"
+    fitinfo = OrderedDict()
+    for i in range(nsets):
+        if verbose:
+            percent = 100.0 * (i+1) / nsets
+            print(percstr.format(i+1, percent,sets[i]))
+
+        if sets[i] in fitinfo:
+            print("Warning: will overwrite set info for {0:s}".format(sets[i]))
+
+        #Get filenames using glob
+        filelist = []
+        for fl in files[i]:
+            if not datadir is None:
+                globseq = os.path.join(datadir, fl)
+            else:
+                globseq = fl
+            fls = glob.glob(globseq)
+            if len(fls) == 0:
+                errstr = "Found no files to process from {0:s}".format(fl)
+                raise ValueError(errstr)
+            filelist.append(fls)
+
+        filelist = [item for sublist in filelist for item in sublist]
+        
+        if twod:
+            fitinfo[sets[i]] = evaluate_sim2D(filelist, donorm=donorm)
+        else:
+            fitinfo[sets[i]] = evaluate_sim1D(filelist, donorm=donorm)
+
+    return fitinfo
 
 if __name__ == "__main__":
     import argparse
@@ -240,84 +303,27 @@ if __name__ == "__main__":
             errstr = "datadir {0:s} exists but is not a directory"
         raise IOError(errstr.format(results.datadir))
 
-
     #Possibly read in previous results file
     if not results.inputfile is None:
         import pickle
         if not os.path.exists(results.inputfile):
             errstr = "--inputfile {0:s} not found".format(results.inputfile)
             raise IOError(errstr)
-
         if results.verbose:
             print("Reading previous results from {0:s}".format(results.inputfile))
-
         with open(results.inputfile, 'rb') as fl:
             fitinfo = pickle.load(fl)
-
         if not isinstance(fitinfo, OrderedDict):
             fitinfo = OrderedDict(fitinfo)
-
     else:
         fitinfo = OrderedDict()
 
     #Read in the file of outputs to process
     if not results.filename is None:
-        import glob
-        if not os.path.exists(results.filename):
-            errstr = "Filename {0:s} not found".format(results.filename)
-            raise IOError(errstr)
-
-        if results.verbose:
-            print("Processing new files specified in {0:s}".format(results.filename))
-
-        with open(results.filename, 'r') as fl:
-            sets = []
-            files = []
-            for line in fl.readlines():
-                ln = line.strip()
-                if len(ln) == 0:
-                    continue
-                if ln[0] == "#":
-                    continue
-                lspl = ln.split()
-                sets.append(lspl[0]) #dataset number
-                files.append(lspl[1:]) #Files associated, glob patterns
-
-        nsets = len(sets)    
-        if nsets == 0:
-            errstr = "No data sets to process from {0:s}"
-            raise ValueError(errstr.format(results.filename))
-
-        #Main analysis loop
-        donorm = not results.nonorm
-        percstr = "Doing set {0:3d} [{1:5.1f}%]: {2:s}"
-        for i in range(nsets):
-            if results.verbose:
-                percent = 100.0 * (i+1) / nsets
-                print(percstr.format(i+1,percent,sets[i]))
-
-            if sets[i] in fitinfo:
-                print("Warning: will overwrite set info for {0:s}".format(sets[i]))
-
-            #Get filenames using glob
-            filelist = []
-            for fl in files[i]:
-                if not results.datadir is None:
-                    globseq = os.path.join(results.datadir, fl)
-                else:
-                    globseq = fl
-                fls = glob.glob(globseq)
-                if len(fls) == 0:
-                    errstr = "Found no files to process from {0:s}"
-                    raise ValueError(errstr.format(fl))
-                filelist.append(fls)
-
-            filelist = [item for sublist in filelist for item in sublist]
-        
-            if results.twod:
-                fitinfo[sets[i]] = evaluate_sim2D(filelist, donorm=donorm)
-            else:
-                fitinfo[sets[i]] = evaluate_sim1D(filelist, donorm=donorm)
+        newinfo = do_analysis(results.filename, results.nonorm,
+                              results.verbose, results.twod,
+                              results.datadir)
+        fitinfo.update(newinfo)
 
     # Pickle results
     if not results.outfile is None:

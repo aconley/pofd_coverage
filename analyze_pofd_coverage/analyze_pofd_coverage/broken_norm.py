@@ -134,19 +134,19 @@ class simdata1D:
                 self.clustering_k = h['Simulations/PositionGenerator/k'][:]
                 self.clustering_pk = h['Simulations/PositionGenerator/Pk'][:]
 
-            self.isHighPass = bool(h['Filter'].attrs['isHighPassFiltered'][0])
+            self.isHighPass = bool(h['Filter'].attrs['IsHighPassFiltered'][0])
             if self.isHighPass:
                 self.highPassFiltScale = h['Filter'].attrs['HighPassFiltScale'][0]
                 self.highPassFiltQ = h['Filter'].attrs['HighPassQFactor'][0]
 
-            self.isMatched = bool(h['Filter'].attrs['isMatchFiltered'][0])
+            self.isMatched = bool(h['Filter'].attrs['IsMatchFiltered'][0])
             if self.isMatched:
                 self.matchedFWHM = h['Filter'].attrs['MatchedFiltFWHM'][0]
                 self.matchedSigmaInst = h['Filter'].attrs['MatchedFiltSigInst'][0]
                 self.matchedSigmaConf = h['Filter'].attrs['MatchedFiltSigConf'][0]
 
         except KeyError as ke:
-            hdulist.close()
+            h.close()
             errmsg = "Error processing metadata: %s for file %s" % \
                 (ke.args, filename)
             raise IOError(errmsg)
@@ -689,29 +689,29 @@ class simdata2D:
                 self.clustering_k = h['Simulations/PositionGenerator/k'][:]
                 self.clustering_pk = h['Simulations/PositionGenerator/Pk'][:]
 
-            self.isHighPass1 = bool(h['Filter'].attrs['isHighPassFiltered1'][0])
+            self.isHighPass1 = bool(h['Filter'].attrs['IsHighPassFiltered1'][0])
             if self.isHighPass1:
                 self.highPassFiltScale1 = h['Filter'].attrs['HighPassFiltScale1'][0]
                 self.highPassFiltQ1 = h['Filter'].attrs['HighPassQFactor1'][0]
 
-            self.isMatched1 = bool(h['Filter'].attrs['isMatchFiltered1'][0])
+            self.isMatched1 = bool(h['Filter'].attrs['IsMatchFiltered1'][0])
             if self.isMatched1:
                 self.matchedFWHM1 = h['Filter'].attrs['MatchedFiltFWHM1'][0]
                 self.matchedSigmaInst1 = h['Filter'].attrs['MatchedFiltSigInst1'][0]
                 self.matchedSigmaConf1 = h['Filter'].attrs['MatchedFiltSigConf1'][0]
-            self.isHighPass2 = bool(h['Filter'].attrs['isHighPassFiltered2'][0])
+            self.isHighPass2 = bool(h['Filter'].attrs['IsHighPassFiltered2'][0])
             if self.isHighPass2:
                 self.highPassFiltScale2 = h['Filter'].attrs['HighPassFiltScale2'][0]
                 self.highPassFiltQ2 = h['Filter'].attrs['HighPassQFactor2'][0]
 
-            self.isMatched2 = bool(h['Filter'].attrs['isMatchFiltered2'][0])
+            self.isMatched2 = bool(h['Filter'].attrs['IsMatchFiltered2'][0])
             if self.isMatched2:
                 self.matchedFWHM2 = h['Filter'].attrs['MatchedFiltFWHM2'][0]
                 self.matchedSigmaInst2 = h['Filter'].attrs['MatchedFiltSigInst2'][0]
                 self.matchedSigmaConf2 = h['Filter'].attrs['MatchedFiltSigConf2'][0]
 
         except KeyError as ke:
-            hdulist.close()
+            h.close()
             errmsg = "Error processing metadata: %s for file %s" % \
                 (ke.args, filename)
             raise IOError(errmsg)

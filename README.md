@@ -38,6 +38,7 @@ packages depends on having a recent version of python (tested on
 * [scipy](http://numpy.scipy.org/)
 * [astropy](http://www.astropy.org/)
 * [h5py](http://www.h5py.org/)
+
 This library can be installed by going into the analyze_pofd_coverage
 directory and executing the standard python setup script:
 

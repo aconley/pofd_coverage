@@ -158,6 +158,7 @@ class simImage {
 
   int writeToFits(const std::string& file) const; //!< Write as fits file
 
+  int writeProbImageToFits(const std::string& file) const; //!< Write prob image as fits
   void writePositionGeneratorToHDF5Handle(hid_t obj_id) const;
 };
 

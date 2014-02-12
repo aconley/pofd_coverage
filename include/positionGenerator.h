@@ -69,6 +69,9 @@ class positionGeneratorClustered {
   double *probarr; //!< Normalized probability array (row major 2D nx by ny)
   fftw_complex* probarr_trans; //!< Fourier transformed prob array
 
+  /*! \brief Use bilinear interpolation on prob image*/
+  double interpolate(double, double) const;
+
   // FFTW stuff
   fftw_plan plan;     //!< Holds forward transformation plan
   fftw_plan plan_inv; //!< Holds inverse transformation plan
@@ -80,8 +83,11 @@ class positionGeneratorClustered {
 
   void generate(ran&); //!< generate from power spectrum
  
-  /*!\brief Get position of single source*/
+  /*!\brief Get position of single source, no interpolation*/
   std::pair<unsigned int, unsigned int> getPosition(ran&) const;
+
+  /*!\brief Get position of single source, with oversampling and interpolation*/
+  std::pair<unsigned int, unsigned int> getPosition(ran&, unsigned int) const;
 
   int writeProbToFits(const std::string&) const; //!< Write prob image to FITS file
 

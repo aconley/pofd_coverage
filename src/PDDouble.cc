@@ -761,18 +761,18 @@ double PDDouble::getPDVal(double x, double y,bool logval) const {
   unsigned int n2n1 = n2 * n1;
   double interp_val;
   //Check to see if we are off the edge
-  if ( x < minflux1 ) {
-    if ( y < minflux2 ) interp_val = pd_[0];
-    else if ( y > maxflux2 ) interp_val = pd_[n2-1];
+  if (x < minflux1) {
+    if (y < minflux2) interp_val = pd_[0];
+    else if (y > maxflux2) interp_val = pd_[n2 - 1];
     else interp_val = pd_[idx2];
-  } else if ( x > maxflux1 ) {
-    if (y < minflux2) interp_val = pd_[n2n1-n1];
-    else if ( y > maxflux2 ) interp_val = pd_[n2n1-1];
-    else interp_val =  pd_[n2n1-n1+idx2];
-  } else if ( y < minflux2 ) {
+  } else if (x > maxflux1) {
+    if (y < minflux2) interp_val = pd_[n2n1 - n1];
+    else if (y > maxflux2) interp_val = pd_[n2n1 - 1];
+    else interp_val =  pd_[n2n1 - n1 + idx2];
+  } else if (y < minflux2) {
     interp_val =  pd_[n2idx1];
-  } else if ( y > maxflux2 ) {
-    interp_val = pd_[n2idx1+n2-1];
+  } else if (y > maxflux2) {
+    interp_val = pd_[n2idx1 + n2 - 1];
   } else {
     //Actual interpolation
     double u,t,omu,omt;

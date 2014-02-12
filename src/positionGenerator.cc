@@ -240,7 +240,7 @@ positionGeneratorClustered::~positionGeneratorClustered() {
 
 /*!
   \param[in] rangen Random number generator
- */
+*/
 void positionGeneratorClustered::generate(ran& rangen) {
 
   if (probarr == NULL) {
@@ -310,6 +310,13 @@ void positionGeneratorClustered::generate(ran& rangen) {
     
 }
 
+/*!
+  \param[inout] rangen Random number generator to use
+  \returns Positions in the range [0, nx), [0, ny)
+
+  This version does not have oversampling -- no interpolation
+  is used.
+*/
 std::pair<unsigned int, unsigned int> 
 positionGeneratorClustered::getPosition(ran& rangen) const {
   unsigned int idx1, idx2;
@@ -322,6 +329,57 @@ positionGeneratorClustered::getPosition(ran& rangen) const {
   } while (zval > probarr[idx1 * ny + idx2]);
 
   return std::make_pair(idx1, idx2);
+}
+
+/*!
+  \param[in] x x position, in range [0, nx)
+  \param[in] y y position, in range [0, ny)
+  \returns Interpolated value of probarr
+
+  Uses bilinear interpolation
+*/
+double positionGeneratorClustered::interpolate(double x, double y) const {
+  // Check if out of bounds
+  if (x < 0 || x >= (nx-1) || (y < 0) || y >= (ny-1)) return 0.0;
+
+  unsigned int idx1 = static_cast<unsigned int>(x);
+  unsigned int idx2 = static_cast<unsigned int>(y);
+  const double *prob_base = probarr + idx1 * ny + idx2;
+
+  double u, t, omu, omt;
+  t = x - floor(x);
+  u = y - floor(y);
+  omu = 1.0 - u; omt = 1.0 - t;  
+  return omt * (omu * prob_base[0] + u * prob_base[1]) +
+    t * (omu * prob_base[ny] + u * prob_base[ny + 1]);  
+}
+
+/*!
+  \param[inout] rangen Random number generator to use
+  \param[in] oversamp Oversampling to use in position generation
+  \returns Positions in the range [0, oversamp * nx), [0, oversamp * ny)
+
+  Bilinear interpolation is used on the probability image to generate
+  sub-positions.
+
+  This gets called a lot, so the inputs are not checked for speed.
+*/
+std::pair<unsigned int, unsigned int> 
+positionGeneratorClustered::getPosition(ran& rangen, 
+					unsigned int oversamp) const {
+  double x, y, zval;
+  double onx = static_cast<double>(oversamp * nx);
+  double ony = static_cast<double>(oversamp * ny);
+  double idoversamp = 1.0 / static_cast<double>(oversamp);
+  
+  do {
+    x = floor(onx * rangen.doub()); // [0, oversamp * nx), integral
+    y = floor(ony * rangen.doub()); // [0, oversamp * ny), integral
+    zval = rangen.doub();
+  } while (zval > interpolate(x * idoversamp, y * idoversamp));
+
+  return std::make_pair(static_cast<unsigned int>(x),
+			static_cast<unsigned int>(y));
 }
  
 /*!

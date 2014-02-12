@@ -23,6 +23,7 @@ static struct option long_options[] = {
   {"matched", no_argument, 0, 'm'},
   {"oversample", required_argument, 0, 'o'},
   {"powerspec", required_argument, 0, 'p'},
+  {"probimfile", required_argument, 0, 'P'},
   {"qfactor", required_argument, 0, 'q'},
   {"seed", required_argument, 0, 'S'},
   {"sigma", required_argument, 0, 's'},
@@ -36,7 +37,7 @@ static struct option long_options[] = {
   {"version", no_argument, 0, 'V'},
   {0,0,0,0}
 };
-char optstring[] = "de:1:2:F:hmo:p:q:S:s:3:4:5:6:7:8:vV";
+char optstring[] = "de:1:2:F:hmo:p:P:q:S:s:3:4:5:6:7:8:vV";
 
 
 int makeSimSingle(int argc, char **argv) {
@@ -45,7 +46,7 @@ int makeSimSingle(int argc, char **argv) {
   double n0, pixsize, sigma, fwhm;
   double filterscale, qfactor, sigi, sigc; // Filtering params
   double extra_smooth; //Additional smoothing
-  std::string modelfile, outputfile, powspecfile;
+  std::string modelfile, outputfile, powspecfile, probimfile;
   unsigned long long int user_seed;
   bool verbose, have_user_seed, matched;
   unsigned int oversample;
@@ -63,6 +64,7 @@ int makeSimSingle(int argc, char **argv) {
   have_user_seed      = false;
   oversample          = 1;
   powspecfile         = "";
+  probimfile          = "";
 
   int c;
   int option_index = 0;
@@ -84,6 +86,9 @@ int makeSimSingle(int argc, char **argv) {
       break;
     case 'p':
       powspecfile = std::string(optarg);
+      break;
+    case 'P':
+      probimfile = std::string(optarg);
       break;
     case 'q':
       qfactor = atof(optarg);
@@ -167,6 +172,11 @@ int makeSimSingle(int argc, char **argv) {
       return 1;
     }
   }
+  if ((!probimfile.empty()) && powspecfile.empty()) {
+    std::cout << "Specified output of probim, but didn't provide clustering."
+	      << std::endl;
+    return 1;
+  }
 
   try {
     numberCounts model(modelfile);
@@ -197,11 +207,21 @@ int makeSimSingle(int argc, char **argv) {
 
     if (filt != NULL) delete filt;
 
-    //Write it
+    // Write it
     if (verbose) std::cout << "Writing simulated image to " << outputfile
 			   << std::endl;
     int status = dim.writeToFits(outputfile);
     if (status != 0) return status;
+
+    // Write prob image if needed
+    if (!probimfile.empty()) {
+      if (verbose)
+	std::cout << "Outputting probability map to: " << probimfile
+		  << std::endl;
+      status = dim.writeProbImageToFits(probimfile);
+      if (status != 0) return status;
+    }
+
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
@@ -222,7 +242,7 @@ int makeSimDouble(int argc, char **argv) {
   double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2;
   double filterscale, qfactor, sigi1, sigi2, sigc; //Filtering params
   double extra_smooth1, extra_smooth2; //Additional smoothing
-  std::string modelfile, outputfile, powerspecfile; 
+  std::string modelfile, outputfile, powspecfile, probimfile; 
   unsigned long long int user_seed;
   bool verbose, have_user_seed, matched;
   unsigned int oversample;
@@ -242,7 +262,8 @@ int makeSimDouble(int argc, char **argv) {
   user_seed           = 0;
   have_user_seed      = false;
   oversample          = 1;
-  powerspecfile       = "";
+  powspecfile         = "";
+  probimfile          = "";
 
   int c;
   int option_index = 0;
@@ -266,7 +287,10 @@ int makeSimDouble(int argc, char **argv) {
       oversample = atoi(optarg);
       break;
     case 'p':
-      powerspecfile = std::string(optarg);
+      powspecfile = std::string(optarg);
+      break;
+    case 'P':
+      probimfile = std::string(optarg);
       break;
     case 'q':
       qfactor = atof(optarg);
@@ -377,6 +401,11 @@ int makeSimDouble(int argc, char **argv) {
       return 1;
     }
   }
+  if ((!probimfile.empty()) && powspecfile.empty()) {
+    std::cout << "Specified output of probim, but didn't provide clustering."
+	      << std::endl;
+    return 1;
+  }
 
   try {
     numberCountsDouble model(modelfile);
@@ -404,7 +433,7 @@ int makeSimDouble(int argc, char **argv) {
 
     simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, 
 		       extra_smooth1, extra_smooth2, oversample, 
-		       1000, powerspecfile);
+		       1000, powspecfile);
     if (have_user_seed) dim.setSeed(user_seed);
     
     // Generate with mean subtraction
@@ -418,6 +447,16 @@ int makeSimDouble(int argc, char **argv) {
 			   << std::endl;
     int status = dim.writeToFits(outputfile);
     if (status != 0) return status;
+
+    // Write prob image if needed
+    if (!probimfile.empty()) {
+      if (verbose)
+	std::cout << "Outputting probability map to: " << probimfile
+		  << std::endl;
+      status = dim.writeProbImageToFits(probimfile);
+      if (status != 0) return status;
+    }
+
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
@@ -554,6 +593,11 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tfor on-sky source clustering to include in simulation."
 		<< " If" << std::endl;
       std::cout << "\t\tnot specified, the sources are uniformly distributed."
+		<< std::endl;
+      std::cout << "\t-P, --probimfile VALUE" << std::endl;
+      std::cerr << "\t\tWrite probability image (for clustering) to this file"
+		<< std::endl;
+      std::cerr << "\t\tin FITS format.  Must have specified --powerspec."
 		<< std::endl;
       std::cout << "\t-q, --qfactor VALUE" << std::endl;
       std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"

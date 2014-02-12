@@ -90,13 +90,13 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   matched_fwhm = std::numeric_limits<double>::quiet_NaN();
   matched_sigi = matched_sigc = std::numeric_limits<double>::quiet_NaN();
 
-  // Position generator if needed
+  // Position generator if needed; note we generate in non-oversampled
+  //  space but use interpolation to get to interpolated space
   use_clustered_pos = false;
   posgen = NULL;
   if (!powerspecfile.empty()) {
     use_clustered_pos = true;
-    posgen = new positionGeneratorClustered(ngen1, ngen2, pixsize_gen,
-					    powerspecfile);
+    posgen = new positionGeneratorClustered(n1, n2, pixsize, powerspecfile);
   }
 
   // Set up array to hold 1D beams (center normalized)
@@ -497,7 +497,7 @@ void simImage::realize(const numberCounts& model, double n0,
 	// Clustered positions
 	std::pair<unsigned int, unsigned int> pos;
 	for (unsigned int i = 0; i < nsrcs; ++i) {
-	  pos = posgen->getPosition(rangen);
+	  pos = posgen->getPosition(rangen, oversample);
 	  idx1 = pos.first;
 	  idx2 = pos.second;
 	  gen_image[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
@@ -905,6 +905,16 @@ int simImage::writeToFits(const std::string& outputfile) const {
   }
 
   return status;
+}
+
+/*!
+  \param[in] outfile File to write to
+*/
+int simImage::writeProbImageToFits(const std::string& outfile) const {
+  if (!use_clustered_pos)
+    throw pofdExcept("simImage", "writeProbImageToFits",
+		     "No probability image to write", 1);
+  return posgen->writeProbToFits(outfile);
 }
 
 /*!

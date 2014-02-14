@@ -150,19 +150,11 @@ bool PDFactory::resize(unsigned int NSIZE) {
   \param[in] filename Name of wisdom file
 */
 bool PDFactory::addWisdom(const std::string& filename) {
-  FILE *fp = NULL;
-  fp = fopen( filename.c_str(), "r" );
-  if (!fp) {
-    std::stringstream str;
-    str << "Error opening wisdom file: " << filename;
-    throw pofdExcept("PDFactory","addWisdom",str.str(),1);
+  if (fftw_import_wisdom_from_filename(filename.c_str()) == 0) {
+    std::stringstream errstr;
+    errstr << "Error reading wisdom file: " << filename;
+    throw pofdExcept("PDFactory", "addWisdom", errstr.str(), 1);
   }
-  if (fftw_import_wisdom_from_file(fp) == 0) {
-    std::stringstream str;
-    str << "Error reading wisdom file: " << filename;
-    throw pofdExcept("PDFactory","addWisdom",str.str(),1);
-  }
-  fclose(fp);
   fftw_plan_style = FFTW_WISDOM_ONLY;
   has_wisdom = true;
   wisdom_file = filename;

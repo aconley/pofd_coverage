@@ -21,8 +21,6 @@ static struct option long_options[] = {
   {"double", no_argument, 0, 'd'},
   {"edgeinterp", required_argument, 0, 'e'},
   {"help", no_argument, 0, 'h'},
-  {"hdf5", no_argument, 0, 'H'},
-  {"fits", no_argument, 0, 'f'},
   {"filterscale", required_argument, 0, 'F'},
   {"log", no_argument, 0, 'l'},
   {"matched", no_argument, 0, 'm'},
@@ -45,7 +43,7 @@ static struct option long_options[] = {
   {"wisdom", required_argument, 0, 'w'},
   {0, 0, 0, 0}
 };
-char optstring[] = "dhe:fF:Hlmn:N:1:0:o:q:r:s:3:4:5:6:7:8:vVw:";
+char optstring[] = "dhe:F:lmn:N:1:0:o:q:r:s:3:4:5:6:7:8:vVw:";
 
 ///////////////////////////////
 
@@ -58,8 +56,7 @@ int getPDSingle(int argc, char **argv) {
   double filterscale, qfactor, sigi, sigc; // Filtering parameters
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins;
-  bool has_wisdom, verbose, return_log, matched;
-  bool write_fits, write_r, write_as_hdf5;
+  bool has_wisdom, verbose, return_log, matched, write_r;
   std::string wisdom_file, r_file;
   unsigned int oversample;
 
@@ -72,8 +69,6 @@ int getPDSingle(int argc, char **argv) {
   nkeep               = 0.0;
   verbose             = false;
   return_log          = false;
-  write_fits          = false;
-  write_as_hdf5       = false;
   write_r             = false;
   oversample          = 1;
   filterscale         = 0.0;
@@ -88,14 +83,8 @@ int getPDSingle(int argc, char **argv) {
   while ((c = getopt_long(argc,argv,optstring,long_options,
 			  &option_index)) != -1) 
     switch(c) {
-    case 'f' :
-      write_fits = true;
-      break;
     case 'F' :
       filterscale = atof(optarg);
-      break;
-    case 'H' :
-      write_as_hdf5 = true;
       break;
     case 'l' :
       return_log = true;
@@ -136,8 +125,6 @@ int getPDSingle(int argc, char **argv) {
       break;
     case 'v' :
       verbose = true;
-      break;
-      return 0;
       break;
     case 'w' :
       has_wisdom = true;
@@ -206,9 +193,6 @@ int getPDSingle(int argc, char **argv) {
   if (nkeep < 0.0) {
     std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
     return 1;
-  }
-  if (write_as_hdf5 && write_fits) {
-    std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
   }
   if (filterscale < 0.0) {
     std::cout << "Invalid (negative) filter scale " << filterscale << std::endl;
@@ -287,7 +271,7 @@ int getPDSingle(int argc, char **argv) {
       } else
 	filt = new fourierFilter(pixsize, filterscale, qfactor, true);
     } else if (matched)
-	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
+      filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
 
 
     // Get histogrammed inverse beam
@@ -305,41 +289,28 @@ int getPDSingle(int argc, char **argv) {
 		    model, inv_bmhist);
 
     if (write_r) {
-      if (verbose) {
-	std::cout << "  Writing R to " << r_file;
-	if (write_as_hdf5) std::cout << " as HDF5" << std::endl;
-	else std::cout << std::endl;
+      if (verbose) std::cout << "  Writing R to " << r_file;
+      utility::outfiletype oftype = utility::getOutputFileType(r_file);
+      switch (oftype) {
+      case utility::UNKNOWN:
+      case utility::HDF5:
+	pfactory.writeRToHDF5(r_file);
+	break;
+      case utility::FITS:
+	throw pofdExcept("pofd_coverage_getPD", "getPDSingle",
+			 "Don't support writing R to FITS", 1);
+	break;
+      case utility::TXT:
+	pfactory.writeRToFile(r_file);
+	break;
       }
-      if (write_as_hdf5) pfactory.writeRToHDF5(r_file);
-      else pfactory.writeRToFile(r_file);
     }
    
     pfactory.getPD(n0, pd, return_log);
     
     //Write it
-    if (verbose) {
-      std::cout << "Writing P(D) to " << outputfile;
-      if (write_as_hdf5)
-	std::cout << " as HDF5 file";
-      else if (write_fits)
-	std::cout << " as FITS file";
-      std::cout << std::endl;
-    }
-
-    if (write_as_hdf5) {
-      pd.writeToHDF5(outputfile);
-    } else if (write_fits) {
-      pd.writeToFits(outputfile);
-    } else {
-      std::ofstream ofs(outputfile.c_str());
-      if (!ofs) {
-	std::cout << "Error opening output file: " << outputfile
-		  << std::endl;
-	return 64;
-      }
-      ofs << pd;
-      ofs.close();
-    }
+    if (verbose) std::cout << "Writing P(D) to " << outputfile << std::endl;
+    pd.writeToFile(outputfile);
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
@@ -364,8 +335,7 @@ int getPDDouble(int argc, char **argv) {
   double sigma1, sigma2; //Instrument noise
   std::string outputfile; //Ouput pofd option
   unsigned int nflux, nbins, oversample;
-  bool has_wisdom, verbose, return_log, matched;
-  bool write_fits,  write_r, write_as_hdf5;
+  bool has_wisdom, verbose, return_log, matched, write_r;
   std::string wisdom_file, r_file;
 
   //Defaults
@@ -384,8 +354,6 @@ int getPDDouble(int argc, char **argv) {
   sigi2               = 0.0; // Means use sigma2
   verbose             = false;
   return_log          = false;
-  write_fits          = false;
-  write_as_hdf5       = false;
   write_r             = false;
   oversample          = 1;
 
@@ -395,14 +363,8 @@ int getPDDouble(int argc, char **argv) {
   while ((c = getopt_long(argc,argv,optstring,long_options,
 			  &option_index)) != -1) 
     switch(c) {
-    case 'f':
-      write_fits = true;
-      break;
     case 'F':
       filterscale = atof(optarg);
-      break;
-    case 'H':
-      write_as_hdf5 = true;
       break;
     case 'l':
       return_log = true;
@@ -449,8 +411,6 @@ int getPDDouble(int argc, char **argv) {
       break;
     case 'v':
       verbose = true;
-      break;
-      return 0;
       break;
     case 'w':
       has_wisdom = true;
@@ -530,9 +490,6 @@ int getPDDouble(int argc, char **argv) {
   if (nkeep < 0.0) {
     std::cout << "Invalid (negative) nkeep " << nkeep << std::endl;
     return 1;
-  }
-  if (write_as_hdf5 && write_fits) {
-    std::cout << "WARNING: will only write as HDF5, not as FITS" << std::endl;
   }
   if (filterscale < 0.0) {
     std::cout << "Invalid (negative) filter scale: " << filterscale
@@ -650,41 +607,28 @@ int getPDDouble(int argc, char **argv) {
 		    base_n0 > n0 ? base_n0 : n0, model, inv_bmhist, true);
 
     if (write_r) {
-      if (verbose) {
-	std::cout << "  Writing R to " << r_file;
-	if (write_as_hdf5) std::cout << " as HDF5" << std::endl;
-	else std::cout << std::endl;
+      if (verbose) std::cout << "  Writing R to " << r_file;
+      utility::outfiletype oftype = utility::getOutputFileType(r_file);
+      switch (oftype) {
+      case utility::UNKNOWN:
+      case utility::HDF5:
+	pfactory.writeRToHDF5(r_file);
+	break;
+      case utility::FITS:
+	throw pofdExcept("pofd_coverage_getPD", "getPDouble",
+			 "Don't support writing R to FITS", 1);
+	break;
+      case utility::TXT:
+	pfactory.writeRToFile(r_file);
+	break;
       }
-      if (write_as_hdf5) pfactory.writeRToHDF5(r_file);
-      else pfactory.writeRToFile(r_file);
     }
-   
     pfactory.getPD(n0, pd, return_log);
     
     //Write it
-    if (verbose) {
-      std::cout << "Writing P(D) to " << outputfile;
-      if (write_fits)
-	std::cout << " as FITS file";
-      else if (write_as_hdf5)
-	std::cout << " as HDF5 file";
-      std::cout << std::endl;
-    }
+    if (verbose) std::cout << "Writing P(D) to " << outputfile << std::endl;
+    pd.writeToFile(outputfile);
 
-    if (write_as_hdf5) {
-      pd.writeToHDF5(outputfile);
-    } else if (write_fits) {
-      pd.writeToFits(outputfile);
-    } else {
-      std::ofstream ofs(outputfile.c_str());
-      if (!ofs) {
-	std::cout << "Error opening output file: " << outputfile
-		  << std::endl;
-	return 64;
-      }
-      ofs << pd;
-      ofs.close();
-    }
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
@@ -795,23 +739,20 @@ int main( int argc, char** argv ) {
 		<< std::endl;
       std::cout << "\tbe used for both bands." << std::endl;
       std::cout << std::endl;
+      std::cout << "\tThe format of the output (text, fits, hdf5) is set by"
+		<< " the" << std::endl;
+      std::cout << "\textension of outfile." << std::endl;
+      std::cout << std::endl;
       std::cout << "OPTIONS" << std::endl;
       std::cout << "\t-d, --twod" << std::endl;
       std::cout << "\t\tIf set, the two-dimensional model is used."
 		<< std::endl;
       std::cout << "\t-h --help" << std::endl;
       std::cout << "\t\tPrint this message and exit." << std::endl;
-      std::cout << "\t-f, --fits" << std::endl;
-      std::cout << "\t\tWrite output as a fits file rather than text."
-		<< std::endl;
       std::cout << "\t-F, --filtscale VALUE" << std::endl;
       std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
 		<< std::endl;
       std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
-      std::cout << "\t-H, --hdf5" << std::endl;
-      std::cout << "\t\tWrite the output (PD and R, if specified) as a HDF5"
-		<< " file" << std::endl;
-      std::cout << "\t\trather than text or FITS." << std::endl;
       std::cout << "\t-l, --log" << std::endl;
       std::cout << "\t\tReturn the log P(D) rather than the P(D)."
 		<< std::endl;

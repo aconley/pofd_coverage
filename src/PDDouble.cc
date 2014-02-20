@@ -2,6 +2,7 @@
 #include<limits>
 #include<sstream>
 #include<cstring>
+#include<fstream>
 
 #include<hdf5.h>
 #include<fitsio.h>
@@ -10,6 +11,7 @@
 #include "../include/global_settings.h"
 #include "../include/PDDouble.h"
 #include "../include/pofdExcept.h"
+#include "../include/utility.h"
 
 const double PDDouble::lowsigval = 3.0;
 
@@ -666,8 +668,43 @@ void PDDouble::fill(unsigned int N1, double MINFLUX1, double DFLUX1,
 }
 
 /*!
+  \param[in] outputfile File to write to.  FITS, HDF5, and TEXT are
+                        supported, defaults to HDF5 if type can't be determined.
+*/
+void PDDouble::writeToFile(const std::string& outputfile) const {
+  utility::outfiletype filetype = utility::getOutputFileType(outputfile);
+
+  int status;
+  std::ofstream ofs;
+  switch(filetype) {
+  case utility::UNKNOWN:
+  case utility::HDF5:
+    writeToHDF5(outputfile);
+    break;
+  case utility::FITS:
+    status = writeToFits(outputfile);
+    if (status != 0)
+      throw pofdExcept("PDDouble", "writeToFile", 
+		       "Failure to write FITS file", 1);
+    break;
+  case utility::TXT:
+    ofs.open(outputfile.c_str());
+    if (! ofs) {
+      ofs.close();
+      throw pofdExcept("PDDouble", "writeToFile", 
+		       "Failure to open text file to write", 2);
+    }
+    writeToStream(ofs);
+    ofs.close();
+    break;
+  default:
+    throw pofdExcept("PDDouble", "writeToFile", "Unknown output file type", 3);
+  }
+}
+
+/*!
   \param[in] outputfile File to write to
- */
+*/
 void PDDouble::writeToHDF5(const std::string& outputfile) const {
   hid_t file_id;
   file_id = H5Fcreate(outputfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,

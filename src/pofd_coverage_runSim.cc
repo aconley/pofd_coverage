@@ -11,6 +11,7 @@
 #include "../include/simManagerDouble.h"
 #include "../include/pofdExcept.h"
 #include "../include/global_settings.h"
+#include "../include/utility.h"
 
 static struct option long_options[] = {
   {"help", no_argument, 0, 'h'},
@@ -21,7 +22,6 @@ static struct option long_options[] = {
   {"extra_smooth2", required_argument, 0, '@'},
   {"fftsize", required_argument, 0, 'f'},
   {"filtscale", required_argument, 0, 'F'},
-  {"hdf5", no_argument, 0, 'H'},
   {"matched", no_argument, 0, 'm'},
   {"nbeambins", required_argument, 0, '5'},
   {"nbins", required_argument, 0, '1'},
@@ -51,7 +51,7 @@ static struct option long_options[] = {
   {0, 0, 0, 0}
 };
 
-char optstring[] = "hbde:!:@:f:F:H1:mn:5:6:N2:3:4:o:p:q:s:#:$:,:.:/:7:9:0:%:S:vVw:";
+char optstring[] = "hbde:!:@:f:F:1:mn:5:6:N2:3:4:o:p:q:s:#:$:,:.:/:7:9:0:%:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -67,7 +67,6 @@ int runSimSingle(int argc, char **argv) {
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; //Power spectrum file
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like, matched;
-  bool write_as_hdf5;
   unsigned long long int seed;
   std::string wisdom_file;
 
@@ -96,7 +95,6 @@ int runSimSingle(int argc, char **argv) {
   powerspecfile       = "";
   nfwhm               = 15.0;
   nbeambins           = 100;
-  write_as_hdf5       = false;
 
   int c;
   int option_index = 0;
@@ -115,9 +113,6 @@ int runSimSingle(int argc, char **argv) {
       break;
     case 'F':
       filtscale = atof(optarg);
-      break;
-    case 'H':
-      write_as_hdf5 = true;
       break;
     case 'm':
       matched = true;
@@ -346,12 +341,15 @@ int runSimSingle(int argc, char **argv) {
     //Write it
     if (verbose) std::cout << "Writing simulation results to " << outputfile 
 			   << std::endl;
-    if (write_as_hdf5) 
+    utility::outfiletype oft = utility::getOutputFileType(outputfile);
+    if (oft == utility::HDF5 || oft == utility::UNKNOWN)
       sim.writeToHDF5(outputfile);
-    else {
+    else if (oft == utility::FITS) {
       int status = sim.writeToFits(outputfile);
       if (status != 0) return status;
-    }
+    } else if (oft == utility::TXT)
+      throw pofdExcept("pofd_coverage_runSim", "runSimSingle",
+		       "Output to text not supported", 1);
   } catch (const pofdExcept& ex) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
@@ -376,7 +374,6 @@ int runSimDouble(int argc, char **argv) {
   unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample;
   unsigned int nbeambins, sparcity;
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like, matched;
-  bool write_as_hdf5;
   double pixsize, n0rangefrac, n0initrange, nfwhm;
   double filtscale, qfactor, sigmc1, sigmc2, sigmi1, sigmi2; // Filtering params
   std::string outputfile; //Ouput pofd option
@@ -414,7 +411,6 @@ int runSimDouble(int argc, char **argv) {
   powerspecfile       = "";
   nbeambins           = 150;
   nfwhm               = 15.0;
-  write_as_hdf5       = false;
 
   int c;
   int option_index = 0;
@@ -436,9 +432,6 @@ int runSimDouble(int argc, char **argv) {
       break;
     case 'F':
       filtscale = atof(optarg);
-      break;
-    case 'H':
-      write_as_hdf5 = true;
       break;
     case '1':
       nbins = atoi(optarg);
@@ -711,12 +704,15 @@ int runSimDouble(int argc, char **argv) {
     //Write it
     if (verbose) std::cout << "Writing simulation results to " << outputfile 
 			   << std::endl;
-    if (write_as_hdf5)
+    utility::outfiletype oft = utility::getOutputFileType(outputfile);
+    if (oft == utility::HDF5 || oft == utility::UNKNOWN)
       sim.writeToHDF5(outputfile);
-    else {
+    else if (oft == utility::FITS) {
       int status = sim.writeToFits(outputfile);
       if (status != 0) return status;
-    }
+    } else if (oft == utility::TXT)
+      throw pofdExcept("pofd_coverage_runSim", "runSimSingle",
+		       "Output to text not supported", 1);
   } catch (const pofdExcept& ex) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
@@ -779,10 +775,11 @@ int main(int argc, char **argv) {
 		<< " storing" << std::endl;
       std::cout << "\tthe resulting log likelihood.  The results are written to"
 		<< " outputfile" << std::endl;
-      std::cout << "\tas a FITS binary table, or hdf5 if so specified.  If n0"
-		<< " is" << std::endl;
-      std::cout << "\tzero, then the value from the raw model file is adopted."
-		<< std::endl;
+      std::cout << "\twith the file type (hdf5 or fits) controlled by the "
+		<< "extension." << std::endl;
+      std::cout << "\tHDF5 is the default. If n0 is zero, then the value from "
+		<< " the" << std::endl;
+      std::cout << "\traw model file is adopted." << std::endl;
       std::cout << std::endl;
       std::cout << "\tThe number counts model in 1D is a spline" << std::endl;
       std::cout << "\tmodel specified by modelfile, and by the number of"
@@ -852,8 +849,6 @@ int main(int argc, char **argv) {
 		<< std::endl;
       std::cout << "\t\tone dimension and 4096 in two dimensions.)" 
 		<< std::endl;
-      std::cout << "\t-H, --hdf5" << std::endl;
-      std::cout << "\t\tWrite as HDF5 instead of FITS." << std::endl;
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
 		<< " matching the" << std::endl;

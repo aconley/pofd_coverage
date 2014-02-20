@@ -30,6 +30,8 @@ class PD {
   double getLogLikeBinned(const simImage&, unsigned int=1) const;
   double getLogLikeUnbinned(const simImage&, unsigned int=1) const;
 
+  int writeToFits(const std::string& file) const; //!< Write as fits file
+  void writeToHDF5(const std::string& file) const; //!< Write as HDF5
  public:
   PD(unsigned int N=0, double MINFLUX=0.0, double DFLUX=0.0,
      bool LOG=true); //!< Constructor
@@ -78,8 +80,8 @@ class PD {
 
   std::ostream& writeToStream(std::ostream& os) const; //!< Write summary
 
-  int writeToFits(const std::string& file) const; //!< Write as fits file
-  void writeToHDF5(const std::string& file) const; //!< Write as HDF5
+  void writeToFile(const std::string&) const; //!< Serialize result
+
 };
 
 std::ostream& operator<<(std::ostream& os, const PD&);

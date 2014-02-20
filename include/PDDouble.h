@@ -32,6 +32,8 @@ class PDDouble {
   double getLogLikeBinned(const simImageDouble&, unsigned int=1) const;
   double getLogLikeUnbinned(const simImageDouble&, unsigned int=1) const;
 
+  int writeToFits(const std::string& file) const; //!< Write as fits file
+  void writeToHDF5(const std::string& outputfile) const; //!< Write as hdf5
  public:
   PDDouble(unsigned int N1=0, double MINFLUX1=0.0, double DFLUX1=0.0,
 	   unsigned int N2=0, double MINFLUX2=0.0, double DFLUX2=0.0,
@@ -93,9 +95,7 @@ class PDDouble {
   double getLogLike(const simImageDouble&, unsigned int=1) const;
 
   std::ostream& writeToStream(std::ostream& os) const; //!< Write summary
-
-  int writeToFits(const std::string& file) const; //!< Write as fits file
-  void writeToHDF5(const std::string& outputfile) const; //!< Write as hdf5
+  void writeToFile(const std::string&) const; //!< Serialize result
 };
 
 /*! \brief Output to stream operator */

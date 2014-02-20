@@ -1,6 +1,7 @@
 //PD.cc
 #include<limits>
 #include<cstring>
+#include<fstream>
 
 #include<hdf5.h>
 #include<fitsio.h>
@@ -9,6 +10,7 @@
 #include "../include/global_settings.h"
 #include "../include/PD.h"
 #include "../include/pofdExcept.h"
+#include "../include/utility.h"
 
 const double PD::lowsigval = 3.0;
 
@@ -336,9 +338,44 @@ std::ostream& PD::writeToStream(std::ostream& os) const {
 }
 
 /*!
+  \param[in] outputfile File to write to.  FITS, HDF5, and TEXT are
+                        supported, defaults to HDF5 if type can't be determined.
+*/
+void PD::writeToFile(const std::string& outputfile) const {
+  utility::outfiletype filetype = utility::getOutputFileType(outputfile);
+
+  int status;
+  std::ofstream ofs;
+  switch(filetype) {
+  case utility::UNKNOWN:
+  case utility::HDF5:
+    writeToHDF5(outputfile);
+    break;
+  case utility::FITS:
+    status = writeToFits(outputfile);
+    if (status != 0)
+      throw pofdExcept("PD", "writeToFile", 
+		       "Failure to write FITS file", 1);
+    break;
+  case utility::TXT:
+    ofs.open(outputfile.c_str());
+    if (!ofs) {
+      ofs.close();
+      throw pofdExcept("PD", "writeToFile", 
+		       "Failure to open text file to write", 2);
+    }
+    writeToStream(ofs);
+    ofs.close();
+    break;
+  default:
+    throw pofdExcept("PD", "writeToFile", "Unknown output file type", 3);
+  }
+}
+
+/*!
   \param[in] outputfile File to write to
   \returns 0 on success, an error code (!=0) for anything else
- */
+*/
 int PD::writeToFits(const std::string& outputfile) const {
 
   //Make the fits file

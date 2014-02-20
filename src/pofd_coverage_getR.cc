@@ -19,7 +19,6 @@ static struct option long_options[] = {
   {"help", no_argument, 0, 'h'},
   {"double", no_argument, 0, 'd'},
   {"filterscale", required_argument, 0, 'F'},
-  {"hdf5", no_argument, 0, 'H'},
   {"matched", no_argument, 0, 'm'},
   {"nbins", required_argument, 0, 'n'},
   {"nfwhm", required_argument, 0, 'N'},
@@ -35,14 +34,14 @@ static struct option long_options[] = {
   {0,0,0,0}
 };
 
-char optstring[] = "hdF:Hmn:N:1:o:q:2:3:4:5:vV";
+char optstring[] = "hdF:mn:N:1:o:q:2:3:4:5:vV";
 
 //One-D version
 int getRSingle(int argc, char** argv) {
 
   std::string modelfile; //Init file (having model we want)
   std::string outfile; //File to write to
-  bool verbose, write_to_hdf5, matched;
+  bool verbose, matched;
   double n0, nfwhm, pixsize, minflux, maxflux, fwhm, nkeep;
   unsigned int nflux, nbins, oversamp;
   double filterscale, qfactor, sigi, sigc;
@@ -57,7 +56,6 @@ int getRSingle(int argc, char** argv) {
   sigi = 0.002;
   sigc = 0.006;
   oversamp = 1;
-  write_to_hdf5 = false;
   nkeep = 0; // Means keep all
 
   int c;
@@ -68,9 +66,6 @@ int getRSingle(int argc, char** argv) {
     switch(c) {
     case 'F':
       filterscale = atof(optarg);
-      break;
-    case 'H':
-      write_to_hdf5 = true;
       break;
     case 'm':
       matched = true;
@@ -235,8 +230,9 @@ int getRSingle(int argc, char** argv) {
       for (unsigned int i = 0; i < nflux; ++i)
 	R[i] *= n0fac;
 
-    // Write.  
-    if (write_to_hdf5) {
+    // Write.
+    utility::outfiletype oft = utility::getOutputFileType(outfile);
+    if (oft == utility::HDF5 || oft == utility::UNKNOWN) {
       if (verbose) std::cout << "Writing as HDF5" << std::endl;
       hid_t file_id;
       file_id = H5Fcreate(outfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
@@ -279,7 +275,7 @@ int getRSingle(int argc, char** argv) {
       H5Sclose(mems_id);
 
       H5Fclose(file_id);
-    } else {
+    } else if (oft == utility::TXT) {
       if (verbose) std::cout << "Writing as text" << std::endl;
       FILE *fp;
       fp = fopen(outfile.c_str(), "w");
@@ -291,6 +287,9 @@ int getRSingle(int argc, char** argv) {
       for (unsigned int i = 0; i < nflux; ++i) 
 	fprintf(fp, "%12.6e   %15.9e\n", flux[i], R[i]);
       fclose(fp);
+    } else if (oft == utility::FITS) {
+      std::cerr << "Output to FITS is not supported." << std::endl;
+      return 256;
     }
 
     delete[] flux;    
@@ -315,7 +314,7 @@ int getRDouble(int argc, char** argv) {
 
   std::string modelfile; //Init file (having model we want)
   std::string outfile; //File to write to
-  bool verbose, write_to_hdf5, matched;
+  bool verbose, matched;
   double minflux1, maxflux1, minflux2, maxflux2;
   double n0, nfwhm, pixsize, fwhm1, fwhm2, nkeep;
   unsigned int nflux1, nflux2, nbins, oversamp;
@@ -342,9 +341,6 @@ int getRDouble(int argc, char** argv) {
     switch(c) {
     case 'F':
       filterscale = atof(optarg);
-      break;
-    case 'H':
-      write_to_hdf5 = true;
       break;
     case 'm':
       matched = true;
@@ -564,7 +560,8 @@ int getRDouble(int argc, char** argv) {
 	R[i] *= n0fac;
 
     // Write
-    if (write_to_hdf5) {
+    utility::outfiletype oft = utility::getOutputFileType(outfile);
+    if (oft == utility::HDF5 || oft == utility::UNKNOWN) {
       if (verbose) std::cout << "Writing as HDF5" << std::endl;
       hid_t file_id;
       file_id = H5Fcreate(outfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
@@ -623,7 +620,7 @@ int getRDouble(int argc, char** argv) {
       H5Sclose(mems_id);
 
       H5Fclose(file_id);
-    } else {
+    } else if (oft == utility::TXT) {
       if (verbose) std::cout << "Writing as text" << std::endl;
       FILE *fp;
       fp = fopen(outfile.c_str(), "w");
@@ -640,6 +637,9 @@ int getRDouble(int argc, char** argv) {
 	fprintf(fp,"%13.7e\n",R[nflux2 * i + nflux2 - 1]);
       }
       fclose(fp);
+    } else if (oft == utility::FITS) {
+      std::cerr << "Writing to FITS is not supported" << std::endl;
+      return 256;
     }
 
     delete[] R;
@@ -762,8 +762,10 @@ int main(int argc, char** argv) {
 		<< " each" << std::endl;
       std::cout << "\tdimension." << std::endl;
       std::cout << std::endl;
-      std::cout << "\tIn both cases the output R is written to outfile as"
-		<< " text." << std::endl;
+      std::cout << std::endl;
+      std::cout << "\tThe format of the output (text, hdf5) is set by"
+		<< " the" << std::endl;
+      std::cout << "\textension of outfile.  The default is hdf5." << std::endl;
       std::cout << std::endl;
       std::cout << "OPTIONS" << std::endl;
       std::cout << "\t-d, --double" << std::endl;
@@ -772,9 +774,6 @@ int main(int argc, char** argv) {
       std::cout << "\t\tHigh-pass filter scale, in arcsec.  Zero means no"
 		<< " filtering" << std::endl;
       std::cout << "\t\tis applied (def: 0)" << std::endl;
-      std::cout << "\t-H, --hdf5" << std::endl;
-      std::cout << "\t\tWrite the output as an HDF5 file rather than as text."
-		<< std::endl;
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
 		<< " matching the" << std::endl;

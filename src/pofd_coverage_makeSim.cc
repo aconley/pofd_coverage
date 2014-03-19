@@ -21,6 +21,7 @@ static struct option long_options[] = {
   {"filtscale", required_argument, 0, 'F'},
   {"help", no_argument, 0, 'h'},
   {"matched", no_argument, 0, 'm'},
+  {"nfinaltrials", required_argument, 0, 'n'},
   {"oversample", required_argument, 0, 'o'},
   {"powerspec", required_argument, 0, 'p'},
   {"probimfile", required_argument, 0, 'P'},
@@ -37,7 +38,7 @@ static struct option long_options[] = {
   {"version", no_argument, 0, 'V'},
   {0,0,0,0}
 };
-char optstring[] = "de:1:2:F:hmo:p:P:q:S:s:3:4:5:6:7:8:vV";
+char optstring[] = "de:1:2:F:hmn:o:p:P:q:S:s:3:4:5:6:7:8:vV";
 
 
 int makeSimSingle(int argc, char **argv) {
@@ -49,7 +50,7 @@ int makeSimSingle(int argc, char **argv) {
   std::string modelfile, outputfile, powspecfile, probimfile;
   unsigned long long int user_seed;
   bool verbose, have_user_seed, matched;
-  unsigned int oversample;
+  unsigned int oversample, nfinal;
 
   //Defaults
   extra_smooth        = 0.0;
@@ -65,6 +66,7 @@ int makeSimSingle(int argc, char **argv) {
   oversample          = 1;
   powspecfile         = "";
   probimfile          = "";
+  nfinal              = 0;
 
   int c;
   int option_index = 0;
@@ -80,6 +82,9 @@ int makeSimSingle(int argc, char **argv) {
       break;
     case 'm':
       matched = true;
+      break;
+    case 'n':
+      nfinal = atoi(optarg);
       break;
     case 'o':
       oversample = atoi(optarg);
@@ -198,19 +203,25 @@ int makeSimSingle(int argc, char **argv) {
     } else if (matched)
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
 
-    simImage dim(n1, n2, pixsize, fwhm, sigma, extra_smooth,
-		 oversample, 1000, powspecfile);
-    if (have_user_seed) dim.setSeed(user_seed);
+    simImage im(n1, n2, pixsize, fwhm, sigma, extra_smooth,
+		oversample, 1000, powspecfile);
+    if (have_user_seed) im.setSeed(user_seed);
+
+    // Get final noise if specified
+    if (verbose && (nfinal > 0) && (filt != NULL))
+      std::cout << "Estimating final (filtered) noise with "
+		<< nfinal << " trials" << std::endl;
+    if (nfinal != 0) im.getFinalNoise(nfinal, filt);
 
     // Generate with mean subtraction
-    dim.realize(model, n0, true, filt, false); 
+    im.realize(model, n0, true, filt, false); 
 
     if (filt != NULL) delete filt;
 
     // Write it
     if (verbose) std::cout << "Writing simulated image to " << outputfile
 			   << std::endl;
-    int status = dim.writeToFits(outputfile);
+    int status = im.writeToFits(outputfile);
     if (status != 0) return status;
 
     // Write prob image if needed
@@ -218,7 +229,7 @@ int makeSimSingle(int argc, char **argv) {
       if (verbose)
 	std::cout << "Outputting probability map to: " << probimfile
 		  << std::endl;
-      status = dim.writeProbImageToFits(probimfile);
+      status = im.writeProbImageToFits(probimfile);
       if (status != 0) return status;
     }
 
@@ -245,7 +256,7 @@ int makeSimDouble(int argc, char **argv) {
   std::string modelfile, outputfile, powspecfile, probimfile; 
   unsigned long long int user_seed;
   bool verbose, have_user_seed, matched;
-  unsigned int oversample;
+  unsigned int oversample, nfinal;
 
   //Defaults
   extra_smooth1       = 0.0;
@@ -264,6 +275,7 @@ int makeSimDouble(int argc, char **argv) {
   oversample          = 1;
   powspecfile         = "";
   probimfile          = "";
+  nfinal              = 0;
 
   int c;
   int option_index = 0;
@@ -282,6 +294,9 @@ int makeSimDouble(int argc, char **argv) {
       break;
     case 'm':
       matched = true;
+      break;
+    case 'n':
+      nfinal = atoi(optarg);
       break;
     case 'o':
       oversample = atoi(optarg);
@@ -436,6 +451,12 @@ int makeSimDouble(int argc, char **argv) {
 		       1000, powspecfile);
     if (have_user_seed) dim.setSeed(user_seed);
     
+    // Get final noise if specified
+    if (verbose && (nfinal > 0) && (filt1 != NULL || filt2 != NULL))
+      std::cout << "Estimating final (filtered) noise with "
+		<< nfinal << " trials" << std::endl;
+    if (nfinal != 0) dim.getFinalNoise(nfinal, filt1, filt2);
+
     // Generate with mean subtraction
     dim.realize(model, n0, true, filt1, filt2, false);
 
@@ -580,6 +601,17 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
 		<< " matching the" << std::endl;
       std::cout << "\t\tbeam (in each band for the 2D case).  Off by default." 
+		<< std::endl;
+      std::cout << "\t-n, --nfinaltrials VALUE" << std::endl;
+      std::cout << "\t\tThe number of trials to do when estimating the final"
+		<< " (filtered)" << std::endl;
+      std::cout << "\t\tinstrument noise value.  This is only of interest if"
+		<< " filtering" << std::endl;
+      std::cout << "\t\tis being applied -- if not, the final noise are just "
+		<< "the" << std::endl;
+      std::cout << "\t\tinput instrument noise values.  A value of 0 (the" 
+		<< " default)" << std::endl;
+      std::cout << "\t\tmeans that the final noise values are not computed."
 		<< std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount of oversampling to use (integral) when " 

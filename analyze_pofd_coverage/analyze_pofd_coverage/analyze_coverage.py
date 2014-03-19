@@ -121,7 +121,11 @@ def printsum(info, twod=False):
     maxstrlen = max([len(k) for k in info])+1
     maxstrlen = 30 if maxstrlen > 30 else maxstrlen
 
-    donorm = 'norm' in info
+    # Figure out if norm has been done
+    #  It feels like there should be a better way to get
+    #  an arbitrary element of a dictionary, but I can't find one
+    key1 = next(iter(info.keys()))
+    donorm = 'norm' in info[key1]
 
     if donorm:
         if not twod:
@@ -209,9 +213,13 @@ def do_analysis(filename, nonorm=False, verbose=False, twod=False,
         errstr = "No data sets to process from {0:s}".format(filename)
         raise ValueError(errstr)
 
+    # Figure out how many sets we are doing, optimize string output
+    ndigits = math.ceil(math.log10(nsets))
+    digfmt = "{{0:{0:d}d}}".format(ndigits)
+
     #Main analysis loop
     donorm = not nonorm
-    percstr = "Doing set {0:3d} [{1:5.1f}%]: {2:s}"
+    percstr = "Doing set " + digfmt + " [{1:5.1f}%]: {2:s}"
     fitinfo = OrderedDict()
     for i in range(nsets):
         if verbose:

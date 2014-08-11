@@ -119,7 +119,7 @@ def printsum(info, twod=False):
 
     # Figure out longest key name
     maxstrlen = max([len(k) for k in info])+1
-    maxstrlen = 30 if maxstrlen > 30 else maxstrlen
+    maxstrlen = 34 if maxstrlen > 34 else maxstrlen
 
     # Figure out if norm has been done
     #  It feels like there should be a better way to get
@@ -130,11 +130,11 @@ def printsum(info, twod=False):
     if donorm:
         if not twod:
             fstr = "%-{0:d}s".format(maxstrlen)
-            fstr += " %7s %7s %6s %6s %7s %6s %7s %5s"
+            fstr += " %6s %7s %6s %6s %7s %6s %7s %5s"
             print(fstr % ("#name", "sigi", "norm", "norm+", "norm-", "n0",
                           "n0scat", "n0bias", "nsims"))
             fstr = "%-{0:d}s".format(maxstrlen)
-            fstr += " %7.5f %7.2f %6.2f %6.2f %7g %6.1f %7.2f %5i"
+            fstr += " %6.4f %7.2f %6.2f %6.2f %7g %6.1f %7.2f %5i"
             for key in info:
                 print(fstr % (key, info[key]['sigma_inst'],
                               info[key]['norm'], info[key]['norm_plus'],

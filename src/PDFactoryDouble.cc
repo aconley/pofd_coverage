@@ -798,7 +798,7 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
       }
   }
 
-  // Sanity check
+  // Sanity check stuff
   double fwrap_plus = 
     static_cast<double>(splitidx1) * dflux1; // Wrap in pos flux
   double fwrap_minus 
@@ -806,6 +806,40 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
   double cs1, cs2;
   cs1 = nsig1 * curr_sigma1;
   cs2 = nsig2 * curr_sigma1;
+
+  // If fwrap_plus/minus are within cs2 of the peak, we will always
+  //  fail the tests below.  So, in that case, we try to adjust the
+  //  split point out.  This can work because the minimum of the P(D)
+  //  is very flat in some cases, and so it doesn't cost us to try it.
+  //  We do the same in the 1D code (PDFactory::unwrap)
+  if (fwrap_plus < cs2) {
+    unsigned int splitidx1_trial = 
+      static_cast<unsigned int>((cs2 - fwrap_plus) / dflux1) + 1 + splitidx1;
+    // Can only go up to n
+    if (splitidx1_trial < n) splitidx1_trial = n - 1;
+    double splitval1_trial = rsum[splitidx1_trial];
+    if ((splitval1_trial / maxval) < minmaxratio) {
+      // Worth doing as an attempt to save things
+      splitidx1 = splitidx1_trial;
+      splitval1 = splitval1_trial;
+    }
+    fwrap_plus = static_cast<double>(splitidx1) * dflux1; // Wrap in pos flux
+    fwrap_minus = static_cast<double>(n - splitidx1) * dflux1;
+  } else if (fwrap_minus < cs2) {
+    unsigned int splitidx1_delta = 
+      static_cast<unsigned int>((cs2 - fwrap_minus) / dflux1) + 1;
+    if (splitidx1_delta > splitidx1) splitidx1_delta = splitidx1;
+    unsigned int splitidx1_trial = splitidx1 - splitidx1_delta;
+    double splitval1_trial = rsum[splitidx1_trial];
+    if ((splitval1_trial / maxval) < minmaxratio) {
+      splitidx1 = splitidx1_trial;
+      splitval1 = splitval1_trial;
+    }
+    fwrap_plus = static_cast<double>(splitidx1) * dflux1; // Wrap in pos flux
+    fwrap_minus = static_cast<double>(n - splitidx1) * dflux1;
+  }
+
+  // Now the checks
   if ((fwrap_plus < cs1) || (fwrap_minus < cs1)) {
     // Worth further investigation
     if (fwrap_plus < cs2) {
@@ -865,11 +899,36 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
       }
   }
 
-  // Same sanity checks
+  // Same sanity checks/tweaks
   fwrap_plus = static_cast<double>(splitidx2) * dflux2;
   fwrap_minus = static_cast<double>(n - splitidx2) * dflux2;
   cs1 = nsig1 * curr_sigma2;
   cs2 = nsig2 * curr_sigma2;
+  if (fwrap_plus < cs2) {
+    unsigned int splitidx2_trial = 
+      static_cast<unsigned int>((cs2 - fwrap_plus) / dflux2) + 1 + splitidx2;
+    if (splitidx2_trial < n) splitidx2_trial = n - 1;
+    double splitval2_trial = rsum[splitidx2_trial];
+    if ((splitval2_trial / maxval) < minmaxratio) {
+      splitidx2 = splitidx2_trial;
+      splitval2 = splitval2_trial;
+    }
+    fwrap_plus = static_cast<double>(splitidx2) * dflux2;
+    fwrap_minus = static_cast<double>(n - splitidx2) * dflux2;
+  } else if (fwrap_minus < cs2) {
+    unsigned int splitidx2_delta = 
+      static_cast<unsigned int>((cs2 - fwrap_minus) / dflux2) + 1;
+    if (splitidx2_delta > splitidx2) splitidx2_delta = splitidx2;
+    unsigned int splitidx2_trial = splitidx2 - splitidx2_delta;
+    double splitval2_trial = rsum[splitidx2_trial];
+    if ((splitval2_trial / maxval) < minmaxratio) {
+      splitidx2 = splitidx2_trial;
+      splitval2 = splitval2_trial;
+    }
+    fwrap_plus = static_cast<double>(splitidx2) * dflux2;
+    fwrap_minus = static_cast<double>(n - splitidx2) * dflux2;
+  }
+
   if ((fwrap_plus < cs1) || (fwrap_minus < cs1)) {
     // Worth further investigation
     if (fwrap_plus < cs2) {

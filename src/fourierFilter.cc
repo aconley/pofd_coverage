@@ -542,7 +542,6 @@ void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
     }
   }
 
-
   // Always 0 mean
   map_fft[0][0] = 0.0;
   map_fft[0][1] = 0.0;

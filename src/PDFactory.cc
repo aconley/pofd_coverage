@@ -344,8 +344,44 @@ void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
   double cs1, cs2;
   cs1 = nsig1 * curr_sigma;
   cs2 = nsig2 * curr_sigma;
+
+  // Try adjusting the split point if it's too close to the peak
+  //  Note we only want to try one adjustment; doing both won't work
+  //  We don't just apply these no matter what because doing so makes
+  //  the error messages from the tests below a little harder to follow
+  if (fwrap_plus < cs2) {
+    // This will fail -- it is simply too close to the peak
+    unsigned int splitidx_trial = 
+      static_cast<unsigned int>((cs2 - fwrap_plus) / dflux) + 1 + splitidx;
+    // Can only go up to n
+    if (splitidx_trial < n) splitidx_trial = n - 1;
+    double splitval_trial = pofd[splitidx_trial];
+    if ((splitval_trial / maxval) < minmaxratio) {
+      // Worth doing as an attempt to save things
+      splitidx = splitidx_trial;
+      splitval = splitval_trial;
+    }
+    // Update fwrap values
+    fwrap_plus = RFlux[splitidx];
+    fwrap_minus = static_cast<double>(n - splitidx) * dflux;
+  } else if (fwrap_minus < cs2) {
+    unsigned int splitidx_delta = 
+      static_cast<unsigned int>((cs2 - fwrap_minus) / dflux) + 1;
+    if (splitidx_delta > splitidx) splitidx_delta = splitidx;
+    unsigned int splitidx_trial = splitidx - splitidx_delta;
+    double splitval_trial = pofd[splitidx_trial];
+    if ((splitval_trial / maxval) < minmaxratio) {
+      splitidx = splitidx_trial;
+      splitval = splitval_trial;
+    }
+    fwrap_plus = RFlux[splitidx];
+    fwrap_minus = static_cast<double>(n - splitidx) * dflux;
+  }
+
+  // Now we do the edge condition testing to make sure
+  //  unwrapping worked.
   if ((fwrap_plus < cs1) || (fwrap_minus < cs1)) {
-    // Worth further investigation
+    // Worth further investigation.  
     if (fwrap_plus < cs2) {
       std::stringstream errstr;
       errstr << "Top wrapping problem; wrapping point at "

@@ -816,7 +816,7 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
     unsigned int splitidx1_trial = 
       static_cast<unsigned int>((cs2 - fwrap_plus) / dflux1) + 1 + splitidx1;
     // Can only go up to n
-    if (splitidx1_trial < n) splitidx1_trial = n - 1;
+    if (splitidx1_trial >= n) splitidx1_trial = n - 1;
     double splitval1_trial = rsum[splitidx1_trial];
     if ((splitval1_trial / maxval) < minmaxratio) {
       // Worth doing as an attempt to save things
@@ -907,7 +907,7 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
   if (fwrap_plus < cs2) {
     unsigned int splitidx2_trial = 
       static_cast<unsigned int>((cs2 - fwrap_plus) / dflux2) + 1 + splitidx2;
-    if (splitidx2_trial < n) splitidx2_trial = n - 1;
+    if (splitidx2_trial >= n) splitidx2_trial = n - 1;
     double splitval2_trial = rsum[splitidx2_trial];
     if ((splitval2_trial / maxval) < minmaxratio) {
       splitidx2 = splitidx2_trial;

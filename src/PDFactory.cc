@@ -354,7 +354,7 @@ void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
     unsigned int splitidx_trial = 
       static_cast<unsigned int>((cs2 - fwrap_plus) / dflux) + 1 + splitidx;
     // Can only go up to n
-    if (splitidx_trial < n) splitidx_trial = n - 1;
+    if (splitidx_trial >= n) splitidx_trial = n - 1;
     double splitval_trial = pofd[splitidx_trial];
     if ((splitval_trial / maxval) < minmaxratio) {
       // Worth doing as an attempt to save things

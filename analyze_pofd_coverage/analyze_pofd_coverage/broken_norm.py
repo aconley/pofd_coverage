@@ -652,11 +652,9 @@ class simdata2D:
         try:
             hb = h['Beam']
             self.fwhm1 = hb.attrs['FWHM1'][0]
-            self.fwhm1 = hb.attrs['FWHM2'][0]
+            self.fwhm2 = hb.attrs['FWHM2'][0]
             self.nfwhm = hb.attrs['NFWHMKept'][0]
             self.nbeambins = hb.attrs['NBeamBins'][0]
-            self.beam_area_pix1 = hb.attrs['BeamEffArea1'][0]
-            self.beam_area_pix2 = hb.attrs['BeamEffArea2'][0]
 
             self.modeltype = h['Model'].attrs['ModelType'][0].decode
             self.base_n0 = h['Model'].attrs['BaseN0'][0]
@@ -845,11 +843,6 @@ class simset2D:
         if val.var() / self.data[0].pixsize >= 1e-3:
             raise ValueError("Too much variance in pixel size values")
         self.pixsize = val.mean()
-
-        self.beam_area_pix1 = self.data[0].beam_area_pix1
-        self.beamsq_area_pix1 = self.data[0].beamsq_area_pix1
-        self.beam_area_pix2 = self.data[0].beam_area_pix2
-        self.beamsq_area_pix2 = self.data[0].beamsq_area_pix2
 
         val = np.array([dat.area for dat in self.data])
         if val.var() / self.data[0].area >= 1e-3:

@@ -582,11 +582,10 @@ int main( int argc, char** argv ) {
 		<< "n2 are the" << std::endl;
       std::cout << "\tnumber of pixels along each dimension." << std::endl;
       std::cout << std::endl;
-      std::cout << "\tFor the 2D case, the simulated images in the two bands"
-		<< " are" << std::endl;
-      std::cout << "\twritten to different files so that they can be more"
-		<< " easily" << std::endl;
-      std::cout << "\tinput into other codes like pofd_affine." << std::endl;
+      std::cout << "\tThe output file format is FITS.  For the 2D case, the"
+		<< " two" << std::endl;
+      std::cout << "\tbands are written to the 0th and 1st extension,"
+		<< " respectively." << std::endl;
       std::cout << std::endl;
       std::cout << "OPTIONS" << std::endl;
       std::cout << "\t-h --help" << std::endl;

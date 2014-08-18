@@ -398,7 +398,7 @@ void simImageDouble::convolveWithAdd() {
 
 }
 
-
+// Helper function for final noise computation
 double 
 simImageDouble::getFinalNoiseHelper(unsigned int ntrials,
 				    double* const data, double sigi,
@@ -406,6 +406,7 @@ simImageDouble::getFinalNoiseHelper(unsigned int ntrials,
 				    unsigned int ngauss_add,
 				    const double* const gauss_add,
 				    const fourierFilter* const filt) const {
+
   // Compute esmooth prefactor if needed
   const double prefac = 4 * std::log(2) / pofd_coverage::pi;
   double normval = 1.0;
@@ -490,7 +491,7 @@ simImageDouble::getFinalNoise(unsigned int ntrials,
 
   // Figure out if we need temporary storage for sims
   double *tmpdata;
-  if ((filt1 != NULL) && (filt2 != NULL)) {
+  if ((filt1 != NULL) || (filt2 != NULL)) {
     if (ntrials == 0)
       throw pofdExcept("simImageDouble", "getFinalNoise",
 		       "Invalid (non-positive) ntrials", 1);
@@ -500,7 +501,7 @@ simImageDouble::getFinalNoise(unsigned int ntrials,
   const fourierFilter *f1, *f2;
   if (filt1 != NULL) {
     f1 = filt1;
-    if (filt2 == NULL) f2 = filt2; else f2 = filt1;
+    f2 = (filt2 == NULL) ? filt1 : filt2;
   } else if (filt2 != NULL) {
     f1 = NULL;
     f2 = filt2;

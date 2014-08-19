@@ -84,7 +84,7 @@ int runSimSingle(int argc, char **argv) {
   seed                = 1024;
   oversample          = 1;
   filtscale           = 0.0;
-  qfactor             = 0.1;
+  qfactor             = 0.2;
   matched             = false;
   sigmi               = 0.0;  // Means: use sigma
   sigmc               = 0.006;
@@ -398,7 +398,7 @@ int runSimDouble(int argc, char **argv) {
   seed                = 1024;
   oversample          = 1;
   filtscale           = 0.0;
-  qfactor             = 0.1;
+  qfactor             = 0.2;
   matched             = false;
   sigmi1              = 0.0; // Means use sigma1
   sigmi2              = 0.0; // Means use sigma2
@@ -901,7 +901,7 @@ int main(int argc, char **argv) {
       std::cout << "\t-q, --qfactor VALUE" << std::endl;
       std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"
 		<< std::endl;
-      std::cout << "\t\tfiltscale. (def: 0.1)." << std::endl;
+      std::cout << "\t\tfiltscale. (def: 0.2)." << std::endl;
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tSet user specified seed, otherwise taken from time."
 		<< std::endl;

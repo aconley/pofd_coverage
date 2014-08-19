@@ -51,7 +51,7 @@ int getRSingle(int argc, char** argv) {
   nfwhm = 40.0;
   nbins = 120;
   filterscale = 0.0;
-  qfactor = 0.1;
+  qfactor = 0.2;
   matched = false;
   sigi = 0.002;
   sigc = 0.006;
@@ -325,7 +325,7 @@ int getRDouble(int argc, char** argv) {
   nfwhm = 40.0;
   nbins = 150;
   filterscale = 0.0;
-  qfactor = 0.1;
+  qfactor = 0.2;
   matched = false;
   sigc = 0.006;
   sigi1 = 0.002;
@@ -796,7 +796,7 @@ int main(int argc, char** argv) {
       std::cout << "\t-q, --qfactor VALUE" << std::endl;
       std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"
 		<< std::endl;
-      std::cout << "\t\tfiltscale. (def: 0.1)." << std::endl;
+      std::cout << "\t\tfiltscale. (def: 0.2)." << std::endl;
       std::cout << "\t--sigc VALUE" << std::endl;
       std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
 		<< " 0.006)" << std::endl;

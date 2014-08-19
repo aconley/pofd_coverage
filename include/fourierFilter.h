@@ -67,11 +67,11 @@ class fourierFilter {
   explicit fourierFilter(double pixsize, double fwhm, double sigi, double sigc, 
 			 bool quickfft=false, bool fixedsize=false);
   /*! \brief Hipass filtering only constructor */
-  explicit fourierFilter(double pixsize, double fscale, double q=0.1, 
+  explicit fourierFilter(double pixsize, double fscale, double q=0.2, 
 			 bool quickfft=false, bool fixedsize=false);
   /*! \brief Both types of filtering constructor */
   explicit fourierFilter(double pixsize, double fwhm, double sigi, 
-			 double sigc, double fscale, double q=0.1, 
+			 double sigc, double fscale, double q=0.2, 
 			 bool quickfft=false, bool fixedsize=false);
   ~fourierFilter();
   

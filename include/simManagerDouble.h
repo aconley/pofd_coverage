@@ -89,7 +89,7 @@ class simManagerDouble {
 			    double PIXSIZE=5.0, double FWHM1=15, 
 			    double FWHM2=20, double NFWHM=15.0,
 			    double SIGI1=0.004, double SIGI2=0.006,
-			    double FILTSCALE=0.0, double QFACTOR=0.1,
+			    double FILTSCALE=0.0, double QFACTOR=0.2,
 			    bool MATCHED=false, double SIGMI1=0.0,
 			    double SIGMI2=0.0, double SIGC1=0.006, 
 			    double SIGC2=0.006, unsigned int NBEAMBINS=150, 

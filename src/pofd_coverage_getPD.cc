@@ -72,7 +72,7 @@ int getPDSingle(int argc, char **argv) {
   write_r             = false;
   oversample          = 1;
   filterscale         = 0.0;
-  qfactor             = 0.1;
+  qfactor             = 0.2;
   matched             = false;
   sigi                = 0.0; // Means: use sigma
   sigc                = 0.006;
@@ -347,7 +347,7 @@ int getPDDouble(int argc, char **argv) {
   nfwhm               = 4.5;
   nkeep               = 0.0;
   filterscale         = 0.0;
-  qfactor             = 0.1;
+  qfactor             = 0.2;
   matched             = false;
   sigc                = 0.006;
   sigi1               = 0.0; // Means use sigma1
@@ -784,7 +784,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t-q, --qfactor VALUE" << std::endl;
       std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"
 		<< std::endl;
-      std::cout << "\t\tfiltscale. (def: 0.1)." << std::endl;
+      std::cout << "\t\tfiltscale. (def: 0.2)." << std::endl;
       std::cout << "\t-r, --rfile FILENAME" << std::endl;
       std::cout << "\t\tWrite the R used to this file as text." << std::endl;
       std::cout << "\t--sigc VALUE" << std::endl;

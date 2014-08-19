@@ -56,7 +56,7 @@ int makeSimSingle(int argc, char **argv) {
   extra_smooth        = 0.0;
   sigma               = 0.0;
   filterscale         = 0.0;
-  qfactor             = 0.1;
+  qfactor             = 0.2;
   matched             = false;
   sigi                = 0.0; // Means: use sigma
   sigc                = 0.006;
@@ -264,7 +264,7 @@ int makeSimDouble(int argc, char **argv) {
   sigma1              = 0.0;
   sigma2              = 0.0;
   filterscale         = 0.0;
-  qfactor             = 0.1;
+  qfactor             = 0.2;
   matched             = false;
   sigc                = 0.006;
   sigi1               = 0.0; // Means: use sigma1
@@ -633,7 +633,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t-q, --qfactor VALUE" << std::endl;
       std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"
 		<< std::endl;
-      std::cout << "\t\tfiltscale. (def: 0.1)." << std::endl;
+      std::cout << "\t\tfiltscale. (def: 0.2)." << std::endl;
       std::cout << "\t-S, --seed SEED" << std::endl;
       std::cout << "\t\tUse this seed for the random number generator." 
 		<< std::endl;

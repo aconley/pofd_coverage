@@ -66,6 +66,7 @@ static double minfunc(double x, void* params) {
              band 1
   \param[in] SIGI2 Instrument noise (without smoothing or filtering) in Jy, 
              band 2
+  \param[in] SINGLEFILT Use the same filter in both bands, based on band1 values.
   \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If 0, no 
               high-pass filtering is applied.
   \param[in] QFACTOR High-pass Gaussian filtering apodization sigma as
@@ -99,7 +100,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   unsigned int N1, unsigned int N2, 
 				   double PIXSIZE, double FWHM1, double FWHM2, 
 				   double NFWHM, double SIGI1, double SIGI2, 
-				   double FILTSCALE, double QFACTOR, 
+				   bool SINGLEFILT, double FILTSCALE, double QFACTOR, 
 				   bool MATCHED, double SIGMI1, double SIGMI2,
 				   double SIGMC1, double SIGMC2,
 				   unsigned int NBEAMBINS, double N0, 
@@ -148,23 +149,25 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     delta_n0 = NULL;
   }
 
-  // Set up filter(s) if needed. 
+  // Set up filter(s) if needed.
   if (MATCHED && SIGMI1 == 0) SIGMI1 = SIGI1;
   if (MATCHED && SIGMI2 == 0) SIGMI2 = SIGI2;
   if (FILTSCALE > 0) {
     if (MATCHED) {// Hipass and matched
       filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGMI1, SIGMC1, 
 				FILTSCALE, QFACTOR, false, true);
-      if ((FWHM1 != FWHM2) || (SIGMI1 != SIGMI2) || (SIGMC1 != SIGMC2))
-	filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGMI2, SIGMC2, 
-				  FILTSCALE, QFACTOR, false, true);
-    } else // hipass only
+      if (!SINGLEFILT) 	
+	if ((FWHM1 != FWHM2) || (SIGMI1 != SIGMI2) || (SIGMC1 != SIGMC2))
+	  filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGMI2, SIGMC2, 
+				    FILTSCALE, QFACTOR, false, true);
+    } else // hipass only, can always use just one filter
       filt1 = new fourierFilter(PIXSIZE, FILTSCALE, QFACTOR, false, true);
   } else if (MATCHED) { // Matched only
     filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGMI1, SIGMC1, false, true);
-    if ((FWHM1 != FWHM2) || (SIGI1 != SIGI2) || (SIGMC1 != SIGMC2))
-      filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGMI2, SIGMC2, 
-				FILTSCALE, QFACTOR, false, true);
+    if (!SINGLEFILT) // Maybe use two, if any args differ
+      if ((FWHM1 != FWHM2) || (SIGI1 != SIGI2) || (SIGMC1 != SIGMC2))
+	filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGMI2, SIGMC2, 
+				  FILTSCALE, QFACTOR, false, true);
   }
 
   // Set up the histogrammed beam.  We must go out farther if we are filtering
@@ -173,7 +176,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   if (filt1 != NULL)
     inv_bmhist.fill(bm, N1, N2, PIXSIZE, true, OVERSAMPLE, filt1, filt2, NFWHM);
   else
-    inv_bmhist.fill(bm, NFWHM, PIXSIZE, true, OVERSAMPLE, filt1, filt2, NFWHM);
+    inv_bmhist.fill(bm, NFWHM, PIXSIZE, true, OVERSAMPLE, NULL, NULL, NFWHM);
 
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);

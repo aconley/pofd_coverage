@@ -41,7 +41,7 @@ where most of the unit tests live.
   \brief Global convenience variables
 */
 namespace pofd_coverage {
-  const char version[] = "0.3.1"; //Version number
+  const char version[] = "0.3.2"; //Version number
 
   const double n_zero_pad = 7.5; //!< Zero padding size in sigma
   const double pi = 3.141592653589793238462643383279502884197; //!< \f$\pi\f$

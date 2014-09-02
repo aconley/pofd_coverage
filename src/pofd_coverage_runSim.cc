@@ -373,9 +373,14 @@ int runSimDouble(int argc, char **argv) {
   double sigma1, sigma2; //Instrument noise, unsmoothed
   unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample;
   unsigned int nbeambins, sparcity;
-  bool verbose, has_wisdom, has_user_seed, use_binning, map_like, matched;
+  bool verbose, has_wisdom, has_user_seed, use_binning, map_like;
   double pixsize, n0rangefrac, n0initrange, nfwhm;
-  double filtscale, qfactor, sigmc1, sigmc2, sigmi1, sigmi2; // Filtering params
+
+  // Filtering params
+  bool matched, single_filt;
+  double filterscale, qfactor; // Hipass
+  double sigm1, sigm2, sigc1, sigc2, sigm, sigc; // Matched
+
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; // Power spectrum file
 
@@ -397,13 +402,16 @@ int runSimDouble(int argc, char **argv) {
   has_user_seed       = false;
   seed                = 1024;
   oversample          = 1;
-  filtscale           = 0.0;
+  filterscale         = 0.0;
   qfactor             = 0.2;
   matched             = false;
-  sigmi1              = 0.0; // Means use sigma1
-  sigmi2              = 0.0; // Means use sigma2
-  sigmc1              = 0.006;
-  sigmc2              = 0.006;
+  single_filt         = true;
+  sigm                = 0.0; // Use sigma 1 if needed
+  sigm1               = 0.0; // Means use sigma1 if used
+  sigm2               = 0.0; // Means use sigma2
+  sigc                = 0.006;
+  sigc1               = 0.0; // Use sigc if not set
+  sigc2               = 0.0; // ditto
   sparcity            = 1;
   nbins               = 1000;
   use_binning         = false;
@@ -431,7 +439,7 @@ int runSimDouble(int argc, char **argv) {
       fftsize = atoi(optarg);
       break;
     case 'F':
-      filtscale = atof(optarg);
+      filterscale = atof(optarg);
       break;
     case '1':
       nbins = atoi(optarg);
@@ -476,16 +484,20 @@ int runSimDouble(int argc, char **argv) {
       sigma2 = atof(optarg);
       break;
     case '.':
-      sigmc1 = atof(optarg);
+      sigc1 = atof(optarg);
+      single_filt = false;
       break;
     case '/':
-      sigmc2 = atof(optarg);
+      sigc2 = atof(optarg);
+      single_filt = false;
       break;
     case '9':
-      sigmi1 = atof(optarg);
+      sigm1 = atof(optarg);
+      single_filt = false;
       break;
     case '0':
-      sigmi2 = atof(optarg);
+      sigm2 = atof(optarg);
+      single_filt = false;
       break;
     case '%':
       sparcity = atoi(optarg);
@@ -503,7 +515,7 @@ int runSimDouble(int argc, char **argv) {
       break;
     }
 
-  if (optind >= argc-7) {
+  if (optind >= argc - 7) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
 	      << std::endl;
@@ -518,8 +530,6 @@ int runSimDouble(int argc, char **argv) {
   n2         = atoi(argv[optind + 6]);
   outputfile = std::string(argv[optind + 7]);
 
-  if (matched && sigmi1 == 0.0) sigmi1 = sigma1;
-  if (matched && sigmi2 == 0.0) sigmi2 = sigma2;
   if (sigma1 < 0.0) {
     std::cout << "Invalid instrument noise level, band 1: must be >= 0.0 "
 	      << "but is: " << sigma1 << std::endl;
@@ -601,8 +611,8 @@ int runSimDouble(int argc, char **argv) {
     std::cout << "Invalid n0rangefrac: must be < 1" << std::endl;
     return 1;
   }
-  if (filtscale < 0.0) {
-    std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
+  if (filterscale < 0.0) {
+    std::cout << "Invalid (negative) filter scale: " << filterscale << std::endl;
     return 1;
   }
   if (qfactor < 0.0) {
@@ -610,29 +620,58 @@ int runSimDouble(int argc, char **argv) {
 	      << qfactor << std::endl;
     return 1;
   }
+
+
+  // Set up filtering parameters.  Rather complex
+  // if matched filtering.  The idea is to use
+  // the same filter in both bands unless the caller
+  // has specified one of the single band variables
+  //  (sigma_matched1, sigc1, sigma_matched2, sigc2)
   if (matched) {
-    if (sigmi1 == 0) {
-      std::cout << "Invalid (non-positive) sigma_matched1 for matched filtering"
-		<< std::endl;
-      return 1;
-    }
-    if (sigmi2 == 0) {
-      std::cout << "Invalid (non-positive) sigma_matched2 for matched filtering"
-		<< std::endl;
-      return 1;
-    }
-    if (sigmc1 <= 0.0) {
-      std::cout << "Invalid (non-positive) sigc1 for matched filter"
-		<< std::endl;
-      return 1;
-    }
-    if (sigmc2 <= 0.0) {
-      std::cout << "Invalid (non-positive) sigc2 for matched filter"
-		<< std::endl;
-      return 1;
+    if (single_filt) {
+      // Same filter for both bands.  Set into band 1 variables
+      if (sigm == 0) sigm1 = sigma1; else sigm1 = sigm;
+      sigc1 = sigc;
+      if (sigc1 <= 0.0) {
+	std::cout << "Invalid sigma_confusion for single matched filter: "
+		  << sigc1 << std::endl;
+	return 1;
+      }
+      if (sigm1 <= 0.0) {
+	std::cout << "Invalid sigma_instrument for single matched filter: "
+		  << sigm1 << std::endl;
+	return 1;
+      }
+    } else {
+      // Different filters for each band.  More complex
+      if (sigm1 == 0) sigm1 = sigma1;
+      if (sigm2 == 0) sigm2 = sigma2;
+      if (sigc1 == 0) sigc1 = sigc;
+      if (sigc2 == 0) sigc2 = sigc;
+      if (sigc1 <= 0.0) {
+	std::cout << "Invalid sigma_confusion1 for double matched filters: "
+		  << sigc1 << std::endl;
+	return 1;
+      }
+      if (sigc2 <= 0.0) {
+	std::cout << "Invalid sigma_confusion2 for double matched filters: "
+		  << sigc2 << std::endl;
+	return 1;
+      }
+      if (sigm1 <= 0.0) {
+	std::cout << "Invalid sigma_instrument1 for double matched filter: "
+		  << sigm1 << std::endl;
+	return 1;
+      }
+      if (sigm2 <= 0.0) {
+	std::cout << "Invalid sigma_instrument2 for double matched filter: "
+		  << sigm2 << std::endl;
+	return 1;
+      }
     }
   }
 
+  // Main execution block
   try {
     double base_n0;
     if (n0 == 0 || verbose) {
@@ -666,17 +705,23 @@ int runSimDouble(int argc, char **argv) {
 	printf("   esmooth2:           %0.2f\n",esmooth2);
       if (oversample > 1)
 	printf("   oversampling:       %u\n",oversample);
-      if (filtscale > 0) {
-	printf("   filtering scale:    %0.1f\n", filtscale);
+      if (filterscale > 0) {
+	printf("   filtering scale:    %0.1f\n", filterscale);
 	printf("   filtering q:        %0.2f\n", qfactor);
       }
       if (matched > 0) {
-	printf("   matched fwhm1:      %0.1f\n", fwhm1);
-	printf("   matched fwhm2:      %0.1f\n", fwhm2);
-	printf("   matched sigi1:      %0.4f\n", sigmi1);
-	printf("   matched sigi2:      %0.4f\n", sigmi2);
-	printf("   matched sigc1:      %0.4f\n", sigmc1);
-	printf("   matched sigc2:      %0.4f\n", sigmc2);
+	if (single_filt) {
+	  printf("   matched fwhm:       %0.1f\n", fwhm1);
+	  printf("   matched sigi:       %0.4f\n", sigm1);
+	  printf("   matched sigc:       %0.4f\n", sigc1);
+	} else {
+	  printf("   matched fwhm1:      %0.1f\n", fwhm1);
+	  printf("   matched fwhm2:      %0.1f\n", fwhm2);
+	  printf("   matched sigm1:      %0.4f\n", sigm1);
+	  printf("   matched sigm2:      %0.4f\n", sigm2);
+	  printf("   matched sigc1:      %0.4f\n", sigc1);
+	  printf("   matched sigc2:      %0.4f\n", sigc2);
+	}
       }
       if (sparcity > 1)
 	printf("   sparcity:           %u\n", sparcity);
@@ -692,8 +737,8 @@ int runSimDouble(int argc, char **argv) {
 
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
-			 nfwhm, sigma1, sigma2, filtscale, qfactor, 
-			 matched, sigmi1, sigmi2, sigmc1, sigmc2,
+			 nfwhm, sigma1, sigma2, single_filt, filterscale, qfactor, 
+			 matched, sigm1, sigm2, sigc1, sigc2,
 			 nbeambins, n0, esmooth1, esmooth2, oversample, 
 			 powerspecfile, sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);

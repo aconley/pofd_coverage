@@ -31,14 +31,16 @@ static struct option long_options[] = {
   {"sigma1", required_argument, 0, '3'},
   {"sigma2", required_argument, 0, '4'},
   {"sigc", required_argument, 0, '6'},
-  {"sigi", required_argument, 0, '5'},
-  {"sigi1", required_argument, 0, '7'},
-  {"sigi2", required_argument, 0, '8'},
+  {"sigc1", required_argument, 0, '.'},
+  {"sigc2", required_argument, 0, '/'},
+  {"sigma_matched", required_argument, 0, '5'},
+  {"sigma_matched1", required_argument, 0, '7'},
+  {"sigma_matched2", required_argument, 0, '8'},
   {"verbose", no_argument, 0, 'v'},
   {"version", no_argument, 0, 'V'},
   {0,0,0,0}
 };
-char optstring[] = "de:1:2:F:hmn:o:p:P:q:S:s:3:4:5:6:7:8:vV";
+char optstring[] = "de:1:2:F:hmn:o:p:P:q:S:s:3:4:5:6:.:/:7:8:vV";
 
 
 int makeSimSingle(int argc, char **argv) {
@@ -251,11 +253,15 @@ int makeSimDouble(int argc, char **argv) {
 
   unsigned int n1, n2;
   double n0, pixsize, sigma1, sigma2, fwhm1, fwhm2;
-  double filterscale, qfactor, sigi1, sigi2, sigc; //Filtering params
+  // Filtering params
+  bool matched, single_filt;
+  double filterscale, qfactor; // Hipass
+  double sigm1, sigm2, sigc1, sigc2, sigm, sigc; // Matched
+
   double extra_smooth1, extra_smooth2; //Additional smoothing
   std::string modelfile, outputfile, powspecfile, probimfile; 
   unsigned long long int user_seed;
-  bool verbose, have_user_seed, matched;
+  bool verbose, have_user_seed;
   unsigned int oversample, nfinal;
 
   //Defaults
@@ -266,9 +272,13 @@ int makeSimDouble(int argc, char **argv) {
   filterscale         = 0.0;
   qfactor             = 0.2;
   matched             = false;
-  sigc                = 0.006;
-  sigi1               = 0.0; // Means: use sigma1
-  sigi2               = 0.0; // Means: use sigma2
+  single_filt         = true;
+  sigc                = 0.006; // Value if using single filt
+  sigc1               = 0.0; // Value if multiple filts; 0 means don't use
+  sigc2               = 0.0; // Value if multiple filts; 0 means don't use
+  sigm                = 0; // Value if using single filt; if 0, use sigi1
+  sigm1               = 0.0; // Value if multiple filts; 0 means use sigma1 if mult
+  sigm2               = 0.0; // Value if multiple filts; 0 means use sigma2 if mult
   verbose             = false;
   user_seed           = 0;
   have_user_seed      = false;
@@ -323,11 +333,24 @@ int makeSimDouble(int argc, char **argv) {
     case '6':
       sigc = atof(optarg);
       break;
+    case '.':
+      sigc1 = atof(optarg);
+      single_filt = false;
+      break;
+    case '/':
+      sigc2 = atof(optarg);
+      single_filt = false;
+      break;
+    case '5':
+      sigm = atof(optarg);
+      break;
     case '7':
-      sigi1 = atof(optarg);
+      sigm1 = atof(optarg);
+      single_filt = false;
       break;
     case '8':
-      sigi2 = atof(optarg);
+      sigm2 = atof(optarg);
+      single_filt = false;
       break;
     case 'v':
       verbose = true;
@@ -349,8 +372,6 @@ int makeSimDouble(int argc, char **argv) {
   n2         = atoi(argv[optind + 6]);
   outputfile = std::string(argv[optind + 7]);
 
-  if (matched && (sigi1 == 0)) sigi1 = sigma1;
-  if (matched && (sigi2 == 0)) sigi2 = sigma2;
 
   if (n0 < 0.0) {
     std::cout << "Invalid (negative) n0: " << n0 << std::endl;
@@ -399,29 +420,61 @@ int makeSimDouble(int argc, char **argv) {
 	      << qfactor << std::endl;
     return 1;
   }
-  if (matched) {
-    if (sigi1 <= 0.0) {
-      std::cout << "Invalid (non-positive) sigi1 for matched filter"
-		<< std::endl;
-      return 1;
-    }
-    if (sigi2 <= 0.0) {
-      std::cout << "Invalid (non-positive) sigi2 for matched filter"
-		<< std::endl;
-      return 1;
-    }
-    if (sigc <= 0.0) {
-      std::cout << "Invalid (non-positive) sigc for matched filter"
-		<< std::endl;
-      return 1;
-    }
-  }
   if ((!probimfile.empty()) && powspecfile.empty()) {
     std::cout << "Specified output of probim, but didn't provide clustering."
 	      << std::endl;
     return 1;
   }
 
+  // Set up filtering parameters.  Rather complex
+  // if matched filtering.  The idea is to use
+  // the same filter in both bands unless the caller
+  // has specified one of the single band variables
+  //  (sigma_matched1, sigc1, sigma_matched2, sigc2)
+  if (matched) {
+    if (single_filt) {
+      // Same filter for both bands
+      if (sigm == 0) sigm = sigma1;
+      if (sigc <= 0.0) {
+	std::cout << "Invalid sigma_confusion for single matched filter: "
+		  << sigc << std::endl;
+	return 1;
+      }
+      if (sigm <= 0.0) {
+	std::cout << "Invalid sigma_instrument for single matched filter: "
+		  << sigm << std::endl;
+	return 1;
+      }
+    } else {
+      // Different filters for each band.  More complex
+      if (sigm1 == 0) sigm1 = sigma1;
+      if (sigm2 == 0) sigm2 = sigma2;
+      if (sigc1 == 0) sigc1 = sigc;
+      if (sigc2 == 0) sigc2 = sigc;
+      if (sigc1 <= 0.0) {
+	std::cout << "Invalid sigma_confusion1 for double matched filters: "
+		  << sigc1 << std::endl;
+	return 1;
+      }
+      if (sigc2 <= 0.0) {
+	std::cout << "Invalid sigma_confusion2 for double matched filters: "
+		  << sigc2 << std::endl;
+	return 1;
+      }
+      if (sigm1 <= 0.0) {
+	std::cout << "Invalid sigma_instrument1 for double matched filter: "
+		  << sigm1 << std::endl;
+	return 1;
+      }
+      if (sigm2 <= 0.0) {
+	std::cout << "Invalid sigma_instrument2 for double matched filter: "
+		  << sigm2 << std::endl;
+	return 1;
+      }
+    }
+  }
+
+  // Main execution block
   try {
     numberCountsDouble model(modelfile);
     if (n0 == 0) {
@@ -432,18 +485,41 @@ int makeSimDouble(int argc, char **argv) {
       std::cout << "Base model n0: " << model.getBaseN0()
 		<< " Your value: " << n0 << std::endl;
 
+    // Set up filtering
     fourierFilter *filt1 = NULL, *filt2 = NULL;
     if (filterscale > 0) {
       if (matched) {
-	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
-				  filterscale, qfactor, true);
-	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
-				  filterscale, qfactor, true);
-      } else
+	if (single_filt) {
+	  if (verbose)
+	    std::cout << "Using single matched + highpass filter" 
+		      << std::endl;
+	  filt1 = new fourierFilter(pixsize, fwhm1, sigm, sigc,
+				    filterscale, qfactor, true);
+	} else {
+	  if (verbose)
+	    std::cout << "Using double matched + highpass filter" 
+		      << std::endl;
+	  filt1 = new fourierFilter(pixsize, fwhm1, sigm1, sigc1,
+				    filterscale, qfactor, true);
+	  filt2 = new fourierFilter(pixsize, fwhm2, sigm2, sigc2,
+				    filterscale, qfactor, true);
+	} 
+      } else {
+	if (verbose)
+	  std::cout << "Using single highpass filter" << std::endl;
 	filt1 = new fourierFilter(pixsize, filterscale, qfactor, true);
+      }
     } else if (matched) {
-      filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc, true);
-      filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc, true);
+      if (single_filt) {
+	if (verbose)
+	    std::cout << "Using single matched filter" << std::endl;
+	filt1 = new fourierFilter(pixsize, fwhm1, sigm, sigc, true);
+      } else {
+	if (verbose)
+	    std::cout << "Using double matched filter" << std::endl;
+	filt1 = new fourierFilter(pixsize, fwhm1, sigm1, sigc1, true);
+	filt2 = new fourierFilter(pixsize, fwhm2, sigm2, sigc2, true);
+      }
     }
 
     simImageDouble dim(n1, n2, pixsize, fwhm1, fwhm2, sigma1, sigma2, 
@@ -587,6 +663,25 @@ int main( int argc, char** argv ) {
       std::cout << "\tbands are written to the 0th and 1st extension,"
 		<< " respectively." << std::endl;
       std::cout << std::endl;
+      std::cout << "\tA variety of filtering options are supported: highpass "
+		<< " filtering" << std::endl;
+      std::cout << "\twith an apodized edge, matched filtering, and the " 
+		<< "combination" << std::endl;
+      std::cout << "\tof both.  This is relatively simple in the one-band case."
+		<< " In" << std::endl;
+      std::cout << "\tthe two band case, the default is to use the same filter"
+		<< " in" << std::endl;
+      std::cout << "\tboth bands for simplicity.  With matched filtering, this"
+		<< " is" << std::endl;
+      std::cout << "\tbased on the band 1 beam.  To force different filters in"
+		<< " each" << std::endl;
+      std::cout << "\tband (which uses the FWHM for each band), the user should"
+		<< " specify" << std::endl;
+      std::cout << "\tone or more of --sigc1, --sigc2, --sigma_matched1, "
+		<< "--sigma_matched2," << std::endl;
+      std::cout << "\tand if this isn't desired stick to --sigc, --sigma_matched."
+		<< std::endl;
+      std::cout << std::endl;
       std::cout << "OPTIONS" << std::endl;
       std::cout << "\t-h --help" << std::endl;
       std::cout << "\t\tPrint this message and exit." << std::endl;
@@ -638,8 +733,24 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tUse this seed for the random number generator." 
 		<< std::endl;
       std::cout << "\t--sigc VALUE" << std::endl;
-      std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
-		<< " 0.006)" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, in Jy.  This"
+		<< std::endl;
+      std::cout << "\t\tis the value applied if the same filter is applied in"
+		<< "both" << std::endl;
+      std::cout << "\t\tbands in the 2D case, but can be overridden on a per-band"
+		<< std::endl;
+      std::cout << "\t\tbasis by sigc1, sigc2 (Def: 0.006)." << std::endl;
+      std::cout << "\t--sigma_matched VALUE" << std::endl;
+      std::cout << "\t\tInstrument noise for matched filtering, in Jy.  This"
+		<< std::endl;
+      std::cout << "\t\tis the value applied if the same filter is applied in"
+		<< "both" << std::endl;
+      std::cout << "\t\tbands in the 2D case, but can be overridden on a per-band"
+		<< std::endl;
+      std::cout << "\t\tbasis by sigma_matched1, sigma_mached2.  If not set, the "
+		<< "actual" << std::endl;
+      std::cout << "\t\tinstrument noise is used (in band 1 for the 2D case)." 
+		<< std::endl;
       std::cout << "\t-v, --verbose" << std::endl;
       std::cout << "\t\tPrint informational messages while running"
 		<< std::endl;
@@ -653,10 +764,6 @@ int main( int argc, char** argv ) {
 		<< std::endl;
       std::cout << "\t-s, --sigma NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise (def: 0)." << std::endl;
-      std::cout << "\t--sigi VALUE" << std::endl;
-      std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def: "
-		<< std::endl;
-      std::cout << "\t\tThe instrument noise)" << std::endl;
       std::cout << "TWO-D MODEL OPTIONS" << std::endl;
       std::cout << "\t--extra_smooth1 FWHM" << std::endl;
       std::cout << "\t\tApply additional smoothing in band 1 with a Gaussian of"
@@ -674,14 +781,29 @@ int main( int argc, char** argv ) {
       std::cout << "\t--sigma2 NOISE" << std::endl;
       std::cout << "\t\tThe assumed per-pixel noise, band 2 (def: 0)." 
 		<< std::endl;
-      std::cout << "\t--sigi1 VALUE" << std::endl;
+      std::cout << "\t--sigc1 VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, band 1, in Jy."
+		<< std::endl;
+      std::cout << "\t\tIf this is set, then different filters are used in each"
+		<< " band." << std::endl;
+      std::cout << "\t--sigc2 VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise for matched filtering, band 2, in Jy."
+		<< std::endl;
+      std::cout << "\t\tIf this is set, then different filters are used in each"
+		<< " band." << std::endl;
+      std::cout << "\t\t(Def: The instrument noise in band 1)." << std::endl;
+      std::cout << "\t--sigma_matched1 VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, band 1, in Jy."
 		<< std::endl;
-      std::cout << "\t\t(Def: The instrument noise in band 1)." << std::endl;
-      std::cout << "\t--sigi2 VALUE" << std::endl;
+      std::cout << "\t\tIf this is set, then different filters are used in each"
+		<< " band." << std::endl;
+      std::cout << "\t\tDefaults to sigma1 if a value is required." << std::endl;
+      std::cout << "\t--sigma_matched2 VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, band 2, in Jy."
 		<< std::endl;
-      std::cout << "\t\t(Def: The instrument noise in band 2)." << std::endl;
+      std::cout << "\t\tIf this is set, then different filters are used in each"
+		<< " band." << std::endl;
+      std::cout << "\t\tDefaults to sigma2 if a value is required." << std::endl;
       return 0;
       break;
     case 'd':

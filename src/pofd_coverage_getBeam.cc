@@ -29,6 +29,8 @@ static struct option long_options[] = {
   {"oversamp", required_argument, 0, 'o'},
   {"qfactor", required_argument, 0, 'q'},
   {"sigc", required_argument, 0, '3'},
+  {"sigc1", required_argument, 0, '6'},
+  {"sigc2", required_argument, 0, '7'},
   {"sigi", required_argument, 0, '2'},
   {"sigi1", required_argument, 0, '4'},
   {"sigi2", required_argument, 0, '5'},
@@ -36,7 +38,7 @@ static struct option long_options[] = {
   {"version", no_argument, 0, 'V'},
   {0, 0, 0, 0}
 };
-char optstring[] = "dhHiF:mN:1:0:o:q:2:3:4:5:vV";
+char optstring[] = "dhHiF:mN:1:0:o:q:2:3:4:5:6:7:vV";
 
 ///////////////////////////////
 
@@ -226,23 +228,30 @@ int getBeamSingle(int argc, char **argv) {
 
 int getBeamDouble(int argc, char **argv) {
 
-  bool verbose, histogram, inverse, matched;
+  bool verbose, histogram, inverse;
   unsigned int nbins, oversamp;
   double fwhm1, fwhm2, nfwhm, pixsize, nkeep;
-  double filterscale, qfactor, sigi1, sigi2, sigc; // Filtering params
   std::string outputfile; //Ouput pofd option
+  // Filtering params
+  bool matched, single_filt;
+  double filterscale, qfactor;
+  double sigi, sigc, sigi1, sigi2, sigc1, sigc2;
 
   //Defaults
   nbins               = 150;
   nfwhm               = 3.5;
   verbose             = false;
   histogram           = false;
+  single_filt         = false;
   filterscale         = 0.0;
   qfactor             = 0.2;
   matched             = false;
   sigc                = 0.006;
-  sigi1               = 0.002;
-  sigi2               = 0.002;
+  sigc1               = 0.0;  // Use sigc if not set
+  sigc2               = 0.0;  // Use sigc if not set
+  sigi                = 0.002; 
+  sigi1               = 0.0;  // Use sigi if not set
+  sigi2               = 0.0;  // Use sigi if not set
   oversamp            = 1;
   inverse             = false;
   nkeep               = 0;
@@ -283,11 +292,24 @@ int getBeamDouble(int argc, char **argv) {
     case '3':
       sigc = atof(optarg);
       break;
+    case '6':
+      sigc1 = atof(optarg);
+      single_filt = false;
+      break;
+    case '7':
+      sigc2 = atof(optarg);
+      single_filt = false;
+      break;
+    case '2':
+      sigi = atof(optarg);
+      break;
     case '4':
       sigi1 = atof(optarg);
+      single_filt = false;
       break;
     case '5':
       sigi2 = atof(optarg);
+      single_filt = false;
       break;
     case 'v':
       verbose = true;
@@ -343,24 +365,54 @@ int getBeamDouble(int argc, char **argv) {
 	      << qfactor << std::endl;
     return 1;
   }
+
+  // Set up filtering parameters.  Rather complex
+  // if matched filtering.  The idea is to use
+  // the same filter in both bands unless the caller
+  // has specified one of the single band variables
+  //  (sigi1, sigc1, sigi2, sigc2)
   if (matched) {
-    if (sigi1 <= 0.0) {
-      std::cout << "Invalid (non-positive) sigi1 for matched filter"
-		<< std::endl;
-      return 1;
-    }
-    if (sigi2 <= 0.0) {
-      std::cout << "Invalid (non-positive) sigi2 for matched filter"
-		<< std::endl;
-      return 1;
-    }
-    if (sigc <= 0.0) {
-      std::cout << "Invalid (non-positive) sigc for matched filter"
-		<< std::endl;
-      return 1;
+    if (single_filt) {
+      if (sigc <= 0.0) {
+	std::cout << "Invalid sigma_confusion for single matched filter: "
+		  << sigc << std::endl;
+	return 1;
+      }
+      if (sigi <= 0.0) {
+	std::cout << "Invalid sigma_instrument for single matched filter: "
+		  << sigi << std::endl;
+	return 1;
+      }
+    } else {
+      // Different filters for each band.  More complex
+      if (sigi1 == 0) sigi1 = sigi;
+      if (sigi2 == 0) sigi2 = sigi;
+      if (sigc1 == 0) sigc1 = sigc;
+      if (sigc2 == 0) sigc2 = sigc;
+      if (sigc1 <= 0.0) {
+	std::cout << "Invalid sigma_confusion1 for double matched filters: "
+		  << sigc1 << std::endl;
+	return 1;
+      }
+      if (sigc2 <= 0.0) {
+	std::cout << "Invalid sigma_confusion2 for double matched filters: "
+		  << sigc2 << std::endl;
+	return 1;
+      }
+      if (sigi1 <= 0.0) {
+	std::cout << "Invalid sigma_instrument1 for double matched filter: "
+		  << sigi1 << std::endl;
+	return 1;
+      }
+      if (sigi2 <= 0.0) {
+	std::cout << "Invalid sigma_instrument2 for double matched filter: "
+		  << sigi2 << std::endl;
+	return 1;
+      }
     }
   }
 
+  // Main execution block
   try {
     doublebeam bm(fwhm1, fwhm2);
 
@@ -378,33 +430,52 @@ int getBeamDouble(int argc, char **argv) {
 	printf("     filter q:          %0.2f\n", qfactor);
       }
       if (matched) {
-	printf(" matched fwhm1:         %0.1f\n", dpr.first);
-	printf(" matched fwhm2:         %0.1f\n", dpr.second);
-	printf(" matched sigi1:         %0.4f\n", sigi1);
-	printf(" matched sigi2:         %0.4f\n", sigi2);
-	printf(" matched sigc:          %0.4f\n", sigc);
+	if (single_filt) {
+	  printf(" matched fwhm:          %0.1f\n", dpr.first);
+	  printf(" matched sigi:          %0.4f\n", sigi);
+	  printf(" matched sigc:          %0.4f\n", sigc);
+	} else {
+	  printf(" matched fwhm1:         %0.1f\n", dpr.first);
+	  printf(" matched fwhm2:         %0.1f\n", dpr.second);
+	  printf(" matched sigi1:         %0.4f\n", sigi1);
+	  printf(" matched sigi2:         %0.4f\n", sigi2);
+	  printf(" matched sigc1:         %0.4f\n", sigc1);
+	  printf(" matched sigc2:         %0.4f\n", sigc2);
+	}
       }
       if (oversamp != 1)
 	printf("    oversamp:          %u\n", oversamp);
       if (inverse) printf("Returning inverse beam\n");
       if (histogram) printf("Returning histogrammed beam\n");
     }
-
+    
+    // Set up filters
     fourierFilter *filt1 = NULL, *filt2 = NULL;
     if (filterscale > 0) {
       if (matched) {
-	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
-				  filterscale, qfactor, true);
-	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
-				  filterscale, qfactor, true);
-      } else
+	// Both highpass and matched
+	if (single_filt) {
+	  filt1 = new fourierFilter(pixsize, fwhm1, sigi, sigc,
+				    filterscale, qfactor, true);
+	} else {
+	  filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc1,
+				    filterscale, qfactor, true);
+	  filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc2,
+				    filterscale, qfactor, true);
+	}
+      } else // Just highpass, can always use one filter
 	filt1 = new fourierFilter(pixsize, filterscale, qfactor, true);
     } else if (matched) {
-      filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc, true);
-      filt2 = new fourierFilter(pixsize, fwhm1, sigi2, sigc, true);
+      if (single_filt) {
+	filt1 = new fourierFilter(pixsize, fwhm1, sigi, sigc, true);
+      } else {
+	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc1, true);
+	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc2, true);
+      }
     }
+
+    // Histogramming and output
     if (histogram) {
-      // Get histogrammed beam
       doublebeamHist bmhist(nbins);
       bmhist.fill(bm, nfwhm, pixsize, inverse, oversamp, filt1, filt2, nkeep);
       // Write
@@ -416,7 +487,7 @@ int getBeamDouble(int argc, char **argv) {
     if (filt1 != NULL) delete filt1; 
     if (filt2 != NULL) delete filt2; 
 
-  } catch ( const pofdExcept& ex ) {
+  } catch (const pofdExcept& ex) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
     return 8;
@@ -459,7 +530,11 @@ int main( int argc, char** argv ) {
       std::cout << "\t    outfile" << std::endl; 
       std::cout << std::endl;
       std::cout << "DESCRIPTION" << std::endl;
-      std::cout << "\tWrites the beam out to a FITS file." << std::endl;
+      std::cout << "\tWrites the beam out to a FITS file.  The filtering options" 
+		<< std::endl;
+      std::cout << "\twork the same way as for pofd_coverage_makeSim; see that"
+		<< " documentation" << std::endl;
+      std::cout << "\tfor further details." << std::endl;
       std::cout << std::endl;
       std::cout << "OPTIONS" << std::endl;
       std::cout << "\t-d, --twod" << std::endl;
@@ -515,6 +590,12 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
 		<< " 0.002)" << std::endl;
       std::cout << "TWO-DIMENSIONAL OPTIONS" << std::endl;
+      std::cout << "\t--sigc1 VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise, band 1 for matched filtering, in Jy. (Def:"
+		<< " sigc)" << std::endl;
+      std::cout << "\t--sigc2 VALUE" << std::endl;
+      std::cout << "\t\tConfusion noise, band 2 for matched filtering, in Jy. (Def:"
+		<< " sigc)" << std::endl;
       std::cout << "\t--sigi1 VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, band 1, in "
 		<< std::endl;

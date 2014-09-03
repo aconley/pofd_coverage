@@ -112,12 +112,12 @@ def evaluate_sim2D(filenames, donorm=True):
     return retdict
 
 
-def printsum(info, twod=False):
+def printsum(info, twod=False, maxallowlen=34):
     """ Print summary of analysis"""
 
     # Figure out longest key name
     maxstrlen = max([len(k) for k in info])+1
-    maxstrlen = 34 if maxstrlen > 34 else maxstrlen
+    maxstrlen = maxallowlen if maxstrlen > maxallowlen else maxstrlen
 
     # Figure out if norm has been done
     #  It feels like there should be a better way to get
@@ -134,7 +134,7 @@ def printsum(info, twod=False):
             fstr = "%-{0:d}s".format(maxstrlen)
             fstr += " %6.4f %7.2f %6.2f %6.2f %7g %6.1f %7.2f %5i"
             for key in info:
-                print(fstr % (key, info[key]['sigma_inst'],
+                print(fstr % (key[:maxstrlen], info[key]['sigma_inst'],
                               info[key]['norm'], info[key]['norm_plus'],
                               info[key]['norm_minus'], info[key]['n0'],
                               info[key]['n0_scat'],
@@ -147,7 +147,7 @@ def printsum(info, twod=False):
             fstr = "%-{0:d}s".format(maxstrlen)
             fstr += " %7.5f %7.5f %7.2f %6.2f %6.2f %7g %6.1f %7.2f %5i"
             for key in info:
-                print(fstr % (key, info[key]['sigma_inst1'],
+                print(fstr % (key[:maxstrlen], info[key]['sigma_inst1'],
                               info[key]['sigma_inst2'],
                               info[key]['norm'], info[key]['norm_plus'],
                               info[key]['norm_minus'], info[key]['n0'],
@@ -162,7 +162,7 @@ def printsum(info, twod=False):
             fstr = "%-{0:d}s".format(maxstrlen)
             fstr += " %7.5f %7g %6.1f %7.2f %7.4f %5i"
             for key in info:
-                print(fstr % (key, info[key]['sigma_inst'],
+                print(fstr % (key[:maxstrlen], info[key]['sigma_inst'],
                               info[key]['n0'], info[key]['n0_scat'],
                               info[key]['n0_bias'],
                               info[key]['n0_bias'] / info[key]['n0'] * 100.0,
@@ -175,7 +175,7 @@ def printsum(info, twod=False):
             fstr = "%-{0:d}s".format(maxstrlen)
             fstr += " %7.5f %7.5f %7g %6.1f %7.2f %7.4f %5i"
             for key in info:
-                print(fstr % (key, info[key]['sigma_inst1'],
+                print(fstr % (key[:maxstrlen], info[key]['sigma_inst1'],
                               info[key]['sigma_inst2'],
                               info[key]['n0'], info[key]['n0_scat'],
                               info[key]['n0_bias'],
@@ -290,6 +290,8 @@ if __name__ == "__main__":
              ' if needed'
     parser.add_argument('-i', '--inputfile', action='store',
                         default=None, help=msgstr)
+    parser.add_argument('-m', '--maxallowlen', action='store', default=34,
+                        type=int, help="Max printed desciptive name")
     parser.add_argument('-n', '--nonorm', action='store_true', default=False,
                         help="Don't compute normalization stats")
     parser.add_argument('--noprint', action='store_true',
@@ -348,4 +350,4 @@ if __name__ == "__main__":
     if not results.noprint:
         if results.verbose and not results.filename is None:
             print("#" * 60)
-        printsum(fitinfo, twod=results.twod)
+        printsum(fitinfo, twod=results.twod, maxallowlen=results.maxallowlen)

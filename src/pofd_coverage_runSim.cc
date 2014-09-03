@@ -483,6 +483,9 @@ int runSimDouble(int argc, char **argv) {
     case '$':
       sigma2 = atof(optarg);
       break;
+    case ',':
+      sigc = atof(optarg);
+      break;
     case '.':
       sigc1 = atof(optarg);
       single_filt = false;
@@ -490,6 +493,9 @@ int runSimDouble(int argc, char **argv) {
     case '/':
       sigc2 = atof(optarg);
       single_filt = false;
+      break;
+    case '7':
+      sigm = atof(optarg);
       break;
     case '9':
       sigm1 = atof(optarg);

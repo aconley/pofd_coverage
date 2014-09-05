@@ -525,7 +525,7 @@ int main( int argc, char** argv ) {
 		<< " outfile" << std::endl; 
       std::cout << std::endl;
       std::cout << "\t Two-dimensional case:" << std::endl;
-      std::cout << "\t  pofd_coverage_getPD [options] -d fwhm1 fwhm2 pixsize"
+      std::cout << "\t  pofd_coverage_getBeam [options] -d fwhm1 fwhm2 pixsize"
 		<< std::endl;
       std::cout << "\t    outfile" << std::endl; 
       std::cout << std::endl;

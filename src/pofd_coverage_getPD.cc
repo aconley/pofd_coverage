@@ -153,11 +153,6 @@ int getPDSingle(int argc, char **argv) {
 	      << std::endl;
     return 1;
   }
-  if (nflux & (nflux-1)) {
-    std::cout << "nflux must be power of 2" << std::endl;
-    std::cout << " yours is: " << nflux << std::endl;
-    return 1;
-  }
   if (sigma < 0.0) {
     std::cout << "Invalid noise level: must be >= 0.0" << std::endl;
     return 1;
@@ -440,11 +435,6 @@ int getPDDouble(int argc, char **argv) {
   if (nflux == 0) {
     std::cout << "Error -- number of fluxes requested is zero."
 	      << std::endl;
-    return 1;
-  }
-  if (nflux & (nflux-1)) {
-    std::cout << "nflux must be power of 2" << std::endl;
-    std::cout << " yours is: " << nflux << std::endl;
     return 1;
   }
   if (sigma1 < 0.0) {

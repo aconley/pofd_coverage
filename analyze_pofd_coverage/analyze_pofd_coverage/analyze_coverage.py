@@ -112,11 +112,11 @@ def evaluate_sim2D(filenames, donorm=True):
     return retdict
 
 
-def printsum(info, twod=False, maxallowlen=34):
+def printsum(names, info, twod=False, maxallowlen=34):
     """ Print summary of analysis"""
 
     # Figure out longest key name
-    maxstrlen = max([len(k) for k in info])+1
+    maxstrlen = max([len(k) for k in names])+1
     maxstrlen = maxallowlen if maxstrlen > maxallowlen else maxstrlen
 
     # Figure out if norm has been done
@@ -132,8 +132,8 @@ def printsum(info, twod=False, maxallowlen=34):
             print(fstr % ("#name", "sigi", "norm", "norm+", "norm-", "n0",
                           "n0scat", "n0bias", "nsims"))
             fstr = "%-{0:d}s".format(maxstrlen)
-            fstr += " %6.4f %7.2f %6.2f %6.2f %7g %6.1f %7.2f %5i"
-            for key in info:
+            fstr += " %6.4f %7.2f %6.2f %6.2f %7g %6.1f %7.1f %5i"
+            for key in names:
                 print(fstr % (key[:maxstrlen], info[key]['sigma_inst'],
                               info[key]['norm'], info[key]['norm_plus'],
                               info[key]['norm_minus'], info[key]['n0'],
@@ -145,8 +145,8 @@ def printsum(info, twod=False, maxallowlen=34):
             print(fstr % ("#name", "sigi1", "sigi2", "norm", "norm+", "norm-",
                           "n0", "n0scat", "n0bias", "nsims"))
             fstr = "%-{0:d}s".format(maxstrlen)
-            fstr += " %7.5f %7.5f %7.2f %6.2f %6.2f %7g %6.1f %7.2f %5i"
-            for key in info:
+            fstr += " %7.5f %7.5f %7.2f %6.2f %6.2f %7g %6.1f %7.1f %5i"
+            for key in names:
                 print(fstr % (key[:maxstrlen], info[key]['sigma_inst1'],
                               info[key]['sigma_inst2'],
                               info[key]['norm'], info[key]['norm_plus'],
@@ -160,8 +160,8 @@ def printsum(info, twod=False, maxallowlen=34):
             print(fstr % ("#name", "sigi", "n0", "n0scat", "n0bias",
                           "n0bias%", "nsims"))
             fstr = "%-{0:d}s".format(maxstrlen)
-            fstr += " %7.5f %7g %6.1f %7.2f %7.4f %5i"
-            for key in info:
+            fstr += " %7.5f %7g %6.1f %7.1f %7.3f %5i"
+            for key in names:
                 print(fstr % (key[:maxstrlen], info[key]['sigma_inst'],
                               info[key]['n0'], info[key]['n0_scat'],
                               info[key]['n0_bias'],
@@ -173,8 +173,8 @@ def printsum(info, twod=False, maxallowlen=34):
             print(fstr % ("#name", "sigi1", "sigi2", "n0", "n0scat",
                           "n0bias", "n0bias%", "nsims"))
             fstr = "%-{0:d}s".format(maxstrlen)
-            fstr += " %7.5f %7.5f %7g %6.1f %7.2f %7.4f %5i"
-            for key in info:
+            fstr += " %7.5f %7.5f %7g %6.1f %7.1f %7.3f %5i"
+            for key in names:
                 print(fstr % (key[:maxstrlen], info[key]['sigma_inst1'],
                               info[key]['sigma_inst2'],
                               info[key]['n0'], info[key]['n0_scat'],
@@ -225,7 +225,8 @@ def do_analysis(filename, nonorm=False, verbose=False, twod=False,
             print(percstr.format(i + 1, percent, sets[i]))
 
         if sets[i] in fitinfo:
-            print("Warning: will overwrite set info for {0:s}".format(sets[i]))
+            # Skip if already done
+            continue
 
         #Get filenames using glob
         filelist = []
@@ -247,7 +248,7 @@ def do_analysis(filename, nonorm=False, verbose=False, twod=False,
         else:
             fitinfo[sets[i]] = evaluate_sim1D(filelist, donorm=donorm)
 
-    return fitinfo
+    return sets, fitinfo
 
 if __name__ == "__main__":
     import argparse
@@ -325,17 +326,18 @@ if __name__ == "__main__":
             print("Reading previous results from {0:s}".
                   format(results.inputfile))
         with open(results.inputfile, 'rb') as fl:
+            fitlist = pickle.load(fl)
             fitinfo = pickle.load(fl)
-        if not isinstance(fitinfo, OrderedDict):
-            fitinfo = OrderedDict(fitinfo)
     else:
+        fitlist = []
         fitinfo = OrderedDict()
 
-    #Read in the file of outputs to process
+    # Process new files
     if not results.filename is None:
-        newinfo = do_analysis(results.filename, results.nonorm,
-                              results.verbose, results.twod,
-                              results.datadir)
+        newlist, newinfo = do_analysis(results.filename, results.nonorm,
+                                       results.verbose, results.twod,
+                                       results.datadir)
+        fitlist.extend(newlist)
         fitinfo.update(newinfo)
 
     # Pickle results
@@ -344,10 +346,12 @@ if __name__ == "__main__":
         if results.verbose:
             print("Serializing results to {0:s}".format(results.outfile))
         with open(results.outfile, 'wb') as output:
+            pickle.dump(fitlist, output)
             pickle.dump(fitinfo, output)
 
     # Print
     if not results.noprint:
         if results.verbose and not results.filename is None:
             print("#" * 60)
-        printsum(fitinfo, twod=results.twod, maxallowlen=results.maxallowlen)
+        printsum(fitlist, fitinfo, twod=results.twod,
+                 maxallowlen=results.maxallowlen)

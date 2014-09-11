@@ -870,14 +870,16 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
   }
   
   // Now second dimension.  This one is slower due to stride issues,
-  //  but otherwise is the same
-  for (unsigned int j = 0; j < n; ++j) {
-    cval = 0.5 * pofd[j];
-    for (unsigned int i = 1; i < n - 1; ++i)
-      cval += pofd[i * n + j];
-    cval += 0.5 * pofd[(n - 1) * n + j];
-    rsum[j] = cval;
+  //  but otherwise is the same. Doing the sum in this order is much faster
+  for (unsigned int j = 0; j < n; ++j) rsum[j] = 0.5 * pofd[j]; // i=0
+  for (unsigned int i = 1; i < n - 1; ++i) { // center
+    rowptr = pofd + i * n;
+    for (unsigned int j = 0; j < n; ++j)
+      rsum[j] += rowptr[j];
   }
+  rowptr = pofd + nm1 * n; // i = n-1
+  for (unsigned int j = 0; j < n; ++j)
+    rsum[j] += 0.5 * rowptr[j];
   mdx = nm1; // Curr min index
   minval = maxval = rsum[nm1];
   for (int i = n - 2; i >= 0; --i) {

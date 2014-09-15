@@ -582,28 +582,29 @@ int main( int argc, char** argv ) {
       std::cout << "\t--sigc VALUE" << std::endl;
       std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
 		<< " 0.006)" << std::endl;
-      std::cout << "\t-v, --verbose" << std::endl;
-      std::cout << "\t\tPrint informational messages while running"
-		<< std::endl;
-      std::cout << "ONE-DIMENSIONAL OPTIONS" << std::endl;
       std::cout << "\t--sigi VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
 		<< " 0.002)" << std::endl;
+      std::cout << "\t-v, --verbose" << std::endl;
+      std::cout << "\t\tPrint informational messages while running"
+		<< std::endl;
       std::cout << "TWO-DIMENSIONAL OPTIONS" << std::endl;
       std::cout << "\t--sigc1 VALUE" << std::endl;
-      std::cout << "\t\tConfusion noise, band 1 for matched filtering, in Jy. (Def:"
-		<< " sigc)" << std::endl;
+      std::cout << "\t\tConfusion noise, band 1 for matched filtering, in Jy."
+		<< std::endl;
+      std::cout << "\t\t(Def: sigc)" << std::endl;
       std::cout << "\t--sigc2 VALUE" << std::endl;
-      std::cout << "\t\tConfusion noise, band 2 for matched filtering, in Jy. (Def:"
-		<< " sigc)" << std::endl;
+      std::cout << "\t\tConfusion noise, band 2 for matched filtering, in Jy."
+		<< std::endl;
+      std::cout << "\t\t(Def: sigc)" << std::endl;
       std::cout << "\t--sigi1 VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, band 1, in "
 		<< std::endl;
-      std::cout << "\t\tJy. (Def: 0.002)" << std::endl;
+      std::cout << "\t\tJy. (Def: sigi)" << std::endl;
       std::cout << "\t--sigi2 VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, band 2, in "
 		<< std::endl;
-      std::cout << "\t\tJy. (Def: 0.002)." << std::endl;
+      std::cout << "\t\tJy. (Def: sigi)." << std::endl;
       std::cout << std::endl;
       return 0;
       break;

@@ -347,7 +347,7 @@ void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1,
   double *rptr;  
 
 #ifdef TIMING
-  std::clock_t starttime = std::clock();
+  starttime = std::clock();
 #endif
   model.getR(n, RFlux1, n, RFlux2, bm, rvals);
 #ifdef TIMING

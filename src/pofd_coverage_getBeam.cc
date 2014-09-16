@@ -242,7 +242,7 @@ int getBeamDouble(int argc, char **argv) {
   nfwhm               = 3.5;
   verbose             = false;
   histogram           = false;
-  single_filt         = false;
+  single_filt         = true;
   filterscale         = 0.0;
   qfactor             = 0.2;
   matched             = false;

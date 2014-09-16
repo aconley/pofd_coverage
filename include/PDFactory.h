@@ -71,8 +71,8 @@ class PDFactory {
   void unwrapPD(double n0, unsigned int n, PD& pd) const;
 
 #ifdef TIMING
-  std::clock_t RTime, p0Time, fftTime, posTime, copyTime, normTime;
-  std::clock_t meanTime, logTime;
+  mutable std::clock_t RTime, p0Time, fftTime, posTime, copyTime, normTime;
+  mutable std::clock_t meanTime, logTime, starttime;
 #endif
 
  public :

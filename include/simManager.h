@@ -78,7 +78,7 @@ class simManager {
 
 #ifdef TIMING
   //Timing variables
-  std::clock_t initTime, getTime, getLikeTime;
+  mutable std::clock_t initTime, getTime, getLikeTime, starttime;
 #endif
 
  public:

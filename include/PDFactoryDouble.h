@@ -113,8 +113,8 @@ class PDFactoryDouble {
   void unwrapPD(double n0, unsigned int n, PDDouble& pd) const;
 
 #ifdef TIMING
-  std::clock_t RTime, p0Time, fftTime, posTime, copyTime;
-  std::clock_t normTime, meanTime, logTime;
+  mutable std::clock_t RTime, p0Time, fftTime, posTime, copyTime;
+  mutable std::clock_t normTime, meanTime, logTime, starttime;
 #endif
 
  public :

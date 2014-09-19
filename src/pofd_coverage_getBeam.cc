@@ -558,7 +558,7 @@ int main( int argc, char** argv ) {
 		<< " instrument" << std::endl;
       std::cout << "\t\tand confusion noise controlled by --sigi and --sigc,"
 		<< " or" << std::endl;
-      std::cout << "\t\t--sigi1, --sigi2 and --sigc in 2D." << std::endl;
+      std::cout << "\t\t--sigi[12] and --sigc[12] in 2D." << std::endl;
       std::cout << "\t\tOff by default." << std::endl;
       std::cout << "\t--nbins value" << std::endl;
       std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 120)"

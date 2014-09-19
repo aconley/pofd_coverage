@@ -754,7 +754,16 @@ void simManager::writeToHDF5(const std::string& outputfile) const {
   att_id = H5Acreate2(group_id, "BeamSqPixArea", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
-  H5Aclose(att_id);  
+  H5Aclose(att_id); 
+
+  if (simim.isOversampled()) {
+    utmp = simim.getOversampling();
+    att_id = H5Acreate2(group_id, "Oversampling", H5T_NATIVE_UINT,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
+    H5Aclose(att_id); 
+  }
+ 
   H5Sclose(mems_id);
   H5Gclose(group_id); 
 

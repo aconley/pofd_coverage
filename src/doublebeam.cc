@@ -327,7 +327,7 @@ void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
 			 const fourierFilter* const filter) const {
 
   // pre-filtered beam
-    getRawBeam(band, n, n, pixsize, bm);
+  getRawBeam(band, n, n, pixsize, bm);
 
   // Apply filtering
   if (filter != NULL)
@@ -350,7 +350,7 @@ void doublebeam::getBeam(unsigned int band, unsigned int n1,
 			 const fourierFilter* const filter) const {
 
   // pre-filtered beam
-    getRawBeam(band, n1, n2, pixsize, bm);
+  getRawBeam(band, n1, n2, pixsize, bm);
 
   // Apply filtering
   if (filter != NULL)
@@ -483,7 +483,7 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
   if (f1 != NULL) {
     ubl = true;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
-		   const_cast<char*>("Beam iltered?"), &status);
+		   const_cast<char*>("Beam filtered?"), &status);
     ubl = f1->isHipass();
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIPASS"), &ubl,
 		   const_cast<char*>("Hipass filtered?"), &status);

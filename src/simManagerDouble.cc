@@ -869,6 +869,15 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.second);
   H5Aclose(att_id);
+
+  if (simim.isOversampled()) {
+    utmp = simim.getOversampling();
+    att_id = H5Acreate2(group_id, "Oversampling", H5T_NATIVE_UINT,
+			mems_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
+    H5Aclose(att_id); 
+  }
+
   H5Gclose(group_id);
   H5Sclose(mems_id);
 

@@ -811,13 +811,13 @@ void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
   dat_id = H5Dcreate2(obj_id, "OffsetKnotPositions", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, sigmapos);
+	   H5P_DEFAULT, offsetpos);
   H5Dclose(dat_id);
 
   dat_id = H5Dcreate2(obj_id, "OffsetKnotValues", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, sigmavals);
+	   H5P_DEFAULT, offsetvals);
   H5Dclose(dat_id);
   H5Sclose(mems_id);
 

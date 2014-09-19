@@ -44,3 +44,4 @@ m4/
 missing
 doc/
 analyze_pofd_coverage/build
+analyze_pofd_coverage/analyze_pofd_coverage/__pycache__/

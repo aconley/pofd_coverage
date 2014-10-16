@@ -280,7 +280,7 @@ void positionGeneratorClustered::generate(ran& rangen) {
   // Multiply by the scaling factor
   double val;
   for (unsigned int i = 0; i < nx; ++i)
-    for (unsigned int j = 0; j <= nyhalf; ++j) {
+    for (unsigned int j = 0; j < nyhalf; ++j) {
       val = scl[i * ny + j];
       probarr_trans[i * nyhalf + j][0] *= val;
       probarr_trans[i * nyhalf + j][1] *= val;

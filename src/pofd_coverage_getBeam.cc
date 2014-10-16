@@ -554,12 +554,12 @@ int main( int argc, char** argv ) {
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
 		<< " matching the" << std::endl;
-      std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the "
+      std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the"
 		<< " instrument" << std::endl;
       std::cout << "\t\tand confusion noise controlled by --sigi and --sigc,"
 		<< " or" << std::endl;
-      std::cout << "\t\t--sigi[12] and --sigc[12] in 2D." << std::endl;
-      std::cout << "\t\tOff by default." << std::endl;
+      std::cout << "\t\tpossibly --sigi[12] and --sigc[12] in 2D.  Off by" 
+		<< " default." << std::endl;
       std::cout << "\t--nbins value" << std::endl;
       std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 120)"
 		<< std::endl;

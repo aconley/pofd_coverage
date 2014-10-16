@@ -736,7 +736,7 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tConfusion noise for matched filtering, in Jy.  This"
 		<< std::endl;
       std::cout << "\t\tis the value applied if the same filter is applied in"
-		<< "both" << std::endl;
+		<< " both" << std::endl;
       std::cout << "\t\tbands in the 2D case, but can be overridden on a per-band"
 		<< std::endl;
       std::cout << "\t\tbasis by sigc1, sigc2 (Def: 0.006)." << std::endl;

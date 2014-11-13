@@ -191,7 +191,7 @@ int getBeamSingle(int argc, char **argv) {
       if (histogram) printf("Returning histogrammed beam\n");
     }
 
-    fourierFilter *filt = NULL;
+    fourierFilter *filt = nullptr;
     if (filterscale > 0) {
       if (matched)
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
@@ -211,7 +211,7 @@ int getBeamSingle(int argc, char **argv) {
     } else 
       bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt, inverse);
 
-    if (filt != NULL) delete filt;
+    if (filt != nullptr) delete filt;
   } catch ( const pofdExcept& ex ) {
     std::cout << "Error encountered" << std::endl;
     std::cout << ex << std::endl;
@@ -450,7 +450,7 @@ int getBeamDouble(int argc, char **argv) {
     }
     
     // Set up filters
-    fourierFilter *filt1 = NULL, *filt2 = NULL;
+    fourierFilter *filt1 = nullptr, *filt2 = nullptr;
     if (filterscale > 0) {
       if (matched) {
 	// Both highpass and matched
@@ -484,8 +484,8 @@ int getBeamDouble(int argc, char **argv) {
       bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt1, filt2, 
 		     inverse);
 
-    if (filt1 != NULL) delete filt1; 
-    if (filt2 != NULL) delete filt2; 
+    if (filt1 != nullptr) delete filt1; 
+    if (filt2 != nullptr) delete filt2; 
 
   } catch (const pofdExcept& ex) {
     std::cout << "Error encountered" << std::endl;

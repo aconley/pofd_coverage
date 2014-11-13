@@ -58,7 +58,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   if (oversample > 1)
     gen_image = (double*) fftw_malloc(sizeof(double) * ngen1 * ngen2);
   else
-    gen_image = NULL;
+    gen_image = nullptr;
   pixsize = PIXSIZE;
   pixsize_gen = PIXSIZE / static_cast<double>(oversample);
 
@@ -71,7 +71,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   bin_sparcity = 1;
   bincent0 = 0.0;
   bindelta = 0.0;
-  binval = NULL;
+  binval = nullptr;
 
   sigi_final_computed = false;
   sigi_final_ntrials = 0;
@@ -79,7 +79,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
 
   //Set RNG seed
   unsigned long long int seed;
-  seed = static_cast<unsigned long long int>(time(NULL));
+  seed = static_cast<unsigned long long int>(time(nullptr));
   seed += static_cast<unsigned long long int>(clock());
   rangen.set_seed(seed);
   
@@ -93,7 +93,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   // Position generator if needed; note we generate in non-oversampled
   //  space but use interpolation to get to interpolated space
   use_clustered_pos = false;
-  posgen = NULL;
+  posgen = nullptr;
   if (!powerspecfile.empty()) {
     use_clustered_pos = true;
     posgen = new positionGeneratorClustered(n1, n2, pixsize, powerspecfile);
@@ -119,18 +119,18 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
     ebm.getBeamFac(ngauss_add, pixsize, gauss_add);
   } else {
     ngauss_add = 0;
-    gauss_add = NULL;
+    gauss_add = nullptr;
   }
 }
 
 simImage::~simImage() {
   fftw_free(data);
   fftw_free(work);
-  if (gen_image != NULL) fftw_free(gen_image);
-  if (posgen != NULL) delete posgen;
+  if (gen_image != nullptr) fftw_free(gen_image);
+  if (posgen != nullptr) delete posgen;
   delete[] gauss;
-  if (gauss_add != NULL) delete[] gauss_add;
-  if (binval != NULL) delete[] binval;
+  if (gauss_add != nullptr) delete[] gauss_add;
+  if (binval != nullptr) delete[] binval;
 }
 
 bool simImage::isValid() const {
@@ -364,7 +364,7 @@ double simImage::getFinalNoise(unsigned int ntrials,
   // First decide if we can re-use the previous value
   bool recompute = true;
   if (sigi_final_computed) {
-    if (filt == NULL) recompute = false; // Ignore ntrials -- not needed
+    if (filt == nullptr) recompute = false; // Ignore ntrials -- not needed
     else if (ntrials <= sigi_final_ntrials) recompute = false;
   }
   if (ntrials == 0)
@@ -377,7 +377,7 @@ double simImage::getFinalNoise(unsigned int ntrials,
       sigi_final_computed = true;
       sigi_final_ntrials = ntrials; // Well, not really...
       sigi_final = 0.0;
-    } else if (filt == NULL) {
+    } else if (filt == nullptr) {
       if (esmooth <= 0.0) {
 	sigi_final_computed = true;
 	sigi_final_ntrials = ntrials;
@@ -463,7 +463,7 @@ double simImage::getArea() const {
   \param[in] n0 Number of sources per area to generate
   \param[in] meansub Do mean subtraction.  Note that filtering
              automatically results in mean subtraction.
-  \param[in] Fourier space filter to apply.  If NULL, no filtering.
+  \param[in] Fourier space filter to apply.  If nullptr, no filtering.
   \param[in] bin Create binned image data
   \param[in] sparsebin Only take every this many pixels in binned image.
                          Does nothing if no binning.
@@ -558,7 +558,7 @@ void simImage::realize(const numberCounts& model, double n0,
   isHipass = isMatched = false;
   filtscale = qfactor = matched_fwhm = matched_sigi = matched_sigc =
 	std::numeric_limits<double>::quiet_NaN();
-  if (filt != NULL) {
+  if (filt != nullptr) {
     filt->filter(n1, n2, pixsize, data);
     if (filt->isHipass()) {
       isHipass = true;
@@ -600,7 +600,7 @@ void simImage::applyBinning(unsigned int sparsebin) {
 
   //Only allocated the first time we bin
   //There is no way to change nbins after initialization
-  if (binval == NULL)
+  if (binval == nullptr)
     binval = new unsigned int[nbins];
   std::memset(binval, 0, nbins * sizeof(unsigned int));
 
@@ -939,7 +939,7 @@ void simImage::writePositionGeneratorToHDF5Handle(hid_t obj_id) const {
   hsize_t adims;
   hid_t mems_id, att_id;
   adims = 1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   if (use_clustered_pos) {
     const char postype[] = "Clustered";
     hid_t datatype = H5Tcopy(H5T_C_S1);

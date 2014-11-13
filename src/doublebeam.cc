@@ -67,7 +67,7 @@ void doublebeam::getBeamFac(unsigned int band, unsigned int n, double pixsize,
     errstr << "pixsize (" << pixsize << ") should be positive";
     throw pofdExcept("doublebeam", "getBeamFac", errstr.str(), 3);
   }
-  if (fac == NULL)
+  if (fac == nullptr)
     throw pofdExcept("doublebeam", "getBeamFac", "fac is not allocated", 4);
 
   if (n == 1) {
@@ -129,7 +129,7 @@ void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
     errstr << "pixsize (" << pixsize << ") should be positive";
     throw pofdExcept("doublebeam", "getRawBeam", errstr.str(), 3);
   }
-  if (bm == NULL)
+  if (bm == nullptr)
     throw pofdExcept("doublebeam", "getRawBeam", "bm is not allocated", 4);
 
   if ((n1 == 1) && (n2 == 1)) {
@@ -241,7 +241,7 @@ void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
     errstr << "oversampling (" << oversamp << ") should be odd";
     throw pofdExcept("doublebeam", "getRawBeam", errstr.str(), 5);
   }
-  if (bm == NULL)
+  if (bm == nullptr)
     throw pofdExcept("doublebeam", "getRawBeam", "bm is not allocated", 6);
 
   double fwhm;
@@ -330,7 +330,7 @@ void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
   getRawBeam(band, n, n, pixsize, bm);
 
   // Apply filtering
-  if (filter != NULL)
+  if (filter != nullptr)
     filter->filter(n, n, pixsize, bm);
 }
 
@@ -353,7 +353,7 @@ void doublebeam::getBeam(unsigned int band, unsigned int n1,
   getRawBeam(band, n1, n2, pixsize, bm);
 
   // Apply filtering
-  if (filter != NULL)
+  if (filter != nullptr)
     filter->filter(n1, n2, pixsize, bm);
 }
 
@@ -378,7 +378,7 @@ void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
   getRawBeam(band, n, n, pixsize, oversamp, bm);
 
   // Apply filtering
-  if (filter != NULL)
+  if (filter != nullptr)
     filter->filter(n, n, pixsize, bm);
 }
 
@@ -404,7 +404,7 @@ void doublebeam::getBeam(unsigned int band, unsigned int n1,
   getRawBeam(band, n1, n2, pixsize, oversamp, bm);
 
   // Apply filtering
-  if (filter != NULL)
+  if (filter != nullptr)
     filter->filter(n1, n2, pixsize, bm);
 }
 
@@ -459,12 +459,12 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
   fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
   
   // Deal with filtering.
-  const fourierFilter *f1 = NULL, *f2 = NULL;
-  if (filt1 != NULL) {
+  const fourierFilter *f1 = nullptr, *f2 = nullptr;
+  if (filt1 != nullptr) {
     f1 = filt1;
-    if (filt2 == NULL) f2 = filt1;
+    if (filt2 == nullptr) f2 = filt1;
     else f2 = filt2;
-  } else if (filt2 != NULL) f2 = filt2;
+  } else if (filt2 != nullptr) f2 = filt2;
 
   // Header for first band
   bool ubl;
@@ -480,7 +480,7 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
   dtmp = nfwhm;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
 		 const_cast<char*>("Number of FWHM out"), &status);
-  if (f1 != NULL) {
+  if (f1 != nullptr) {
     ubl = true;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
 		   const_cast<char*>("Beam filtered?"), &status);
@@ -572,7 +572,7 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
 		 const_cast<char*>("Number of FWHM out"), &status);
 
-  if (f2 != NULL) {
+  if (f2 != nullptr) {
     ubl = true;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
 		   const_cast<char*>("Filtered?"), &status);
@@ -667,26 +667,26 @@ doublebeamHist::doublebeamHist(unsigned int NBINS):
 		     "Invalid (non-positive) NBINS", 1);
   nbins = NBINS;
   for (unsigned int i = 0; i < 4; ++i) n[i] = 0;
-  for (unsigned int i = 0; i < 4; ++i) wt[i] = NULL;
-  for (unsigned int i = 0; i < 4; ++i) bm1[i] = NULL;
-  for (unsigned int i = 0; i < 4; ++i) bm2[i] = NULL;
+  for (unsigned int i = 0; i < 4; ++i) wt[i] = nullptr;
+  for (unsigned int i = 0; i < 4; ++i) bm1[i] = nullptr;
+  for (unsigned int i = 0; i < 4; ++i) bm2[i] = nullptr;
 
-  dblpair NaN = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			       std::numeric_limits<double>::quiet_NaN());
-  for (unsigned int i = 0; i < 4; ++i) minmax1[i] = NaN;
-  for (unsigned int i = 0; i < 4; ++i) minmax2[i] = NaN;
+  dblpair NaNpr = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+				 std::numeric_limits<double>::quiet_NaN());
+  for (unsigned int i = 0; i < 4; ++i) minmax1[i] = NaNpr;
+  for (unsigned int i = 0; i < 4; ++i) minmax2[i] = NaNpr;
 
   isHipass = isMatched = std::make_pair(false, false);
-  filtscale = qfactor = matched_fwhm = matched_sigi = matched_sigc = NaN;
+  filtscale = qfactor = matched_fwhm = matched_sigi = matched_sigc = NaNpr;
 }
 
 doublebeamHist::~doublebeamHist() {
   for (unsigned int i = 0; i < 4; ++i)
-    if (wt[i] != NULL) delete[] wt[i];
+    if (wt[i] != nullptr) delete[] wt[i];
   for (unsigned int i = 0; i < 4; ++i)
-    if (bm1[i] != NULL) delete[] bm1[i];
+    if (bm1[i] != nullptr) delete[] bm1[i];
   for (unsigned int i = 0; i < 4; ++i)
-    if (bm2[i] != NULL) delete[] bm2[i];
+    if (bm2[i] != nullptr) delete[] bm2[i];
 }
 
 /*!
@@ -747,15 +747,15 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   // Clean out old arrays if present
   for (unsigned int i = 0; i < 4; ++i) n[i] = 0;
   for (unsigned int i = 0; i < 4; ++i)
-    if (wt[i] != NULL) { delete[] wt[i]; wt[i] = NULL; }
+    if (wt[i] != nullptr) { delete[] wt[i]; wt[i] = nullptr; }
   for (unsigned int i = 0; i < 4; ++i)
-    if (bm1[i] != NULL) { delete[] bm1[i]; bm1[i] = NULL; }
+    if (bm1[i] != nullptr) { delete[] bm1[i]; bm1[i] = nullptr; }
   for (unsigned int i = 0; i < 4; ++i)
-    if (bm2[i] != NULL) { delete[] bm2[i]; bm2[i] = NULL; }
-  dblpair nan = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+    if (bm2[i] != nullptr) { delete[] bm2[i]; bm2[i] = nullptr; }
+  dblpair nanpr = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
 			       std::numeric_limits<double>::quiet_NaN());
-  for (unsigned int i = 0; i < 4; ++i) minmax1[i] = nan;
-  for (unsigned int i = 0; i < 4; ++i) minmax2[i] = nan;
+  for (unsigned int i = 0; i < 4; ++i) minmax1[i] = nanpr;
+  for (unsigned int i = 0; i < 4; ++i) minmax2[i] = nanpr;
 
   dblpair tmp;
   inverse = inv;
@@ -777,22 +777,24 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   // Figure out filtering; we will apply filt1 to both if it is set
   //  but f2 is not.
   const fourierFilter *f1, *f2;
-  if (filt1 != NULL) {
+  if (filt1 != nullptr) {
     f1 = filt1;
-    if (filt2 != NULL) f2 = filt2; else f2 = filt1;
-  } else if (filt2 != NULL) {
-    f1 = NULL;
+    if (filt2 != nullptr) f2 = filt2; else f2 = filt1;
+  } else if (filt2 != nullptr) {
+    f1 = nullptr;
     f2 = filt2;
-  } else f1 = f2 = NULL;
+  } else f1 = f2 = nullptr;
 
   // Get 2D beams
   // Temporary beam storage.  Must use fftw_malloc since we may filter
   double *bmtmp1 = (double*) fftw_malloc(sizeof(double) * n1 * n2);
   double *bmtmp2 = (double*) fftw_malloc(sizeof(double) * n1 * n2);
   // Get the beams
-  bm.getBeam(1, n1, n2, pixsize, oversamp, bmtmp1, f1); 
+  std::cerr << "Getting raw beams" << std::endl;
+  bm.getBeam(1, n1, n2, pixsize, oversamp, bmtmp1, f1);
   bm.getBeam(2, n1, n2, pixsize, oversamp, bmtmp2, f2); 
 
+  std::cerr << "Clipping" << std::endl;
   unsigned int minidx1, maxidx1, minidx2, maxidx2;
   if (nfwhmkeep < nfwhm) {
     // We want to set up logical indexing into the array to only keep
@@ -828,18 +830,13 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   //  in case we want to write the beam out.
   // Just reset all variables to initial state for simplicity first
   isHipass = std::make_pair(false, false);
-  filtscale = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			     std::numeric_limits<double>::quiet_NaN());
-  qfactor = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			   std::numeric_limits<double>::quiet_NaN());
+  filtscale = nanpr;
+  qfactor = nanpr;
   isMatched = std::make_pair(false, false);
-  matched_fwhm = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-				std::numeric_limits<double>::quiet_NaN());
-  matched_sigi = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-				std::numeric_limits<double>::quiet_NaN());
-  matched_sigc = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-				std::numeric_limits<double>::quiet_NaN());
-  if (f1 != NULL) {
+  matched_fwhm = nanpr;
+  matched_sigi = nanpr;
+  matched_sigc = nanpr;
+  if (f1 != nullptr) {
     if (f1->isHipass()) {
       isHipass.first = true;
       filtscale.first = f1->getFiltScale();
@@ -852,7 +849,7 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
       matched_sigc.first = f1->getSigConf();
     } 
   }
-  if (f2 != NULL) {
+  if (f2 != nullptr) {
     if (f2->isHipass()) {
       isHipass.second = true;
       filtscale.second = f2->getFiltScale();
@@ -867,18 +864,17 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   }
 
   // Histogram
-
+  std::cerr << "Histogram" << std::endl;
   // Count up number of elements in each sign component, 
   // and do min/max values in each sign component.
   // The max beam value should certainly always be much smaller than 1e100
-  // Also make a temporary nbins by nbins array that says what sign
+  // Also make a temporary n1 by n2 array that says what sign
   // component each thing will be.
   unsigned int ninbm[4];
-  double minbinval1[4], maxbinval1[4];
-  double minbinval2[4], maxbinval2[4];
+  double minbinval1[4], maxbinval1[4], minbinval2[4], maxbinval2[4];
   unsigned int npix2 = n1 * n2;
   unsigned char* comparr;
-  double *rowptr1, *rowptr2;
+  const double *rowptr1, *rowptr2;
   comparr = new unsigned char[npix2];
   std::memset(ninbm, 0, 4 * sizeof(unsigned int));
   for (unsigned int i = 0; i < 4; ++i) minbinval1[i] = 1e100;
@@ -898,23 +894,26 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
       // Ignore anything within [-minval, minval]
       if ((fval1 <= minval) || (fval2 <= minval)) {
 	comparr[i * n2 + j] = 4; //Invalid value -- will be skipped
-	continue;
-      }
-      
-      // Determine the sign component
-      if (val1 > 0) {
-	if (val2 > 0) comp = 0; else comp = 1;
       } else {
-	if (val2 > 0) comp = 2; else comp = 3;
-      }
-      ++ninbm[comp];
-      comparr[i * n2 + j] = comp;
+	// Determine the sign component
+	if (val1 > 0) {
+	  if (val2 > 0) comp = 0; else comp = 1;
+	} else {
+	  if (val2 > 0) comp = 2; else comp = 3;
+	}
+	ninbm[comp] += 1;
+	comparr[i * n2 + j] = comp;
+	
+	if (comp == 2 && fval1 < minbinval1[comp])
+	  std::cerr << "Setting new low val in band 1 comp2: " << log2(fval1)
+		    << " from position " << i << " " << j << std::endl;
       
-      // Min/max bit
-      if (fval1 > maxbinval1[comp]) maxbinval1[comp] = fval1;
-      else if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
-      if (fval2 > maxbinval2[comp]) maxbinval2[comp] = fval2;
-      else if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
+	// Min/max bit
+	if (fval1 > maxbinval1[comp]) maxbinval1[comp] = fval1;
+	else if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
+	if (fval2 > maxbinval2[comp]) maxbinval2[comp] = fval2;
+	else if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
+      }
     }
   }
 
@@ -923,7 +922,7 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
       minmax1[i] = std::make_pair(minbinval1[i], maxbinval1[i]);
       minmax2[i] = std::make_pair(minbinval2[i], maxbinval2[i]);
     }
-
+  
   // Set bin sizes for each
   double ihiststep1[4], ihiststep2[4];
   const double log2outscale = 0.0014419741739063218; // log2(1.001)
@@ -955,6 +954,7 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   double min1, min2, istp1, istp2;
   for (unsigned int compidx = 0; compidx < 4; ++compidx) {
     curr_n = ninbm[compidx]; // Number in input beam, not histogram
+
     if (curr_n > 0) {
       // Zero temporary arrays
       std::memset(tmpwt, 0, nbins2 * sizeof(unsigned int));
@@ -962,10 +962,13 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
       std::memset(tmphist2, 0, nbins2 * sizeof(double));
 
       // Now loop over pixels
-      min1 = minbinval1[compidx];
+      min1 = minbinval1[compidx];  // Remember these are log2
       min2 = minbinval2[compidx];
       istp1 = ihiststep1[compidx];
       istp2 = ihiststep2[compidx];
+      std::cerr << "Doing component " << compidx << " with log2 min values: "
+		<< min1 << " and " << min2 << std::endl;
+      
       for (unsigned int i = minidx1; i < maxidx1; ++i) {
 	rowptr1 = bmtmp1 + i * n2;
 	rowptr2 = bmtmp2 + i * n2;
@@ -978,6 +981,12 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
 	  idx1 = static_cast<unsigned int>((log2(fval1) - min1) * istp1);
 	  idx2 = static_cast<unsigned int>((log2(fval2) - min2) * istp2);
 	  totidx = idx1 * nbins + idx2;
+	  if (totidx >= nbins2)
+	    std::cerr << "Out of range index for " << idx1 << " and "
+		      << idx2 << " with fluxes: " << fval1 << " and "
+		      << fval2 << " log2 values: " << log2(fval1)
+		      << " and " << log2(fval2) << " at beam pos: "
+		      << i << " " << j << std::endl;
 	  tmpwt[totidx] += 1;
 	  tmphist1[totidx] += fval1;
 	  tmphist2[totidx] += fval2;
@@ -1022,12 +1031,14 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   has_data = true;
 
   // Clean up
+  std::cerr << "Clean up histogram" << std::endl;
   fftw_free(bmtmp1);
   fftw_free(bmtmp2);
   delete[] comparr;
   delete[] tmpwt;
   delete[] tmphist1;
   delete[] tmphist2;
+  std::exit(1);
 }
 
 /*!
@@ -1175,7 +1186,7 @@ void doublebeamHist::writeToFits(const std::string& outputfile) const {
 
   for (unsigned int idx=0; idx < 4; ++idx)
     if (n[idx] > 0) {
-      fits_create_tbl(fp, BINARY_TBL, 0, 3, ttype, tform, NULL, label[idx],
+      fits_create_tbl(fp, BINARY_TBL, 0, 3, ttype, tform, nullptr, label[idx],
 		      &status );
       fits_insert_rows(fp, 0, n[idx], &status);
       for (unsigned int i = 0; i < n[idx]; ++i) {

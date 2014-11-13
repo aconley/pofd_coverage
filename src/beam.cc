@@ -58,7 +58,7 @@ void beam::getBeamFac(unsigned int n, double pixsize,
     errstr << "pixsize (" << pixsize << ") should be positive";
     throw pofdExcept("beam", "getBeamFac", errstr.str(), 3);
   }
-  if (fac == NULL)
+  if (fac == nullptr)
     throw pofdExcept("beam", "getBeamFac", "fac is not allocated", 4);
 
   if (n == 1) {
@@ -108,7 +108,7 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2, double pixsize,
     errstr << "pixsize (" << pixsize << ") should be positive";
     throw pofdExcept("beam", "getRawBeam", errstr.str(), 3);
   }
-  if (bm == NULL)
+  if (bm == nullptr)
     throw pofdExcept("beam", "getRawBeam", "bm is not allocated", 4);
 
   if ((n1 == 1) && (n2 == 1)) {
@@ -227,7 +227,7 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2,
     errstr << "oversampling (" << oversamp << ") should be odd";
     throw pofdExcept("beam", "getRawBeam", errstr.str(), 5);
   }
-  if (bm == NULL)
+  if (bm == nullptr)
     throw pofdExcept("beam", "getRawBeam", "bm is not allocated", 6);
 
   double pixgen = pixsize / static_cast<double>(oversamp);
@@ -240,7 +240,7 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2,
   //Make factorized beam, then multiply and sum
   // Allow special case of n1 == n2, which can be more efficient
   double *fac1, *fac2;
-  fac1 = fac2 = NULL;
+  fac1 = fac2 = nullptr;
 
   unsigned int ngen = oversamp * n1;
 
@@ -304,7 +304,7 @@ void beam::getBeam(unsigned int n, double pixsize, double* const bm,
   getRawBeam(n, n, pixsize, bm);
 
   // Apply filtering to beam
-  if (filter != NULL)
+  if (filter != nullptr)
     filter->filter(n, n, pixsize, bm);
 }
 
@@ -326,7 +326,7 @@ void beam::getBeam(unsigned int n1, unsigned int n2,
   getRawBeam(n1, n2, pixsize, bm);
 
   // Apply filtering to beam
-  if (filter != NULL)
+  if (filter != nullptr)
     filter->filter(n1, n2, pixsize, bm);
 }
 
@@ -349,7 +349,7 @@ void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
   getRawBeam(n, n, pixsize, oversamp, bm);
 
   // Apply filtering
-  if (filter != NULL)
+  if (filter != nullptr)
     filter->filter(n, n, pixsize, bm);
 }
 
@@ -373,7 +373,7 @@ void beam::getBeam(unsigned int n1, unsigned int n2, double pixsize,
   getRawBeam(n1, n2, pixsize, oversamp, bm);
 
   // Apply filtering
-  if (filter != NULL)
+  if (filter != nullptr)
     filter->filter(n1, n2, pixsize, bm);
 }
 
@@ -384,7 +384,7 @@ void beam::getBeam(unsigned int n1, unsigned int n2, double pixsize,
   \param[in] pixsize Pixel size, in arcseconds
   \param[in] nfwhm Number of FWHM out to go.
   \param[in] oversamp Oversampling to use.  Must be odd.  
-  \param[in] filt High-pass filter to apply.  If NULL, no filtering is done.
+  \param[in] filt High-pass filter to apply.  If nullptr, no filtering is done.
   \param[in] inverse Compute inverse beam rather than beam.
 */
 void beam::writeToFits(const std::string& outputfile, double pixsize, 
@@ -437,7 +437,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   dtmp = nfwhm;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
 		 const_cast<char*>("Number of FWHM out"), &status);
-  if (filt != NULL) {
+  if (filt != nullptr) {
     ubl = true;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
 		   const_cast<char*>("Filtered?"), &status);
@@ -623,7 +623,7 @@ void beamHist::fill(const beam& bm, unsigned int n1, unsigned int n2,
   matched_fwhm = std::numeric_limits<double>::quiet_NaN();
   matched_sigi = std::numeric_limits<double>::quiet_NaN();
   matched_sigc = std::numeric_limits<double>::quiet_NaN();
-  if (filt != NULL) {
+  if (filt != nullptr) {
     if (filt->isHipass()) {
       isHipass = true;
       filtscale = filt->getFiltScale();
@@ -920,7 +920,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   
   // Pos beam
   if (n_pos > 0) {
-    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, "POSBEAM", 
+    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, nullptr, "POSBEAM", 
 		    &status);
     fits_insert_rows(fp, 0, n_pos, &status);
     for (unsigned int i = 0; i < n_pos; ++i) {
@@ -932,7 +932,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
 
   }
   if (n_neg > 0) {
-    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, "NEGBEAM", 
+    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, nullptr, "NEGBEAM", 
 		    &status);
     fits_insert_rows(fp, 0, n_neg, &status);
     for (unsigned int i = 0; i < n_neg; ++i) {

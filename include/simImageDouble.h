@@ -131,8 +131,8 @@ class simImageDouble {
   
   /*! Generate realization of model */
   void realize(const numberCountsDouble& model, double n0, bool meansub=false, 
-	       const fourierFilter* const filt1=NULL,
-	       const fourierFilter* const filt2=NULL,
+	       const fourierFilter* const filt1=nullptr,
+	       const fourierFilter* const filt2=nullptr,
 	       bool bin=false, unsigned int sparsebin=1);
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
@@ -162,8 +162,8 @@ class simImageDouble {
 
   /*! \brief Returns noise level estimate after smoothing or filtering*/
   dblpair getFinalNoise(unsigned int ntrials=3,
-			const fourierFilter* const filt1=NULL,
-			const fourierFilter* const filt2=NULL) const;
+			const fourierFilter* const filt1=nullptr,
+			const fourierFilter* const filt2=nullptr) const;
 
   dblpair meanSubtract(); //!< Subtract off means
   dblpair getMean() const; //!< Get mean in each band
@@ -184,9 +184,9 @@ class simImageDouble {
   unsigned int getOversampling() const { return oversample; } //!< Gets amount of oversampling
 
   double getPixSize() const { return pixsize; } //!< Get pixel size (arcsec)
-  const double* const getData1() const { return data1; } //!< Band 1 data access
-  const double* const getData2() const { return data2; } //!< Band 2 data access
-  const unsigned int* const getBinnedData() const { return binval; } //!< Binned data direct access
+  const double* getData1() const { return data1; } //!< Band 1 data access
+  const double* getData2() const { return data2; } //!< Band 2 data access
+  const unsigned int* getBinnedData() const { return binval; } //!< Binned data direct access
 
   double getArea() const; //!< Area of images in sq deg
 

@@ -747,9 +747,12 @@ int runSimDouble(int argc, char **argv) {
 			 matched, sigm1, sigm2, sigc1, sigc2,
 			 nbeambins, n0, esmooth1, esmooth2, oversample, 
 			 powerspecfile, sparcity, use_binning, nbins);
+    std::cerr << "Setup finished" << std::endl;
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
+    // Main loop
+    std::cerr << "Doing sims" << std::endl;
     sim.doSims(verbose);
 
     //Write it

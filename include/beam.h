@@ -44,25 +44,25 @@ class beam {
 
   /*!\brief Get 2D beam, square*/
   void getBeam(unsigned int n, double pixsize, double* const, 
-	       const fourierFilter* const=NULL) const;
+	       const fourierFilter* const=nullptr) const;
 
   /*!\brief Get 2D beam, arbitrary size*/
   void getBeam(unsigned int n1, unsigned int n2, double pixsize, double* const, 
-	       const fourierFilter* const=NULL) const;
+	       const fourierFilter* const=nullptr) const;
   
   /*!\brief Get 2D beam with oversampling, square*/
   void getBeam(unsigned int n, double pixsize, unsigned int oversamp,
-	       double* const, const fourierFilter* const=NULL) const;
+	       double* const, const fourierFilter* const=nullptr) const;
 
   /*!\brief Get 2D beam with oversampling, arbitrary size*/
   void getBeam(unsigned int n1, unsigned int n2, double pixsize, 
 	       unsigned int oversamp, double* const, 
-	       const fourierFilter* const=NULL) const;
+	       const fourierFilter* const=nullptr) const;
 
   /*!\brief Write the beam to a FITS file*/
   void writeToFits(const std::string& outfile, double pixsize, 
 		   double nfwhm=3.5, unsigned int oversamp=1,
-		   const fourierFilter* const=NULL, bool inverse=false) const;
+		   const fourierFilter* const=nullptr, bool inverse=false) const;
 };
 
 /*!
@@ -146,12 +146,12 @@ class beamHist {
   /*!\brief Fill from beam, symmetric number of fwhm version*/
   void fill(const beam& bm, double nfwhm, double pixsize,
 	    bool inv=false, unsigned int oversamp=1,
-	    const fourierFilter* const filt=NULL, double num_fwhm_keep=0.0);
+	    const fourierFilter* const filt=nullptr, double num_fwhm_keep=0.0);
 
   /*!\brief Fill from beam, arbitrary size version */
   void fill(const beam& bm, unsigned int n1, unsigned int n2, double pixsize,
 	    bool inv=false, unsigned int oversamp=1,
-	    const fourierFilter* const filt=NULL, double num_fwhm_keep=0.0);
+	    const fourierFilter* const filt=nullptr, double num_fwhm_keep=0.0);
 
   /*! \brief Write out as FITS file*/
   void writeToFits(const std::string&) const;

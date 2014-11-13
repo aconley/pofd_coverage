@@ -78,7 +78,7 @@ int makeCatSingle(int argc, char **argv) {
     //Set up random number generator
     ran rangen;
     if (!have_user_seed) {
-      seed = static_cast<unsigned long long int>(time(NULL));
+      seed = static_cast<unsigned long long int>(time(nullptr));
       seed += static_cast<unsigned long long int>(clock());
     }
     rangen.set_seed(seed);
@@ -202,7 +202,7 @@ int makeCatDouble(int argc, char **argv) {
     //Set up random number generator
     ran rangen;
     if (!have_user_seed) {
-      seed = static_cast<unsigned long long int>(time(NULL));
+      seed = static_cast<unsigned long long int>(time(nullptr));
       seed += static_cast<unsigned long long int>(clock());
     }
     rangen.set_seed(seed);

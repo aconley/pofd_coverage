@@ -74,7 +74,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
     gen_1 = (double*) fftw_malloc(sizeof(double) * ngen1 * ngen2);
     gen_2 = (double*) fftw_malloc(sizeof(double) * ngen1 * ngen2);
   } else
-    gen_1 = gen_2 = NULL;
+    gen_1 = gen_2 = nullptr;
   pixsize = PIXSIZE;
   pixsize_gen = PIXSIZE / static_cast<double>(oversample);
 
@@ -93,7 +93,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   bindelta1 = 0.0;
   bincent02 = 0.0;
   bindelta2 = 0.0;
-  binval = NULL;
+  binval = nullptr;
 
   sigi_final_computed = false;
   sigi_final_ntrials = 0;
@@ -101,7 +101,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 
   //Set RNG seed
   unsigned long long int seed;
-  seed = static_cast<unsigned long long int>(time(NULL));
+  seed = static_cast<unsigned long long int>(time(nullptr));
   seed += static_cast<unsigned long long int>(clock());
   rangen.set_seed(seed);
 
@@ -114,7 +114,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
   // Position generator if needed; note we generate in non-oversampled
   //  space then use oversampling to get positions
   use_clustered_pos = false;
-  posgen = NULL;
+  posgen = nullptr;
   if (!powerspecfile.empty()) {
     use_clustered_pos = true;
     posgen = new positionGeneratorClustered(n1, n2, pixsize, powerspecfile);
@@ -146,7 +146,7 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
       ebm.getBeamFac(1, ngauss_add1, pixsize, gauss_add1);
     } else {
       ngauss_add1 = 0;
-      gauss_add1 = NULL;
+      gauss_add1 = nullptr;
     }
     if (esmooth2 > 0) {
       ngauss_add2 = static_cast<unsigned int>(nfwhm * esmooth2 / pixsize +
@@ -156,11 +156,11 @@ simImageDouble::simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
       ebm.getBeamFac(2, ngauss_add2, pixsize, gauss_add2);
     } else {
       ngauss_add2 = 0;
-      gauss_add2 = NULL;
+      gauss_add2 = nullptr;
     }
   } else {
     ngauss_add1 = ngauss_add2 = 0;
-    gauss_add1 = gauss_add2 = NULL;
+    gauss_add1 = gauss_add2 = nullptr;
   }
 }
 
@@ -168,14 +168,14 @@ simImageDouble::~simImageDouble() {
   fftw_free(data1);
   fftw_free(data2);
   fftw_free(work);
-  if (gen_1 != NULL) fftw_free(gen_1);
-  if (gen_2 != NULL) fftw_free(gen_2);
-  if (posgen != NULL) delete posgen;
+  if (gen_1 != nullptr) fftw_free(gen_1);
+  if (gen_2 != nullptr) fftw_free(gen_2);
+  if (posgen != nullptr) delete posgen;
   delete[] gauss1;
   delete[] gauss2;
   if (ngauss_add1 > 0) delete[] gauss_add1;
   if (ngauss_add2 > 0) delete[] gauss_add2;
-  if (binval != NULL) delete[] binval;
+  if (binval != nullptr) delete[] binval;
 }
 
 bool simImageDouble::isValid() const {
@@ -483,7 +483,7 @@ simImageDouble::getFinalNoise(unsigned int ntrials,
   bool recompute = true;
   if (sigi_final_computed) {
     // Decide if we can re-use the previous value
-    if ((filt1 == NULL) && (filt2 == NULL)) recompute = false; // Ignore ntrials -- not needed
+    if ((filt1 == nullptr) && (filt2 == nullptr)) recompute = false; // Ignore ntrials -- not needed
     else if (ntrials <= sigi_final_ntrials) recompute = false;
   }
   if (!recompute)
@@ -491,26 +491,26 @@ simImageDouble::getFinalNoise(unsigned int ntrials,
 
   // Figure out if we need temporary storage for sims
   double *tmpdata;
-  if ((filt1 != NULL) || (filt2 != NULL)) {
+  if ((filt1 != nullptr) || (filt2 != nullptr)) {
     if (ntrials == 0)
       throw pofdExcept("simImageDouble", "getFinalNoise",
 		       "Invalid (non-positive) ntrials", 1);
     tmpdata = (double*) fftw_malloc(sizeof(double) * n1 * n2);
-  } else tmpdata = NULL;
+  } else tmpdata = nullptr;
 
   const fourierFilter *f1, *f2;
-  if (filt1 != NULL) {
+  if (filt1 != nullptr) {
     f1 = filt1;
-    f2 = (filt2 == NULL) ? filt1 : filt2;
-  } else if (filt2 != NULL) {
-    f1 = NULL;
+    f2 = (filt2 == nullptr) ? filt1 : filt2;
+  } else if (filt2 != nullptr) {
+    f1 = nullptr;
     f2 = filt2;
-  } else f1 = f2 = NULL;
+  } else f1 = f2 = nullptr;
 
   // First, sigi1
   if (sigi1 == 0)
     sigi_final1 = 0.0;
-  else if (f1 == NULL) {
+  else if (f1 == nullptr) {
     if (esmooth1 <= 0.0) 
       sigi_final1 = sigi1;
     else {
@@ -529,7 +529,7 @@ simImageDouble::getFinalNoise(unsigned int ntrials,
   }
   if (sigi2 == 0)
     sigi_final2 = 0.0;
-  else if (f2 == NULL) {
+  else if (f2 == nullptr) {
     if (esmooth2 <= 0.0) 
       sigi_final2 = sigi2;
     else {
@@ -541,7 +541,7 @@ simImageDouble::getFinalNoise(unsigned int ntrials,
     sigi_final2 = getFinalNoiseHelper(ntrials, tmpdata, sigi2, fwhm2, esmooth2, 
 				      ngauss_add2, gauss_add2, f2);
   }
-  if (tmpdata != NULL) fftw_free(tmpdata);
+  if (tmpdata != nullptr) fftw_free(tmpdata);
 
   sigi_final_computed = true;
   sigi_final_ntrials = ntrials;
@@ -559,7 +559,7 @@ double simImageDouble::getArea() const {
   \params[in] n0 Number of sources per area to generate
   \params[in] meansub Do mean subtraction
   \param[in] filt1 Fourier space filter to apply to band 1, maybe band 2.  
-             If NULL, no filtering.
+             If nullptr, no filtering.
   \param[in] filt2 Fourier space filter to apply to band 2	     
   \params[in] bin Create binned image data
   \params[in] sparsebin Only take every this many pixels in binned image.
@@ -672,15 +672,15 @@ void simImageDouble::realize(const numberCountsDouble& model,
 				 std::numeric_limits<double>::quiet_NaN());
   filtscale = qfactor = matched_fwhm = matched_sigi = matched_sigc = NaNpr;
   const fourierFilter *f1, *f2;
-  if (filt1 != NULL) {
+  if (filt1 != nullptr) {
     f1 = filt1;
-    if (filt2 == NULL) f2 = f1; else f2 = filt2;
-  } else if (filt2 != NULL) {
-    f1 = NULL;
+    if (filt2 == nullptr) f2 = f1; else f2 = filt2;
+  } else if (filt2 != nullptr) {
+    f1 = nullptr;
     f2 = filt2;
-  } else f1 = f2 = NULL;
+  } else f1 = f2 = nullptr;
   // Deal with band 1
-  if (f1 != NULL) {
+  if (f1 != nullptr) {
     f1->filter(n1, n2, pixsize, data1);
     if (f1->isHipass()) {
       isHipass.first = true;
@@ -695,7 +695,7 @@ void simImageDouble::realize(const numberCountsDouble& model,
     } 
   }
   // And band 2
-  if (f2 != NULL) {
+  if (f2 != nullptr) {
     f2->filter(n1, n2, pixsize, data2);
     if (f2->isHipass()) {
       isHipass.second = true;
@@ -709,7 +709,7 @@ void simImageDouble::realize(const numberCountsDouble& model,
       matched_sigc.second = f2->getSigConf();
     } 
   }
-  if (meansub && ((f1 == NULL) || (f2 == NULL))) meanSubtract();
+  if (meansub && ((f1 == nullptr) || (f2 == nullptr))) meanSubtract();
 
   //bin
   is_binned = false;
@@ -877,7 +877,7 @@ void simImageDouble::applyBinning(unsigned int sparsebin) {
 
   //Only allocated the first time we bin
   //There is no way to change nbins after initialization
-  if (binval == NULL)
+  if (binval == nullptr)
     binval = new unsigned int[nbins * nbins];
   std::memset(binval, 0, nbins * nbins * sizeof(unsigned int));
 
@@ -1221,7 +1221,7 @@ void simImageDouble::writePositionGeneratorToHDF5Handle(hid_t obj_id) const {
   hsize_t adims;
   hid_t mems_id, att_id;
   adims = 1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   if (use_clustered_pos) {
     const char postype[] = "Clustered";
     hid_t datatype = H5Tcopy(H5T_C_S1);

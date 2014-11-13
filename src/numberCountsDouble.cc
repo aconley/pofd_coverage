@@ -143,8 +143,8 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   sigmavals = new double[nsigma];
   for (unsigned int i = 0; i < nsigma; ++i) sigmavals[i] = wvec2[i + nk];
 
-  sigmainterp = NULL;
-  accsigma = NULL;
+  sigmainterp = nullptr;
+  accsigma = nullptr;
   if (nsigma == 2)
       sigmainterp = gsl_interp_alloc(gsl_interp_linear,
 				     static_cast<size_t>(nsigma));
@@ -163,8 +163,8 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   for (unsigned int i = 0; i < noffset; ++i) offsetpos[i] = wvec1[i+nk+ns];
   offsetvals = new double[noffset];
   for (unsigned int i = 0; i < noffset; ++i) offsetvals[i] = wvec2[i+nk+ns];
-  offsetinterp = NULL;
-  accoffset = NULL;
+  offsetinterp = nullptr;
+  accoffset = nullptr;
   if (noffset == 2)
       offsetinterp = gsl_interp_alloc(gsl_interp_linear,
 				      static_cast<size_t>(noffset));
@@ -246,12 +246,12 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
 }
 
 numberCountsDouble::~numberCountsDouble() {
-  if (acc != NULL) gsl_interp_accel_free(acc);
-  if (splinelog != NULL) gsl_spline_free(splinelog);
-  if (accsigma != NULL) gsl_interp_accel_free(accsigma);
-  if (sigmainterp != NULL) gsl_interp_free(sigmainterp);
-  if (accoffset != NULL) gsl_interp_accel_free(accoffset);
-  if (offsetinterp != NULL) gsl_interp_free(offsetinterp);
+  if (acc != nullptr) gsl_interp_accel_free(acc);
+  if (splinelog != nullptr) gsl_spline_free(splinelog);
+  if (accsigma != nullptr) gsl_interp_accel_free(accsigma);
+  if (sigmainterp != nullptr) gsl_interp_free(sigmainterp);
+  if (accoffset != nullptr) gsl_interp_accel_free(accoffset);
+  if (offsetinterp != nullptr) gsl_interp_free(offsetinterp);
   gsl_integration_workspace_free(gsl_work);
   delete[] varr;
 
@@ -617,13 +617,13 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
   for (unsigned int i = 0; i < 4; ++i) nsgn[i] = bm.getN(i);
   const unsigned int *wtptr4[4];
   for (unsigned int i = 0; i < 4; ++i) 
-    if (nsgn[i] > 0) wtptr4[i] = bm.getWt(i); else wtptr4[i] = NULL;
+    if (nsgn[i] > 0) wtptr4[i] = bm.getWt(i); else wtptr4[i] = nullptr;
   const double *ibmptr14[4];
   for (unsigned int i = 0; i < 4; ++i) 
-    if (nsgn[i] > 0) ibmptr14[i] = bm.getBm1(i); else ibmptr14[i] = NULL;
+    if (nsgn[i] > 0) ibmptr14[i] = bm.getBm1(i); else ibmptr14[i] = nullptr;
   const double *ibmptr24[4];
   for (unsigned int i = 0; i < 4; ++i) 
-    if (nsgn[i] > 0) ibmptr24[i] = bm.getBm2(i); else ibmptr24[i] = NULL;
+    if (nsgn[i] > 0) ibmptr24[i] = bm.getBm2(i); else ibmptr24[i] = nullptr;
 
   unsigned int sgn, sgn1, curr_n;
   double ieta1, ieta2, cx1, cx2, ax1, ax2, Rsum, cts;
@@ -735,7 +735,7 @@ void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
 
   // Single item attributes
   adims = 1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
 
   const char modeltype[] = "numberCountsDouble";
   hid_t datatype = H5Tcopy(H5T_C_S1);
@@ -769,7 +769,7 @@ void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
   
   // Knot positions and values as data
   adims = nknots;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(obj_id, "KnotPositions", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -791,7 +791,7 @@ void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
 
   //Sigma knots
   adims = nsigma;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(obj_id, "SigmaKnotPositions", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -807,7 +807,7 @@ void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
 
   //Offset
   adims = noffset;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(obj_id, "OffsetKnotPositions", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,

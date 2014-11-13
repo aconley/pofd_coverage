@@ -128,7 +128,7 @@ void powerSpectrum::writeToHDF5Handle(hid_t obj_id) const {
 
   // Single item attributes
   adims = 1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
 
   att_id = H5Acreate2(obj_id, "Mink", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
@@ -143,7 +143,7 @@ void powerSpectrum::writeToHDF5Handle(hid_t obj_id) const {
   // Knot positions and values as data
   double* tmp = new double[nk];
   adims = nk;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(obj_id, "k", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   for (unsigned int i = 0; i < nk; ++i)
@@ -168,8 +168,8 @@ void powerSpectrum::writeToHDF5Handle(hid_t obj_id) const {
 positionGeneratorClustered::
 positionGeneratorClustered(unsigned int NX, unsigned int NY, 
 			   double PIXSIZE, const std::string& powerfile) :
-  nx(NX), ny(NY), pixsize(PIXSIZE), powspec(powerfile), probarr(NULL),
-  probarr_trans(NULL) {
+  nx(NX), ny(NY), pixsize(PIXSIZE), powspec(powerfile), probarr(nullptr),
+  probarr_trans(nullptr) {
 
   if (nx == 0)
     throw pofdExcept("positionGeneratorClustered", 
@@ -232,10 +232,10 @@ positionGeneratorClustered(unsigned int NX, unsigned int NY,
 
 positionGeneratorClustered::~positionGeneratorClustered() {
   delete[] scl;
-  if (probarr != NULL) fftw_free(probarr);
-  if (probarr_trans != NULL) fftw_free(probarr_trans);
-  if (plan != NULL) fftw_destroy_plan(plan); 
-  if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+  if (probarr != nullptr) fftw_free(probarr);
+  if (probarr_trans != nullptr) fftw_free(probarr_trans);
+  if (plan != nullptr) fftw_destroy_plan(plan); 
+  if (plan_inv != nullptr) fftw_destroy_plan(plan_inv);
 }
 
 /*!
@@ -243,7 +243,7 @@ positionGeneratorClustered::~positionGeneratorClustered() {
 */
 void positionGeneratorClustered::generate(ran& rangen) {
 
-  if (probarr == NULL) {
+  if (probarr == nullptr) {
     probarr = (double*) fftw_malloc(sizeof(double) * nx * ny);
     nyhalf = ny / 2 + 1;
     probarr_trans = (fftw_complex*) 
@@ -252,7 +252,7 @@ void positionGeneratorClustered::generate(ran& rangen) {
     unsigned inty = static_cast<int>(ny);
     plan = fftw_plan_dft_r2c_2d(intx, inty, probarr, probarr_trans,
 				FFTW_ESTIMATE);
-    if (plan == NULL) {
+    if (plan == nullptr) {
       std::stringstream str;
       str << "Plan creation failed for forward transform of size: " << 
 	  intx << " by " << inty;
@@ -261,7 +261,7 @@ void positionGeneratorClustered::generate(ran& rangen) {
     }
     plan_inv = fftw_plan_dft_c2r_2d(intx, inty, probarr_trans, probarr,
 				    FFTW_ESTIMATE);
-    if (plan_inv == NULL) {
+    if (plan_inv == nullptr) {
       std::stringstream str;
       str << "Inverse plan creation failed for forward transform of size: " << 
 	  intx << " by " << inty;
@@ -388,7 +388,7 @@ positionGeneratorClustered::getPosition(ran& rangen,
 int
 positionGeneratorClustered::writeProbToFits(const std::string& outfile) const {
 
-  if (probarr == NULL)
+  if (probarr == nullptr)
     throw pofdExcept("positionGeneratorClustered", "writeProbToFits",
 		     "probarr not prepared", 1);
 
@@ -485,7 +485,7 @@ void positionGeneratorClustered::writeToHDF5Handle(hid_t obj_id) const {
   hid_t mems_id, att_id;
 
   adims = 1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
 
   att_id = H5Acreate2(obj_id, "nx", H5T_NATIVE_UINT,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);

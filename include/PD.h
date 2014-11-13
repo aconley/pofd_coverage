@@ -72,7 +72,7 @@ class PD {
   double getPDVal(unsigned int i) const { return pd_[i]; }
   double getPDVal(double) const; //!< Interpolation
 
-  const double operator[](unsigned int i) const { return pd_[i]; }
+  double operator[](unsigned int i) const { return pd_[i]; }
   unsigned int getDim() const { return n; }
 
   /*! \brief Get Log likelihood of data set*/

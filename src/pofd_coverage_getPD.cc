@@ -165,17 +165,17 @@ int getPDSingle(int argc, char **argv) {
     return 1;
   }
   if (nbins == 0) {
-    std::cout << "Invalid (non-positive) number of beam histogram bins"
-	      << std::endl;
+    std::cout << "Invalid (non-positive) number of beam histogram bins: "
+	      << nbins << std::endl;
     return 1;
   }
   if (fwhm <= 0.0) {
-    std::cout << "Invalid (non-positive) FWHM" << std::endl;
+    std::cout << "Invalid (non-positive) FWHM: " << fwhm << std::endl;
     return 1;
   }
   if (nfwhm <= 0) {
-    std::cout << "Invalid (non-positive) number of beam FWHMs"
-	      << std::endl;
+    std::cout << "Invalid (non-positive) number of beam FWHMs: "
+	      << nfwhm << std::endl;
     return 1;
   }
   if (pixsize >= fwhm / 2.0) {
@@ -260,7 +260,7 @@ int getPDSingle(int argc, char **argv) {
 	printf("   Returning log(P(D)) rather than P(D)\n");
     }
 
-    fourierFilter *filt = NULL;
+    fourierFilter *filt = nullptr;
     if (filterscale > 0) {
       if (matched) {
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
@@ -275,7 +275,7 @@ int getPDSingle(int argc, char **argv) {
     beamHist inv_bmhist(nbins);
     inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, filt, nkeep);
 
-    if (filt != NULL) delete filt;
+    if (filt != nullptr) delete filt;
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 
@@ -468,25 +468,27 @@ int getPDDouble(int argc, char **argv) {
     return 1;
   }
   if (n0 < 0.0) {
-    std::cout << "Invalid (negative) number of sources per area"
+    std::cout << "Invalid (negative) number of sources per area: " << n0
 	      << std::endl;
     return 1;
   }
   if (nbins == 0) {
-    std::cout << "Invalid (non-positive) number of beam histogram bins"
-	      << std::endl;
+    std::cout << "Invalid (non-positive) number of beam histogram bins: "
+	      << nbins << std::endl;
     return 1;
   }
   if (fwhm1 <= 0.0) {
-    std::cout << "Invalid (non-positive) FWHM (band 1)" << std::endl;
+    std::cout << "Invalid (non-positive) FWHM (band 1): " << fwhm1
+	      << std::endl;
     return 1;
   }
   if (fwhm2 <= 0.0) {
-    std::cout << "Invalid (non-positive) FWHM (band 2)" << std::endl;
+    std::cout << "Invalid (non-positive) FWHM (band 2): " << fwhm2
+	      << std::endl;
     return 1;
   }
   if (nfwhm <= 0) {
-    std::cout << "Invalid (non-positive) number of beam FWHMs"
+    std::cout << "Invalid (non-positive) number of beam FWHMs: " << nfwhm
 	      << std::endl;
     return 1;
   }
@@ -621,7 +623,7 @@ int getPDDouble(int argc, char **argv) {
     }
 
     // Set up filter
-    fourierFilter *filt1 = NULL, *filt2 = NULL;
+    fourierFilter *filt1 = nullptr, *filt2 = nullptr;
     if (filterscale > 0) {
       if (matched) {
 	// Both highpass and matched
@@ -649,8 +651,8 @@ int getPDDouble(int argc, char **argv) {
     doublebeamHist inv_bmhist(nbins);
     inv_bmhist.fill(bm, nfwhm, pixsize, true, oversample, filt1, filt2, nkeep);
 
-    if (filt1 != NULL) delete filt1; // Don't need these any more
-    if (filt2 != NULL) delete filt2; 
+    if (filt1 != nullptr) delete filt1; // Don't need these any more
+    if (filt2 != nullptr) delete filt2; 
 
     //Get P(D)
     if (verbose) std::cout << "Getting P(D) with transform length: " 

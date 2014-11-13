@@ -21,10 +21,10 @@ double NaN = std::numeric_limits<double>::quiet_NaN();
 */
 fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
 			     double sigc, bool quickfft, bool fixedsize):
-  initialized(false), doHipass(false), doMatched(true), allowResize(!fixedsize),
-  nx(0), ny(0), pixscale(pixsize), filtscale(NaN), qfactor(NaN), 
-  fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(0),
-  plan(NULL), plan_inv(NULL), filt_fft(NULL), map_fft(NULL) {
+  initialized(false), doHipass(false), doMatched(true),
+  allowResize(!fixedsize), nx(0), ny(0), pixscale(pixsize), filtscale(NaN),
+  qfactor(NaN),  fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(0),
+  plan(nullptr), plan_inv(nullptr), filt_fft(nullptr), map_fft(nullptr) {
 
   // Check inputs
   if (fwhm <= 0)
@@ -66,7 +66,7 @@ fourierFilter::fourierFilter(double pixsize, double fscale, double q,
   initialized(false), doHipass(true), doMatched(false), allowResize(!fixedsize),
   nx(0), ny(0), pixscale(pixsize), filtscale(fscale), qfactor(q),
   fwhm(NaN), sig_inst(NaN), sig_conf(NaN), nyhalf(0),
-  plan(NULL), plan_inv(NULL), filt_fft(NULL), map_fft(NULL) {
+  plan(nullptr), plan_inv(nullptr), filt_fft(nullptr), map_fft(nullptr) {
 
   // Check inputs
   if (filtscale <= 0)
@@ -107,7 +107,7 @@ fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
   initialized(false), doHipass(true), doMatched(true), allowResize(!fixedsize),
   nx(0), ny(0), pixscale(pixsize), filtscale(fscale), qfactor(q), 
   fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(0),
-  plan(NULL), plan_inv(NULL), filt_fft(NULL), map_fft(NULL) {
+  plan(nullptr), plan_inv(nullptr), filt_fft(nullptr), map_fft(nullptr) {
 
   // Check inputs
   if (fwhm <= 0)
@@ -139,10 +139,10 @@ fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
 }
 
 fourierFilter::~fourierFilter() {
-  if (filt_fft != NULL) fftw_free(filt_fft);
-  if (map_fft != NULL) fftw_free(map_fft);
-  if (plan != NULL) fftw_destroy_plan(plan);
-  if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+  if (filt_fft != nullptr) fftw_free(filt_fft);
+  if (map_fft != nullptr) fftw_free(map_fft);
+  if (plan != nullptr) fftw_destroy_plan(plan);
+  if (plan_inv != nullptr) fftw_destroy_plan(plan_inv);
 }
 
 /*!
@@ -193,18 +193,18 @@ void fourierFilter::setup_plans(double* const rl,
 
   unsigned intx = static_cast<int>(nx);
   unsigned inty = static_cast<int>(ny);
-  if (plan != NULL) fftw_destroy_plan(plan);
+  if (plan != nullptr) fftw_destroy_plan(plan);
   plan = fftw_plan_dft_r2c_2d(intx, inty, rl, im, fftw_plan_style);
-  if (plan == NULL) {
+  if (plan == nullptr) {
     std::stringstream str;
     str << "Plan creation failed for forward transform of size: " << 
       nx << " by " << ny;
     throw pofdExcept("fourierFilter", "setup_plans", str.str(), 1);
   }
-  if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+  if (plan_inv != nullptr) fftw_destroy_plan(plan_inv);
 
   plan_inv = fftw_plan_dft_c2r_2d(intx, inty, im, rl, fftw_plan_style);
-  if (plan_inv == NULL) {
+  if (plan_inv == nullptr) {
     std::stringstream str;
     str << "Inverse plan creation failed for forward transform of size: " << 
       nx << " by " << ny;
@@ -287,13 +287,6 @@ void fourierFilter::setup_matched() const {
   // The matched filter shouldn't move the maximum, which was in the
   //  0th pixel.
   double maxval = bm[0];
-  /*
-  // Test code
-  for (unsigned int i = 1; i < nx * ny; ++i) {
-    val = bm[i];
-    if (val > maxval) maxval = val;
-  }
-  */
 
   if (maxval <= 0.0)
     throw pofdExcept("fourierFilter", "setup",
@@ -315,7 +308,8 @@ void fourierFilter::setup_matched() const {
   Set up the filter for hipass filtering.  Only touches mutable variables.
 */
 void fourierFilter::setup_hipass() const {
-  if (initialized) return; 
+  if (initialized) return;
+  
   // This one is quite simple -- we just need to allocate
   //  map_fft because hipass filtering doesn't require setting up filt_fft,
   //  and set up the plans
@@ -354,10 +348,16 @@ bool fourierFilter::setup(unsigned int NX, unsigned int NY) const {
       throw pofdExcept("fourierFilter", "filter",
 		       "Can only resize the first time this is called", 1);
     // Have to resize; clean up and mark as uninitialized.
-    if (filt_fft != NULL) { fftw_free(filt_fft); filt_fft = NULL; }
-    if (map_fft != NULL) { fftw_free(map_fft); map_fft = NULL; }
-    if (plan != NULL) { fftw_destroy_plan(plan); plan = NULL; }
-    if (plan_inv != NULL) { fftw_destroy_plan(plan_inv); plan_inv = NULL; }
+    if (filt_fft != nullptr) { fftw_free(filt_fft); filt_fft = nullptr; }
+    if (map_fft != nullptr) { fftw_free(map_fft); map_fft = nullptr; }
+    if (plan != nullptr) {
+      fftw_destroy_plan(plan);
+      plan = nullptr;
+    }
+    if (plan_inv != nullptr) {
+      fftw_destroy_plan(plan_inv);
+      plan_inv = nullptr;
+    }
     initialized = false;
     resized = true;
     nx = NX;

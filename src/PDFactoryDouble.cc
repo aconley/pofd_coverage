@@ -67,21 +67,21 @@ PDFactoryDouble::PDFactoryDouble(const std::string& wisfile,
 }
 
 PDFactoryDouble::~PDFactoryDouble() {
-  if (RFlux1 != NULL) fftw_free(RFlux1);
-  if (RFlux2 != NULL) fftw_free(RFlux2);
+  if (RFlux1 != nullptr) fftw_free(RFlux1);
+  if (RFlux2 != nullptr) fftw_free(RFlux2);
 
-  if (rvals != NULL) fftw_free(rvals);
-  if (rsum != NULL) fftw_free(rsum);
-  if (rtrans != NULL) fftw_free(rtrans);
-  if (pofd != NULL) fftw_free(pofd);
-  if (pval != NULL) fftw_free(pval);
+  if (rvals != nullptr) fftw_free(rvals);
+  if (rsum != nullptr) fftw_free(rsum);
+  if (rtrans != nullptr) fftw_free(rtrans);
+  if (pofd != nullptr) fftw_free(pofd);
+  if (pval != nullptr) fftw_free(pval);
 
-  if (REdgeFlux1 != NULL) fftw_free(REdgeFlux1);
-  if (REdgeFlux2 != NULL) fftw_free(REdgeFlux2);
-  if (REdgeWork != NULL) fftw_free(REdgeWork);
+  if (REdgeFlux1 != nullptr) fftw_free(REdgeFlux1);
+  if (REdgeFlux2 != nullptr) fftw_free(REdgeFlux2);
+  if (REdgeWork != nullptr) fftw_free(REdgeWork);
 
-  if (plan != NULL) fftw_destroy_plan(plan); 
-  if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+  if (plan != nullptr) fftw_destroy_plan(plan); 
+  if (plan_inv != nullptr) fftw_destroy_plan(plan_inv);
 }
 
 /*!
@@ -95,26 +95,26 @@ void PDFactoryDouble::init(unsigned int NEDGE) {
 #endif
 
   rvars_allocated = false;
-  RFlux1 = RFlux2 = NULL;
+  RFlux1 = RFlux2 = nullptr;
   minfluxR_1 = minfluxR_2 = 0.0;
   rinitialized = false;
   rdflux = false;
-  rvals = NULL;
-  rsum = NULL;
-  rtrans = NULL;
-  pofd = NULL;
-  pval = NULL;
+  rvals = nullptr;
+  rsum = nullptr;
+  rtrans = nullptr;
+  pofd = nullptr;
+  pval = nullptr;
 
   nedge = NEDGE;
   edgevars_allocated = false;
-  REdgeFlux1 = NULL;
-  REdgeFlux2 = NULL;
-  REdgeWork  = NULL;
+  REdgeFlux1 = nullptr;
+  REdgeFlux2 = nullptr;
+  REdgeWork  = nullptr;
 
   dflux1 = dflux2 = 0.0;
 
   plans_valid = false;
-  plan = plan_inv = NULL;
+  plan = plan_inv = nullptr;
 
   verbose = false;
   has_wisdom = false;
@@ -207,13 +207,13 @@ void PDFactoryDouble::allocateRvars() {
 }
 
 void PDFactoryDouble::freeRvars() {
-  if (RFlux1 != NULL) { fftw_free(RFlux1); RFlux1=NULL; }
-  if (RFlux2 != NULL) { fftw_free(RFlux2); RFlux2=NULL; }
-  if (rvals != NULL) { fftw_free(rvals); rvals=NULL; }
-  if (rsum != NULL) { fftw_free(rsum); rsum=NULL; }
-  if (rtrans != NULL) { fftw_free(rtrans); rtrans=NULL; }
-  if (pval != NULL) { fftw_free(pval); pval = NULL; }
-  if (pofd != NULL) { fftw_free(pofd); pofd = NULL; }
+  if (RFlux1 != nullptr) { fftw_free(RFlux1); RFlux1=nullptr; }
+  if (RFlux2 != nullptr) { fftw_free(RFlux2); RFlux2=nullptr; }
+  if (rvals != nullptr) { fftw_free(rvals); rvals=nullptr; }
+  if (rsum != nullptr) { fftw_free(rsum); rsum=nullptr; }
+  if (rtrans != nullptr) { fftw_free(rtrans); rtrans=nullptr; }
+  if (pval != nullptr) { fftw_free(pval); pval = nullptr; }
+  if (pofd != nullptr) { fftw_free(pofd); pofd = nullptr; }
   plans_valid = false;
   rvars_allocated = false;
   rinitialized = false;
@@ -228,7 +228,7 @@ void PDFactoryDouble::allocateEdgevars() {
     REdgeWork  = (double*) fftw_malloc(sizeof(double) * nedge * nedge);
     edgevars_allocated = true;
   } else {
-    REdgeWork = REdgeFlux1 = REdgeFlux2 = NULL;
+    REdgeWork = REdgeFlux1 = REdgeFlux2 = nullptr;
     edgevars_allocated = false;
   }
   rinitialized = false;
@@ -236,9 +236,9 @@ void PDFactoryDouble::allocateEdgevars() {
 }
 
 void PDFactoryDouble::freeEdgevars() {
-  if (REdgeFlux1 != NULL) { fftw_free(REdgeFlux1); REdgeFlux1 = NULL; }
-  if (REdgeFlux2 != NULL) { fftw_free(REdgeFlux2); REdgeFlux2 = NULL; }
-  if (REdgeWork != NULL) { fftw_free(REdgeWork); REdgeWork = NULL; }
+  if (REdgeFlux1 != nullptr) { fftw_free(REdgeFlux1); REdgeFlux1 = nullptr; }
+  if (REdgeFlux2 != nullptr) { fftw_free(REdgeFlux2); REdgeFlux2 = nullptr; }
+  if (REdgeWork != nullptr) { fftw_free(REdgeWork); REdgeWork = nullptr; }
   edgevars_allocated = false;
   rinitialized = false;
   initialized = false;
@@ -264,13 +264,13 @@ bool PDFactoryDouble::addWisdom(const std::string& filename) {
   fftw_plan_style = FFTW_WISDOM_ONLY;
   has_wisdom = true;
   wisdom_file = filename;
-  if (plan != NULL) {
+  if (plan != nullptr) {
     fftw_destroy_plan(plan); 
-    plan = NULL;
+    plan = nullptr;
   }
-  if (plan_inv != NULL) {
+  if (plan_inv != nullptr) {
     fftw_destroy_plan(plan_inv);
-    plan_inv = NULL;
+    plan_inv = nullptr;
   }
   // Doesn't affect R initialization status, but the plans are definitely
   // no longer valid
@@ -374,13 +374,13 @@ void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1,
     
     if (!edgevars_allocated) allocateEdgevars();
     //Make sure edge variables successfully allocated
-    if (REdgeFlux1 == NULL)
+    if (REdgeFlux1 == nullptr)
       throw pofdExcept("PDFactoryDouble", "initR",
 		       "R edge flux 1 was not allocated", 2);
-    if (REdgeFlux2 == NULL)
+    if (REdgeFlux2 == nullptr)
       throw pofdExcept("PDFactoryDouble", "initR",
 		       "R edge flux 2 was not allocated", 3);
-    if (REdgeWork == NULL)
+    if (REdgeWork == nullptr)
       throw pofdExcept("PDFactoryDouble", "initR",
 		       "R edge work was not allocated", 4);
 
@@ -1095,10 +1095,10 @@ void PDFactoryDouble::initPD(unsigned int n,
   // forward plan, but the backwards plan is fine
   int intn = static_cast<int>(n);
   if (!plans_valid) {
-    if (plan != NULL) fftw_destroy_plan(plan);
+    if (plan != nullptr) fftw_destroy_plan(plan);
     plan = fftw_plan_dft_r2c_2d(intn, intn, rvals, rtrans,
 				fftw_plan_style);
-    if (plan == NULL) {
+    if (plan == nullptr) {
       std::stringstream str;
       str << "Plan creation failed for forward transform of size: " << intn
 	  << " by " << intn;
@@ -1107,10 +1107,10 @@ void PDFactoryDouble::initPD(unsigned int n,
       throw pofdExcept("PDFactoryDouble", "initPD", str.str(), 14);
     }
 
-    if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+    if (plan_inv != nullptr) fftw_destroy_plan(plan_inv);
     plan_inv = fftw_plan_dft_c2r_2d(intn, intn, pval, pofd,
 				    fftw_plan_style);
-    if (plan_inv == NULL) {
+    if (plan_inv == nullptr) {
       std::stringstream str;
       str << "Plan creation failed for inverse transform of size: " << intn
 	  << " by " << intn;
@@ -1412,7 +1412,7 @@ void PDFactoryDouble::writeRToHDF5(const std::string& filename) const {
   
   // First, some properties
   adims = 1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   att_id = H5Acreate2(file_id, "dflux1", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux1);
@@ -1429,7 +1429,7 @@ void PDFactoryDouble::writeRToHDF5(const std::string& filename) const {
 
   // Rfluxes
   adims = currsize;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(file_id, "RFlux1", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
@@ -1444,7 +1444,7 @@ void PDFactoryDouble::writeRToHDF5(const std::string& filename) const {
 
   // R -- which we may need to copy to remove the dflux
   hsize_t dims_steps[2] = {currsize, currsize};
-  mems_id = H5Screate_simple(2, dims_steps, NULL);
+  mems_id = H5Screate_simple(2, dims_steps, nullptr);
   dat_id = H5Dcreate2(file_id, "R", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (rdflux) {

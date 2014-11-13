@@ -114,7 +114,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   fftsize(FFTSIZE), n0(N0), inv_bmhist(NBEAMBINS), 
   simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, 
 	OVERSAMPLE, NBINS, POWERSPECFILE), 
-  use_binning(USEBIN), model(MODELFILE), filt1(NULL), filt2(NULL),
+  use_binning(USEBIN), model(MODELFILE), filt1(nullptr), filt2(nullptr),
   esmooth1(ESMOOTH1), esmooth2(ESMOOTH2) {
 
 #ifdef TIMING
@@ -134,8 +134,8 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     bestn0 = new double[nsims];
     bestlike = new double[nsims];
   } else {
-    bestn0 = NULL;
-    bestlike = NULL;
+    bestn0 = nullptr;
+    bestlike = nullptr;
   }
 
   if (do_map_like && (nsims > 0)) {
@@ -144,9 +144,9 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     min_n0 = new double[nsims];
     delta_n0 = new double[nsims];
   } else {
-    likearr = NULL;
-    min_n0 = NULL;
-    delta_n0 = NULL;
+    likearr = nullptr;
+    min_n0 = nullptr;
+    delta_n0 = nullptr;
   }
 
   // Set up filter(s) if needed.
@@ -173,28 +173,30 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   // Set up the histogrammed beam.  We must go out farther if we are filtering
   //  because the size affects the filtering significantly.  So go out to
   //  the same size as the image to ensure the filtering is the same
-  if (filt1 != NULL)
-    inv_bmhist.fill(bm, N1, N2, PIXSIZE, true, OVERSAMPLE, filt1, filt2, NFWHM);
+  if (filt1 != nullptr)
+    inv_bmhist.fill(bm, N1, N2, PIXSIZE, true, OVERSAMPLE, filt1,
+		    filt2, NFWHM);
   else
-    inv_bmhist.fill(bm, NFWHM, PIXSIZE, true, OVERSAMPLE, NULL, NULL, NFWHM);
+    inv_bmhist.fill(bm, NFWHM, PIXSIZE, true, OVERSAMPLE,
+		    nullptr, nullptr, NFWHM);
 
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
 }
 
 simManagerDouble::~simManagerDouble() {
-  if (bestn0 != NULL) delete[] bestn0;
-  if (bestlike != NULL) delete[] bestlike;
+  if (bestn0 != nullptr) delete[] bestn0;
+  if (bestlike != nullptr) delete[] bestlike;
   delete[] varr;
   gsl_min_fminimizer_free(s);
-  if (likearr != NULL) {
+  if (likearr != nullptr) {
     for (unsigned int i = 0; i < nsims; ++i) delete[] likearr[i];
     delete[] likearr;
   }
-  if (min_n0 != NULL) delete[] min_n0;
-  if (delta_n0 != NULL) delete[] delta_n0;
-  if (filt1 != NULL) delete filt1;
-  if (filt2 != NULL) delete filt2;
+  if (min_n0 != nullptr) delete[] min_n0;
+  if (delta_n0 != nullptr) delete[] delta_n0;
+  if (filt1 != nullptr) delete filt1;
+  if (filt2 != nullptr) delete filt2;
 }
 
 /*!
@@ -443,7 +445,7 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
     char* tform2 = new char[ndigits+5];
     sprintf(tform2, "%uE", nlike); //E is the format code for 32 bit float
     tform[4] = tform2;
-    fits_create_tbl(fp, BINARY_TBL, 0, 5, ttype, tform, NULL, "RESULTS", 
+    fits_create_tbl(fp, BINARY_TBL, 0, 5, ttype, tform, nullptr, "RESULTS", 
 		    &status);
     delete[] tform2;
   } else {
@@ -451,7 +453,7 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
     char* tform[2];
     char* tform0 = "1D";
     tform[0] = tform0; tform[1] = tform0;
-    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, NULL, "RESULTS", 
+    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, nullptr, "RESULTS", 
 		    &status);
   }
 
@@ -737,7 +739,7 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   //Add the model information to another extension
   char* mttype[] = {"KNOTPOS","LOG10KNOTVAL"};
   char* mtform[] = {"1D", "1D"};
-  fits_create_tbl(fp, BINARY_TBL, 0, 2, mttype, mtform, NULL, 
+  fits_create_tbl(fp, BINARY_TBL, 0, 2, mttype, mtform, nullptr, 
 		  "BASEMODEL", &status);
   //Base model parameters, write to this extension header as well
   dtmp = model.getBaseN0();
@@ -834,7 +836,7 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
     throw pofdExcept("simManager", "writeToHDF5",
 		     "Failed to create HDF5 beam group", 2);
   adims = 1; 
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
 
   ptmp = inv_bmhist.getFWHM();
   att_id = H5Acreate2(group_id, "FWHM1", H5T_NATIVE_DOUBLE,
@@ -888,7 +890,7 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
     throw pofdExcept("simManager", "writeToHDF5",
 		     "Failed to create HDF5 filter group", 3);
   adims = 1; 
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
 
 
   bl = static_cast<hbool_t>(simim.isHipassFiltered().first);
@@ -987,7 +989,7 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
     throw pofdExcept("simManager", "writeToHDF5",
 		     "Failed to create HDF5 simulation group", 4);
   adims = 1; 
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
 
   att_id = H5Acreate2(group_id, "N0", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
@@ -1121,7 +1123,7 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
 
   // Write the data
   adims = nsims;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
 
   dat_id = H5Dcreate2(group_id, "BestN0", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -1165,7 +1167,7 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
     }
     // We further write with compression
     hid_t plist;
-    mems_id = H5Screate_simple(2, cdims, NULL);
+    mems_id = H5Screate_simple(2, cdims, nullptr);
     plist = H5Pcreate(H5P_DATASET_CREATE);
     H5Pset_chunk(plist, 2, cdims);
     H5Pset_deflate(plist, 6); // Gzip, compression 6

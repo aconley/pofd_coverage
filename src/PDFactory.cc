@@ -23,13 +23,13 @@ PDFactory::PDFactory(const std::string& wisfile) {
 }
 
 PDFactory::~PDFactory() {
-  if (RFlux != NULL) fftw_free(RFlux);
-  if (rvals != NULL) fftw_free(rvals);
-  if (rtrans != NULL) fftw_free(rtrans);
-  if (pofd != NULL) fftw_free(pofd);
-  if (pval != NULL) fftw_free(pval);
-  if (plan != NULL) fftw_destroy_plan(plan); 
-  if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+  if (RFlux != nullptr) fftw_free(RFlux);
+  if (rvals != nullptr) fftw_free(rvals);
+  if (rtrans != nullptr) fftw_free(rtrans);
+  if (pofd != nullptr) fftw_free(pofd);
+  if (pval != nullptr) fftw_free(pval);
+  if (plan != nullptr) fftw_destroy_plan(plan); 
+  if (plan_inv != nullptr) fftw_destroy_plan(plan_inv);
 }
 
 void PDFactory::init() {
@@ -39,16 +39,16 @@ void PDFactory::init() {
   resetTime();
 #endif
 
-  RFlux = NULL;
-  rvals = NULL;
-  rtrans = NULL;
-  pofd = NULL;
-  pval = NULL;
+  RFlux = nullptr;
+  rvals = nullptr;
+  rtrans = nullptr;
+  pofd = nullptr;
+  pval = nullptr;
 
   dflux = 0.0;
   minflux_R = 0.0;
 
-  plan = plan_inv = NULL;
+  plan = plan_inv = nullptr;
   plans_valid = false;
 
   verbose = false;
@@ -105,36 +105,36 @@ void PDFactory::summarizeTime(unsigned int nindent) const {
 bool PDFactory::resize(unsigned int NSIZE) {
   if (NSIZE == currsize) return false;
 
-  if (RFlux != NULL) fftw_free(RFlux);
-  RFlux = NULL;
-  if (rvals != NULL) fftw_free(rvals);
-  rvals = NULL;
-  if (rtrans != NULL) fftw_free(rtrans);
-  rtrans = NULL;
-  if (pval != NULL) fftw_free(pval);
-  pval = NULL;
-  if (pofd != NULL) fftw_free(pofd);
-  pofd = NULL;
+  if (RFlux != nullptr) fftw_free(RFlux);
+  RFlux = nullptr;
+  if (rvals != nullptr) fftw_free(rvals);
+  rvals = nullptr;
+  if (rtrans != nullptr) fftw_free(rtrans);
+  rtrans = nullptr;
+  if (pval != nullptr) fftw_free(pval);
+  pval = nullptr;
+  if (pofd != nullptr) fftw_free(pofd);
+  pofd = nullptr;
 
   void *alc;
   alc = fftw_malloc(sizeof(double) * NSIZE);
-  if (alc == NULL)
+  if (alc == nullptr)
     throw pofdExcept("PDFactory", "strict_resize", 
 		     "Failed to alloc RFlux", 1);
   RFlux = (double*) alc;
   alc = fftw_malloc(sizeof(double) * NSIZE);
-  if (alc == NULL)
+  if (alc == nullptr)
     throw pofdExcept("PDFactory", "strict_resize", 
 		     "Failed to alloc rvals", 2);
   rvals = (double*) alc;
   alc = fftw_malloc(sizeof(double)*NSIZE);
-  if (alc == NULL)
+  if (alc == nullptr)
     throw pofdExcept("PDFactory", "strict_resize", 
 		     "Failed to alloc pofd", 3);
   pofd = (double*) alc;
   unsigned int fsize = NSIZE / 2 + 1;
   alc = fftw_malloc(sizeof(fftw_complex)*fsize);
-  if (alc == NULL)
+  if (alc == nullptr)
     throw pofdExcept("PDFactory", "strict_resize", 
 		     "Failed to alloc pval", 4);
   pval = (fftw_complex*) alc;
@@ -158,13 +158,13 @@ bool PDFactory::addWisdom(const std::string& filename) {
   fftw_plan_style = FFTW_WISDOM_ONLY;
   has_wisdom = true;
   wisdom_file = filename;
-  if (plan != NULL) {
+  if (plan != nullptr) {
     fftw_destroy_plan(plan); 
-    plan = NULL;
+    plan = nullptr;
   }
-  if (plan_inv != NULL) {
+  if (plan_inv != nullptr) {
     fftw_destroy_plan(plan_inv);
-    plan_inv = NULL;
+    plan_inv = nullptr;
   }
   plans_valid = false;
   initialized = false;
@@ -566,12 +566,12 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
 
   //Allocate/resize internal arrays
   resize(n);
-  if (rtrans == NULL) {
+  if (rtrans == nullptr) {
     //This has to be done before we plan 
     unsigned int fsize = n / 2 + 1;
     void* alc;
     alc = fftw_malloc(sizeof(fftw_complex) * fsize);
-    if (alc == NULL)
+    if (alc == nullptr)
       throw pofdExcept("PDFactory", "initPD", "Failed to alloc rtrans", 4);
     rtrans = (fftw_complex*) alc;
   }
@@ -589,20 +589,20 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   // addresses changed
   int intn = static_cast<int>(n);
   if (!plans_valid) {
-    if (plan != NULL) fftw_destroy_plan(plan);
+    if (plan != nullptr) fftw_destroy_plan(plan);
     plan = fftw_plan_dft_r2c_1d(intn, rvals, rtrans,
 				fftw_plan_style);
-    if (plan_inv != NULL) fftw_destroy_plan(plan_inv);
+    if (plan_inv != nullptr) fftw_destroy_plan(plan_inv);
     plan_inv = fftw_plan_dft_c2r_1d(intn, pval, pofd,
 				    fftw_plan_style);
-    if (plan == NULL) {
+    if (plan == nullptr) {
       std::stringstream str;
       str << "Plan creation failed for forward transform of size: " << n;
       if (has_wisdom) str << std::endl << "Your wisdom file may not have"
 			  << " that size";
       throw pofdExcept("PDFactory", "initPD", str.str(), 5);
     }
-    if (plan_inv == NULL) {
+    if (plan_inv == nullptr) {
       std::stringstream str;
       str << "Plan creation failed for inverse transform of size: " << n;
       if (has_wisdom) str << std::endl << "Your wisdom file may not have"
@@ -860,7 +860,7 @@ void PDFactory::writeRToHDF5(const std::string& filename) const {
   
   // Properties
   adims = 1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   att_id = H5Acreate2(file_id, "dflux", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux);
@@ -873,7 +873,7 @@ void PDFactory::writeRToHDF5(const std::string& filename) const {
 
   // Rflux
   adims = currsize;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(file_id, "RFlux", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 

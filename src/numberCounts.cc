@@ -321,10 +321,10 @@ void numberCounts::getR(unsigned int n, const double* const flux,
   unsigned int nneg = bm.getNNeg();
 
   //And now the actual computation.  We loop over each flux
-  const unsigned int* wtptr_pos = NULL;
-  const unsigned int* wtptr_neg = NULL;
-  const double* ibmptr_pos = NULL;
-  const double* ibmptr_neg = NULL;
+  const unsigned int* wtptr_pos = nullptr;
+  const unsigned int* wtptr_neg = nullptr;
+  const double* ibmptr_pos = nullptr;
+  const double* ibmptr_neg = nullptr;
   double cflux, cval, cR, ibm, workR;
   if (haspos) {
     wtptr_pos = bm.getWtPos();
@@ -405,7 +405,7 @@ void numberCounts::writeToHDF5Handle(hid_t obj_id) const {
 
   // Single item attributes
   adims = 1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
 
   const char modeltype[] = "numberCounts";
   hid_t datatype = H5Tcopy(H5T_C_S1);
@@ -429,7 +429,7 @@ void numberCounts::writeToHDF5Handle(hid_t obj_id) const {
   
   // Knot positions and values as data
   adims = nknots;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(obj_id, "KnotPositions", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,

@@ -106,7 +106,7 @@ class simImage {
   
   /*! \brief Generate realization of model */
   void realize(const numberCounts& model, double n0, 
-	       bool meansub=false, const fourierFilter* const filt=NULL,
+	       bool meansub=false, const fourierFilter* const filt=nullptr,
 	       bool bin=false, unsigned int sparsebin=1); 
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
@@ -132,8 +132,10 @@ class simImage {
   /*! \brief Get Raw instrument noise */
   double getInstNoise() const { return sigi; }
 
+  /*! \brief Returns noise level estimate for image after smoothing or 
+    filtering */
   double getFinalNoise(unsigned int ntrials=3,
-		       const fourierFilter* const filt=NULL) const; //!< Returns noise level estimate for image after smoothing or filtering
+		       const fourierFilter* const filt=nullptr) const; 
 
   double meanSubtract(); //!< Subtract mean from image
   void getMinMax(double& min, double& max) const; //!< Get minima and maxima of data
@@ -148,8 +150,8 @@ class simImage {
   bool isOversampled() const { return oversample > 1; } 
   unsigned int getOversampling() const { return oversample; } //!< Gets amount of oversampling
   double getPixSize() const { return pixsize; } //!< Gets pixel size (arcsec)
-  const double* const getData() const { return data; } //!< Gets data pointer
-  const unsigned int* const getBinnedData() const { return binval; } //!< Gets binned data
+  const double* getData() const { return data; } //!< Gets data pointer
+  const unsigned int* getBinnedData() const { return binval; } //!< Gets binned data
 
   double getArea() const; //!< Area of simulated image in sq deg
 

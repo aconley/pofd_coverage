@@ -195,7 +195,7 @@ int makeSimSingle(int argc, char **argv) {
       std::cout << "Base model n0: " << model.getBaseN0()
 		<< " Your value: " << n0 << std::endl;
 
-    fourierFilter *filt = NULL;
+    fourierFilter *filt = nullptr;
     if (filterscale > 0) {
       if (matched) {
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
@@ -210,7 +210,7 @@ int makeSimSingle(int argc, char **argv) {
     if (have_user_seed) im.setSeed(user_seed);
 
     // Get final noise if specified
-    if (verbose && (nfinal > 0) && (filt != NULL))
+    if (verbose && (nfinal > 0) && (filt != nullptr))
       std::cout << "Estimating final (filtered) noise with "
 		<< nfinal << " trials" << std::endl;
     if (nfinal != 0) im.getFinalNoise(nfinal, filt);
@@ -218,7 +218,7 @@ int makeSimSingle(int argc, char **argv) {
     // Generate with mean subtraction
     im.realize(model, n0, true, filt, false); 
 
-    if (filt != NULL) delete filt;
+    if (filt != nullptr) delete filt;
 
     // Write it
     if (verbose) std::cout << "Writing simulated image to " << outputfile
@@ -486,7 +486,7 @@ int makeSimDouble(int argc, char **argv) {
 		<< " Your value: " << n0 << std::endl;
 
     // Set up filtering
-    fourierFilter *filt1 = NULL, *filt2 = NULL;
+    fourierFilter *filt1 = nullptr, *filt2 = nullptr;
     if (filterscale > 0) {
       if (matched) {
 	if (single_filt) {
@@ -528,7 +528,7 @@ int makeSimDouble(int argc, char **argv) {
     if (have_user_seed) dim.setSeed(user_seed);
     
     // Get final noise if specified
-    if (verbose && (nfinal > 0) && (filt1 != NULL || filt2 != NULL))
+    if (verbose && (nfinal > 0) && (filt1 != nullptr || filt2 != nullptr))
       std::cout << "Estimating final (filtered) noise with "
 		<< nfinal << " trials" << std::endl;
     if (nfinal != 0) dim.getFinalNoise(nfinal, filt1, filt2);
@@ -536,8 +536,8 @@ int makeSimDouble(int argc, char **argv) {
     // Generate with mean subtraction
     dim.realize(model, n0, true, filt1, filt2, false);
 
-    if (filt1 != NULL) delete filt1;
-    if (filt2 != NULL) delete filt2;
+    if (filt1 != nullptr) delete filt1;
+    if (filt2 != nullptr) delete filt2;
 
     //Write it
     if (verbose) std::cout << "Writing simulated images to " << outputfile

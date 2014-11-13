@@ -21,12 +21,12 @@ PDDouble::PDDouble(unsigned int N1, double MINFLUX1, double DFLUX1,
 			       logflat(LOG),
 			       minflux1(MINFLUX1), dflux1(DFLUX1),
 			       minflux2(MINFLUX2), dflux2(DFLUX2) {
-  if (capacity == 0) pd_ = NULL; else
+  if (capacity == 0) pd_ = nullptr; else
     pd_ = (double *) fftw_malloc(sizeof(double)*capacity);
 }
 
 PDDouble::~PDDouble() {
-  if (pd_ != NULL) fftw_free(pd_);
+  if (pd_ != nullptr) fftw_free(pd_);
 }
 
 /*!
@@ -36,9 +36,9 @@ void PDDouble::resize(unsigned int N1, unsigned int N2) {
   //Doesn't actually resize arrays if it can avoid it
   unsigned int newcap = N1 * N2;
   if (newcap > capacity) {
-    if (pd_ != NULL) fftw_free(pd_);
+    if (pd_ != nullptr) fftw_free(pd_);
     if (newcap > 0) pd_ = (double *) fftw_malloc(sizeof(double) * newcap);
-    else pd_ = NULL;
+    else pd_ = nullptr;
     capacity = newcap;
   }
   n1 = N1;
@@ -55,11 +55,11 @@ void PDDouble::shrink() {
       double* tmp = (double*) fftw_malloc(sizeof(double) * newcap);
       for (unsigned int i = 0; i < newcap; ++i)
 	tmp[i] = pd_[i];
-      if (pd_ != NULL) fftw_free(pd_);
+      if (pd_ != nullptr) fftw_free(pd_);
       pd_ = tmp;
     } else {
-      if (pd_ != NULL) fftw_free(pd_);
-      pd_ = NULL;
+      if (pd_ != nullptr) fftw_free(pd_);
+      pd_ = nullptr;
     }
     capacity = newcap;
   }
@@ -71,9 +71,9 @@ void PDDouble::shrink() {
 void PDDouble::strict_resize(unsigned int N1, unsigned int N2) {
   unsigned int newcap = N1 * N2;
   if (newcap != capacity) {
-    if (pd_ != NULL) fftw_free(pd_);
+    if (pd_ != nullptr) fftw_free(pd_);
     if (newcap > 0) pd_ = (double*) fftw_malloc(sizeof(double) * newcap);
-    else pd_ = NULL;
+    else pd_ = nullptr;
     capacity = newcap;
   }
   n1 = N1;
@@ -632,10 +632,10 @@ PDDouble& PDDouble::operator=(const PDDouble& other) {
   dflux2 = other.dflux2;
   unsigned int sz = n1 * n2;
   if (sz > 0) {
-    if (other.pd_ == NULL)
+    if (other.pd_ == nullptr)
       throw pofdExcept("PDDouble", "operator=", 
 			"Copying from uninitialized other", 1);
-    if (pd_ == NULL)
+    if (pd_ == nullptr)
       throw pofdExcept("PDDouble", "operator=", 
 			"initialization of this space failed", 2);
       
@@ -657,10 +657,10 @@ void PDDouble::fill(unsigned int N1, double MINFLUX1, double DFLUX1,
   dflux2 = DFLUX2;
   unsigned int sz = n1*n2;
   if (sz > 0) {
-    if (PD == NULL)
+    if (PD == nullptr)
       throw pofdExcept("PDDouble", "fill", 
 			"PD is not initialized", 1);
-    if (pd_ == NULL)
+    if (pd_ == nullptr)
       throw pofdExcept("PDDouble", "fill", 
 			"Initialization of this space failed", 2);
     std::memcpy(pd_, PD, sz * sizeof(double));
@@ -721,7 +721,7 @@ void PDDouble::writeToHDF5(const std::string& outputfile) const {
   
   // Properties
   adims = 1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   att_id = H5Acreate2(file_id, "isLog", H5T_NATIVE_HBOOL,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   bl = static_cast<hbool_t>(logflat);
@@ -751,7 +751,7 @@ void PDDouble::writeToHDF5(const std::string& outputfile) const {
   for (unsigned int i = 0; i < n1; ++i) 
     flux[i] = static_cast<double>(i) * dflux1 + minflux1;
   adims = n1;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(file_id, "flux1", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
@@ -760,7 +760,7 @@ void PDDouble::writeToHDF5(const std::string& outputfile) const {
   for (unsigned int i = 0; i < n2; ++i) 
     flux[i] = static_cast<double>(i) * dflux2 + minflux2;
   adims = n2;
-  mems_id = H5Screate_simple(1, &adims, NULL);
+  mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(file_id, "flux2", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
@@ -770,7 +770,7 @@ void PDDouble::writeToHDF5(const std::string& outputfile) const {
   H5Sclose(mems_id);
 
   hsize_t dims_steps[2] = {n1, n2};
-  mems_id = H5Screate_simple(2, dims_steps, NULL);
+  mems_id = H5Screate_simple(2, dims_steps, nullptr);
   dat_id = H5Dcreate2(file_id, "PD", H5T_NATIVE_DOUBLE, mems_id,
 		      H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
@@ -787,7 +787,7 @@ void PDDouble::writeToHDF5(const std::string& outputfile) const {
   the interpolation in whatever way the PD is stored.
 */
 double PDDouble::getPDVal(double x, double y,bool logval) const {
-  if (pd_ == NULL) return std::numeric_limits<double>::quiet_NaN();
+  if (pd_ == nullptr) return std::numeric_limits<double>::quiet_NaN();
 
   //look up the effective indexes
   int idx1 = static_cast<int>( (x-minflux1)/dflux1 );
@@ -946,7 +946,7 @@ int PDDouble::writeToFits( const std::string& outputfile ) const {
 */
 double PDDouble::getLogLike(const simImageDouble& data,
 			    unsigned int sparcity) const {
-  if (pd_ == NULL) throw pofdExcept("PDDouble", "getLogLike",
+  if (pd_ == nullptr) throw pofdExcept("PDDouble", "getLogLike",
 				    "pd not filled before likelihood calc", 1);
   unsigned int ndata = data.getN1() * data.getN2();
   if (ndata == 0) throw pofdExcept("PDDouble", "getLogLike",

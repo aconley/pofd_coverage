@@ -166,15 +166,15 @@ int getRSingle(int argc, char** argv) {
     }
   }
 
-  double *R = NULL;
-  double *flux = NULL;
+  double *R = nullptr;
+  double *flux = nullptr;
   try {
     numberCounts model(modelfile);
     beam bm(fwhm);
     beamHist inv_bmhist(nbins);
 
     // Set up filter
-    fourierFilter *filt = NULL;
+    fourierFilter *filt = nullptr;
     if (filterscale > 0) {
       if (matched) {
 	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
@@ -187,7 +187,7 @@ int getRSingle(int argc, char** argv) {
     // Fill beam
     inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, filt, nkeep);
 
-    if (filt != NULL) delete filt;
+    if (filt != nullptr) delete filt;
 
     if (n0 == 0)
       n0 = model.getBaseN0();
@@ -247,7 +247,7 @@ int getRSingle(int argc, char** argv) {
       
       // Properties
       adims = 1;
-      mems_id = H5Screate_simple(1, &adims, NULL);
+      mems_id = H5Screate_simple(1, &adims, nullptr);
       att_id = H5Acreate2(file_id, "dflux", H5T_NATIVE_DOUBLE,
 			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
       H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux);
@@ -260,7 +260,7 @@ int getRSingle(int argc, char** argv) {
 
       // Rflux
       adims = nflux;
-      mems_id = H5Screate_simple(1, &adims, NULL);
+      mems_id = H5Screate_simple(1, &adims, nullptr);
       dat_id = H5Dcreate2(file_id, "RFlux", H5T_NATIVE_DOUBLE,
 			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
@@ -297,13 +297,13 @@ int getRSingle(int argc, char** argv) {
   } catch (const pofdExcept& ex) {
     std::cerr << "Error encountered" << std::endl;
     std::cerr << ex << std::endl;
-    if (R != NULL) delete[] R;
-    if (flux != NULL) delete[] flux;
+    if (R != nullptr) delete[] R;
+    if (flux != nullptr) delete[] flux;
     return 8;
   } catch (const std::bad_alloc& ba) {
     std::cerr << "Bad allocation error: " << ba.what() << std::endl;
-    if (flux != NULL) delete[] flux;
-    if (R != NULL) delete[] R;
+    if (flux != nullptr) delete[] flux;
+    if (R != nullptr) delete[] R;
     return 16;
   }
   return 0;
@@ -468,16 +468,16 @@ int getRDouble(int argc, char** argv) {
     }
   }
 
-  double *R = NULL;
-  double *flux1 = NULL;
-  double *flux2 = NULL;
+  double *R = nullptr;
+  double *flux1 = nullptr;
+  double *flux2 = nullptr;
   try {
     numberCountsDouble model(modelfile);
     doublebeam bm(fwhm1, fwhm2);
     doublebeamHist inv_bmhist(nbins);
 
     // Set up filter
-    fourierFilter *filt1 = NULL, *filt2 = NULL;
+    fourierFilter *filt1 = nullptr, *filt2 = nullptr;
     if (filterscale > 0) {
       if (matched) {
 	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
@@ -494,8 +494,8 @@ int getRDouble(int argc, char** argv) {
     // Fill beam
     inv_bmhist.fill(bm, nfwhm, pixsize, true, oversamp, filt1, filt2, nkeep);
 
-    if (filt1 != NULL) delete filt1;
-    if (filt2 != NULL) delete filt2;
+    if (filt1 != nullptr) delete filt1;
+    if (filt2 != nullptr) delete filt2;
 
     if (n0 == 0)
       n0 = model.getBaseN0();
@@ -576,7 +576,7 @@ int getRDouble(int argc, char** argv) {
       
       // Properties
       adims = 1;
-      mems_id = H5Screate_simple(1, &adims, NULL);
+      mems_id = H5Screate_simple(1, &adims, nullptr);
       att_id = H5Acreate2(file_id, "dflux1", H5T_NATIVE_DOUBLE,
 			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
       H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux1);
@@ -593,7 +593,7 @@ int getRDouble(int argc, char** argv) {
 
       // Rfluxes
       adims = nflux1;
-      mems_id = H5Screate_simple(1, &adims, NULL);
+      mems_id = H5Screate_simple(1, &adims, nullptr);
       dat_id = H5Dcreate2(file_id, "RFlux1", H5T_NATIVE_DOUBLE,
 			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
@@ -601,7 +601,7 @@ int getRDouble(int argc, char** argv) {
       H5Dclose(dat_id);
       H5Sclose(mems_id);
       adims = nflux2;
-      mems_id = H5Screate_simple(1, &adims, NULL);
+      mems_id = H5Screate_simple(1, &adims, nullptr);
       dat_id = H5Dcreate2(file_id, "RFlux2", H5T_NATIVE_DOUBLE,
 			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
@@ -611,7 +611,7 @@ int getRDouble(int argc, char** argv) {
 
       // R, which is 2D
       hsize_t dims_steps[2] = {nflux1, nflux2};
-      mems_id = H5Screate_simple(2, dims_steps, NULL);
+      mems_id = H5Screate_simple(2, dims_steps, nullptr);
       dat_id = H5Dcreate2(file_id, "R", H5T_NATIVE_DOUBLE, mems_id,
 			  H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
@@ -648,15 +648,15 @@ int getRDouble(int argc, char** argv) {
   } catch (const pofdExcept& ex) {
     std::cerr << "Error encountered" << std::endl;
     std::cerr << ex << std::endl;
-    if (R != NULL) delete[] R;
-    if (flux1 != NULL) delete[] flux1;
-    if (flux2 != NULL) delete[] flux2;
+    if (R != nullptr) delete[] R;
+    if (flux1 != nullptr) delete[] flux1;
+    if (flux2 != nullptr) delete[] flux2;
     return 8;
   } catch (const std::bad_alloc& ba) {
     std::cerr << "Bad allocation error: " << ba.what() << std::endl;
-    if (R != NULL) delete[] R;
-    if (flux1 != NULL) delete[] flux1;
-    if (flux2 != NULL) delete[] flux2;
+    if (R != nullptr) delete[] R;
+    if (flux1 != nullptr) delete[] flux1;
+    if (flux2 != nullptr) delete[] flux2;
     return 16;
   }
   return 0;

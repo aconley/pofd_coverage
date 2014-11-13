@@ -85,7 +85,7 @@ class PDDouble {
   double getPDVal(double,double,bool=false) const; //!< Interpolation
 
   /*! \brief PD element access */
-  const double* operator[](unsigned int i) const { return pd_+n2*i; }
+  double* operator[](unsigned int i) const { return pd_+n2*i; }
   /*! \brief Number of elements in PD, band 1 */
   unsigned int getDim1() const { return n1; }
   /*! \brief Number of elements in PD, band 2 */

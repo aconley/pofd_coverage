@@ -790,11 +790,9 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   double *bmtmp1 = (double*) fftw_malloc(sizeof(double) * n1 * n2);
   double *bmtmp2 = (double*) fftw_malloc(sizeof(double) * n1 * n2);
   // Get the beams
-  std::cerr << "Getting raw beams" << std::endl;
   bm.getBeam(1, n1, n2, pixsize, oversamp, bmtmp1, f1);
   bm.getBeam(2, n1, n2, pixsize, oversamp, bmtmp2, f2); 
 
-  std::cerr << "Clipping" << std::endl;
   unsigned int minidx1, maxidx1, minidx2, maxidx2;
   if (nfwhmkeep < nfwhm) {
     // We want to set up logical indexing into the array to only keep
@@ -864,7 +862,6 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   }
 
   // Histogram
-  std::cerr << "Histogram" << std::endl;
   // Count up number of elements in each sign component, 
   // and do min/max values in each sign component.
   // The max beam value should certainly always be much smaller than 1e100
@@ -904,15 +901,11 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
 	ninbm[comp] += 1;
 	comparr[i * n2 + j] = comp;
 	
-	if (comp == 2 && fval1 < minbinval1[comp])
-	  std::cerr << "Setting new low val in band 1 comp2: " << log2(fval1)
-		    << " from position " << i << " " << j << std::endl;
-      
 	// Min/max bit
+	if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
 	if (fval1 > maxbinval1[comp]) maxbinval1[comp] = fval1;
-	else if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
+	if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
 	if (fval2 > maxbinval2[comp]) maxbinval2[comp] = fval2;
-	else if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
       }
     }
   }
@@ -966,8 +959,6 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
       min2 = minbinval2[compidx];
       istp1 = ihiststep1[compidx];
       istp2 = ihiststep2[compidx];
-      std::cerr << "Doing component " << compidx << " with log2 min values: "
-		<< min1 << " and " << min2 << std::endl;
       
       for (unsigned int i = minidx1; i < maxidx1; ++i) {
 	rowptr1 = bmtmp1 + i * n2;
@@ -980,13 +971,18 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
 	  fval2 = fabs(rowptr2[j]);
 	  idx1 = static_cast<unsigned int>((log2(fval1) - min1) * istp1);
 	  idx2 = static_cast<unsigned int>((log2(fval2) - min2) * istp2);
+	  if (idx1 >= nbins || idx2 >= nbins) {	    
+	    std::stringstream errstr;
+	    errstr << "Encountered indexing error with computed index: "
+		   << idx1 << " " << idx2 << " with array size " << nbins
+		   << " from log2(fval1): " << log2(fval1)
+		   << " and log2(fval2): " << log2(fval2)
+		   << " with log2(min) values: " << min1 << " and " << min2
+		   << " in component: " << compidx
+		   << " and raw beam index " << i << " " << j;
+	    throw pofdExcept("doublebeamHist", "fill", errstr.str(), 1);
+	  }
 	  totidx = idx1 * nbins + idx2;
-	  if (totidx >= nbins2)
-	    std::cerr << "Out of range index for " << idx1 << " and "
-		      << idx2 << " with fluxes: " << fval1 << " and "
-		      << fval2 << " log2 values: " << log2(fval1)
-		      << " and " << log2(fval2) << " at beam pos: "
-		      << i << " " << j << std::endl;
 	  tmpwt[totidx] += 1;
 	  tmphist1[totidx] += fval1;
 	  tmphist2[totidx] += fval2;
@@ -1031,14 +1027,12 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   has_data = true;
 
   // Clean up
-  std::cerr << "Clean up histogram" << std::endl;
   fftw_free(bmtmp1);
   fftw_free(bmtmp2);
   delete[] comparr;
   delete[] tmpwt;
   delete[] tmphist1;
   delete[] tmphist2;
-  std::exit(1);
 }
 
 /*!

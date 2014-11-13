@@ -743,16 +743,14 @@ int runSimDouble(int argc, char **argv) {
 
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
-			 nfwhm, sigma1, sigma2, single_filt, filterscale, qfactor, 
-			 matched, sigm1, sigm2, sigc1, sigc2,
+			 nfwhm, sigma1, sigma2, single_filt, filterscale,
+			 qfactor, matched, sigm1, sigm2, sigc1, sigc2,
 			 nbeambins, n0, esmooth1, esmooth2, oversample, 
 			 powerspecfile, sparcity, use_binning, nbins);
-    std::cerr << "Setup finished" << std::endl;
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
     // Main loop
-    std::cerr << "Doing sims" << std::endl;
     sim.doSims(verbose);
 
     //Write it

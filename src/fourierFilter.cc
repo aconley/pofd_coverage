@@ -550,5 +550,4 @@ void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
   // We don't have to rescale because that's already included
   //  in the filtering operations above
   fftw_execute_dft_c2r(plan_inv, map_fft, data);
-  std::cerr << "Filter applied" << std::endl;
 }

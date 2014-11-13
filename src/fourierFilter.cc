@@ -498,7 +498,7 @@ void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
 	if (kx2 > set1dist2) continue; // Filter is always 1 for this i
 	// If that didn't already continue, we have to check j by j
 	rowidx = i * nyhalf;
-	for (unsigned int j = 0; j <= nyhalf; ++j) {
+	for (unsigned int j = 0; j < nyhalf; ++j) {
 	  dist2 = kx2 + static_cast<double>(j * j); // Distance2 from 0
 	  if (dist2 > set1dist2) {} //Filter is 1
 	  else if (dist2 <= set0dist2) { // Filter is 0
@@ -521,7 +521,7 @@ void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
 	kx2 = static_cast<double>(iwrap * iwrap);
 	if (kx2 > set1dist2) continue;
 	rowidx = i * nyhalf;
-	for (unsigned int j = 0; j <= nyhalf; ++j) {
+	for (unsigned int j = 0; j < nyhalf; ++j) {
 	  dist2 = kx2 + static_cast<double>(j * j); // Distance from 0
 	  if (dist2 <= set1dist2) { // Filter is 0
 	    map_fft[rowidx + j][0] = 0.0;

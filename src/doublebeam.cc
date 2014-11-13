@@ -909,12 +909,12 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
       }
       ++ninbm[comp];
       comparr[i * n2 + j] = comp;
-      
+
       // Min/max bit
       if (fval1 > maxbinval1[comp]) maxbinval1[comp] = fval1;
-      else if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
+      if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
       if (fval2 > maxbinval2[comp]) maxbinval2[comp] = fval2;
-      else if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
+      if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
     }
   }
 
@@ -1028,6 +1028,7 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   delete[] tmpwt;
   delete[] tmphist1;
   delete[] tmphist2;
+  std::exit(1);
 }
 
 /*!

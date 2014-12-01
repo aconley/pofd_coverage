@@ -880,18 +880,17 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
     H5Aclose(att_id); 
   }
 
-  H5Gclose(group_id);
   H5Sclose(mems_id);
+  H5Gclose(group_id);
 
   // Filter group
   group_id = H5Gcreate(file_id, "Filter", H5P_DEFAULT, H5P_DEFAULT, 
-		      H5P_DEFAULT);
+		       H5P_DEFAULT);
   if (H5Iget_ref(group_id) < 0)
     throw pofdExcept("simManager", "writeToHDF5",
 		     "Failed to create HDF5 filter group", 3);
   adims = 1; 
   mems_id = H5Screate_simple(1, &adims, nullptr);
-
 
   bl = static_cast<hbool_t>(simim.isHipassFiltered().first);
   att_id = H5Acreate2(group_id, "IsHighPassFiltered1", H5T_NATIVE_HBOOL,
@@ -978,13 +977,12 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
   } 
-
-  H5Gclose(group_id);
   H5Sclose(mems_id);
+  H5Gclose(group_id);
 
   // Sim group
   group_id = H5Gcreate(file_id, "Simulations", H5P_DEFAULT, H5P_DEFAULT, 
-		      H5P_DEFAULT);
+		       H5P_DEFAULT);
   if (H5Iget_ref(group_id) < 0)
     throw pofdExcept("simManager", "writeToHDF5",
 		     "Failed to create HDF5 simulation group", 4);
@@ -1122,62 +1120,64 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
   H5Sclose(mems_id); // The rest is not scalar
 
   // Write the data
-  adims = nsims;
-  mems_id = H5Screate_simple(1, &adims, nullptr);
+  if (nsims > 0) {
+    adims = nsims;
+    mems_id = H5Screate_simple(1, &adims, nullptr);
 
-  dat_id = H5Dcreate2(group_id, "BestN0", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	   H5P_DEFAULT, bestn0);
-  H5Dclose(dat_id);
-
-  dat_id = H5Dcreate2(group_id, "BestLike", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	   H5P_DEFAULT, bestlike);
-  H5Dclose(dat_id);
-  
-  if (do_map_like) {
-    dat_id = H5Dcreate2(group_id, "MinN0", H5T_NATIVE_DOUBLE,
+    dat_id = H5Dcreate2(group_id, "BestN0", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	     H5P_DEFAULT, min_n0);
+	     H5P_DEFAULT, bestn0);
     H5Dclose(dat_id);
-    dat_id = H5Dcreate2(group_id, "DeltaN0", H5T_NATIVE_DOUBLE,
+    
+    dat_id = H5Dcreate2(group_id, "BestLike", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	     H5P_DEFAULT, delta_n0);
+	     H5P_DEFAULT, bestlike);
     H5Dclose(dat_id);
-  }
-  H5Sclose(mems_id); 
 
-  // Multi-D.  We will write the likelihood as float after
-  //  subtracting of bestlike to save space
-  if (do_map_like) {
-    hsize_t cdims[2] = {nsims, nlike};
-    float *wrk, *wrowptr;
-    wrk = new float[nsims * nlike];
-    double cmin, *rowptr;
-    for (unsigned int i = 0; i < nsims; ++i) {
-      cmin = min_n0[i];
-      rowptr = likearr[i];
-      wrowptr = wrk + i * nlike;
-      for (unsigned int j = 0; j < nlike; ++j)
-	wrowptr[j] = static_cast<float>(rowptr[j] - cmin);
+    if (do_map_like) {
+      dat_id = H5Dcreate2(group_id, "MinN0", H5T_NATIVE_DOUBLE,
+			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	       H5P_DEFAULT, min_n0);
+      H5Dclose(dat_id);
+      dat_id = H5Dcreate2(group_id, "DeltaN0", H5T_NATIVE_DOUBLE,
+			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+	       H5P_DEFAULT, delta_n0);
+      H5Dclose(dat_id);
     }
-    // We further write with compression
-    hid_t plist;
-    mems_id = H5Screate_simple(2, cdims, nullptr);
-    plist = H5Pcreate(H5P_DATASET_CREATE);
-    H5Pset_chunk(plist, 2, cdims);
-    H5Pset_deflate(plist, 6); // Gzip, compression 6
-    dat_id = H5Dcreate2(group_id, "LogLikelihood", H5T_NATIVE_FLOAT, 
-			mems_id, H5P_DEFAULT, plist, H5P_DEFAULT); 
-    H5Dwrite(dat_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, wrk);
-    H5Dclose(dat_id);
-    H5Pclose(plist);
     H5Sclose(mems_id);
-    delete[] wrk;
+
+    // Multi-D likelihoods.  We will write the likelihood as float after
+    //  subtracting of bestlike to save space
+    if (do_map_like) {
+      hsize_t cdims[2] = {nsims, nlike};
+      float *wrk, *wrowptr;
+      wrk = new float[nsims * nlike];
+      double cmin, *rowptr;
+      for (unsigned int i = 0; i < nsims; ++i) {
+	cmin = min_n0[i];
+	rowptr = likearr[i];
+	wrowptr = wrk + i * nlike;
+	for (unsigned int j = 0; j < nlike; ++j)
+	  wrowptr[j] = static_cast<float>(rowptr[j] - cmin);
+      }
+      // We further write with compression
+      hid_t plist;
+      mems_id = H5Screate_simple(2, cdims, nullptr);
+      plist = H5Pcreate(H5P_DATASET_CREATE);
+      H5Pset_chunk(plist, 2, cdims);
+      H5Pset_deflate(plist, 6); // Gzip, compression 6
+      dat_id = H5Dcreate2(group_id, "LogLikelihood", H5T_NATIVE_FLOAT, 
+			  mems_id, H5P_DEFAULT, plist, H5P_DEFAULT); 
+      H5Dwrite(dat_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, wrk);
+      H5Dclose(dat_id);
+      H5Pclose(plist);
+      H5Sclose(mems_id);
+      delete[] wrk;
+    }
   }
 
   H5Gclose(group_id);  // Simulation group

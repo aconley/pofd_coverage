@@ -1033,7 +1033,6 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   delete[] tmpwt;
   delete[] tmphist1;
   delete[] tmphist2;
-  std::exit(1);
 }
 
 /*!

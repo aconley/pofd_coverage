@@ -48,7 +48,7 @@ static double minfunc(double x, void* params) {
 /*!
   \param[in] MODELFILE Name of file containing base model
   \param[in] NSIMS Number of simulations to do
-  \param[in] N0INITRANGE Initial values to maximize likelihood are 
+  \param[in] N0INITRANGE Initial values to maximize likelihood are
               n0*(1-n0initrange) to n0*(1+n0initrange)
   \param[in] MAPLIKE Do make likelihood map?
   \param[in] NLIKE   Number of likelihoods in likelihood map
@@ -62,24 +62,29 @@ static double minfunc(double x, void* params) {
   \param[in] FWHM2 Fwhm of band 2 beam, in arcsec
   \param[in] NFWHM Number of FWHM out to go on beam.  This is the number
               after filtering (if filtering is applied)
-  \param[in] SIGI1 Instrument noise (without smoothing or filtering) in Jy, 
+  \param[in] SIMFWHM1 FWHM of band 1 beam used in constructing simulated
+              maps. If this is NaN (the default), the same FWHM is used
+              as is used for the P(D) computations.  Allowing these to
+              be different is a way of doing systematics testing.
+  \param[in] SIMFWHM2 Same as SIMFWHM1 but for Band 2.
+  \param[in] SIGI1 Instrument noise (without smoothing or filtering) in Jy,
              band 1
-  \param[in] SIGI2 Instrument noise (without smoothing or filtering) in Jy, 
+  \param[in] SIGI2 Instrument noise (without smoothing or filtering) in Jy,
              band 2
   \param[in] SINGLEFILT Use the same filter in both bands, based on band1 values.
-  \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If 0, no 
+  \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If 0, no
               high-pass filtering is applied.
   \param[in] QFACTOR High-pass Gaussian filtering apodization sigma as
               a fraction of FILTSCALE.
   \param[in] MATCHED Apply matched filtering using the FWHM of the beam,
                the instrument noise (SIGI), and SIGC
-  \param[in] SIGMI1 The matched filter instrument noise, if matched filtering 
+  \param[in] SIGMI1 The matched filter instrument noise, if matched filtering
               is used, band 1.  If zero, defaults to SIGI1
-  \param[in] SIGMI2 The matched filter instrument noise, if matched filtering 
+  \param[in] SIGMI2 The matched filter instrument noise, if matched filtering
               is used, band 2.  If zero, defaults to SIGI2
-  \param[in] SIGMC1 The matched filter confusion noise, if matched filtering 
+  \param[in] SIGMC1 The matched filter confusion noise, if matched filtering
               is used, band 1
-  \param[in] SIGMC2 The matched filter confusion noise, if matched filtering 
+  \param[in] SIGMC2 The matched filter confusion noise, if matched filtering
               is used, band 2
   \param[in] NBEAMBINS Number of bins to use in beam histogram; def 150
   \param[in] N0 Simulated number of sources per sq deg.
@@ -95,15 +100,16 @@ static double minfunc(double x, void* params) {
 */
 simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   unsigned int NSIMS, double N0INITRANGE,
-				   bool MAPLIKE, unsigned int NLIKE, 
+				   bool MAPLIKE, unsigned int NLIKE,
 				   double N0RANGEFRAC, unsigned int FFTSIZE,
-				   unsigned int N1, unsigned int N2, 
-				   double PIXSIZE, double FWHM1, double FWHM2, 
-				   double NFWHM, double SIGI1, double SIGI2, 
-				   bool SINGLEFILT, double FILTSCALE, double QFACTOR, 
+				   unsigned int N1, unsigned int N2,
+				   double PIXSIZE, double FWHM1, double FWHM2,
+				   double NFWHM, double SIMFWHM1, double SIMFWHM2,
+           double SIGI1, double SIGI2,
+				   bool SINGLEFILT, double FILTSCALE, double QFACTOR,
 				   bool MATCHED, double SIGMI1, double SIGMI2,
 				   double SIGMC1, double SIGMC2,
-				   unsigned int NBEAMBINS, double N0, 
+				   unsigned int NBEAMBINS, double N0,
 				   double ESMOOTH1, double ESMOOTH2,
 				   unsigned int OVERSAMPLE,
 				   const std::string& POWERSPECFILE,
@@ -111,15 +117,20 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   bool USEBIN, unsigned int NBINS) :
   nsims(NSIMS), n0initrange(N0INITRANGE), do_map_like(MAPLIKE),
   nlike(NLIKE), n0rangefrac(N0RANGEFRAC), like_sparcity(SPARCITY),
-  fftsize(FFTSIZE), n0(N0), inv_bmhist(NBEAMBINS), 
-  simim(N1, N2, PIXSIZE, FWHM1, FWHM2, SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, 
-	OVERSAMPLE, NBINS, POWERSPECFILE), 
+  fftsize(FFTSIZE), n0(N0), inv_bmhist(NBEAMBINS), simim(nullptr),
   use_binning(USEBIN), model(MODELFILE), filt1(nullptr), filt2(nullptr),
   esmooth1(ESMOOTH1), esmooth2(ESMOOTH2) {
 
 #ifdef TIMING
   initTime = getTime = getLikeTime = 0;
 #endif
+
+  // Setup simim
+  if (std::isnan(SIMFWHM1) || SIMFWHM1 <= 0.0) SIMFWHM1 = FWHM1;
+  if (std::isnan(SIMFWHM2) || SIMFWHM2 <= 0.0) SIMFWHM2 = FWHM2;
+  simim = new simImageDouble(N1, N2, PIXSIZE, SIMFWHM1, SIMFWHM2,
+    SIGI1, SIGI2, ESMOOTH1, ESMOOTH2, OVERSAMPLE, NBINS,
+    POWERSPECFILE);
 
   bool do_extra_smooth;
   if (esmooth1 > 0.0 || esmooth2 > 0.0) do_extra_smooth = true;
@@ -129,7 +140,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 	       std::sqrt(FWHM2 * FWHM2 + esmooth2 * esmooth2));
   else
     bm.setFWHM(FWHM1, FWHM2);
-  
+
   if (nsims > 0) {
     bestn0 = new double[nsims];
     bestlike = new double[nsims];
@@ -154,11 +165,11 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   if (MATCHED && SIGMI2 == 0) SIGMI2 = SIGI2;
   if (FILTSCALE > 0) {
     if (MATCHED) {// Hipass and matched
-      filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGMI1, SIGMC1, 
+      filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGMI1, SIGMC1,
 				FILTSCALE, QFACTOR, false, true);
-      if (!SINGLEFILT) 	
+      if (!SINGLEFILT)
 	if ((FWHM1 != FWHM2) || (SIGMI1 != SIGMI2) || (SIGMC1 != SIGMC2))
-	  filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGMI2, SIGMC2, 
+	  filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGMI2, SIGMC2,
 				    FILTSCALE, QFACTOR, false, true);
     } else // hipass only, can always use just one filter
       filt1 = new fourierFilter(PIXSIZE, FILTSCALE, QFACTOR, false, true);
@@ -166,7 +177,7 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGMI1, SIGMC1, false, true);
     if (!SINGLEFILT) // Maybe use two, if any args differ
       if ((FWHM1 != FWHM2) || (SIGI1 != SIGI2) || (SIGMC1 != SIGMC2))
-	filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGMI2, SIGMC2, 
+	filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGMI2, SIGMC2,
 				  FILTSCALE, QFACTOR, false, true);
   }
 
@@ -180,11 +191,13 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
     inv_bmhist.fill(bm, NFWHM, PIXSIZE, true, OVERSAMPLE,
 		    nullptr, nullptr, NFWHM);
 
+  // GSL interface
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
 }
 
 simManagerDouble::~simManagerDouble() {
+  if (simim != nullptr) delete simim;
   if (bestn0 != nullptr) delete[] bestn0;
   if (bestlike != nullptr) delete[] bestlike;
   delete[] varr;
@@ -214,12 +227,12 @@ void simManagerDouble::doSims(bool verbose=false) {
   //Turn off gsl error handler during call
   gsl_error_handler_t *old_handler = gsl_set_error_handler_off();
 
-  sigi_final = simim.getFinalNoise(nnoisetrials, filt1, filt2);
+  sigi_final = simim->getFinalNoise(nnoisetrials, filt1, filt2);
 
   //Now, set up the parameters to pass to the minimizer.  Ugly!
   varr[0] = static_cast<void*>(&pdfac);
   varr[1] = static_cast<void*>(&pd);
-  varr[2] = static_cast<void*>(&simim);
+  varr[2] = static_cast<void*>(simim);
   varr[3] = static_cast<void*>(&like_sparcity);
 
   void *params;
@@ -243,12 +256,12 @@ void simManagerDouble::doSims(bool verbose=false) {
   maxflux = model.getMaxFluxEstimate();
   maxflux.first *= 1.05 * max_n0ratio;
   maxflux.second *= 1.05 * max_n0ratio;
-  pdfac.initPD(fftsize, sigi_final.first, sigi_final.second, 
-	       maxflux.first, maxflux.second, 
+  pdfac.initPD(fftsize, sigi_final.first, sigi_final.second,
+	       maxflux.first, maxflux.second,
 	       init_b, model, inv_bmhist, true);
 #ifdef TIMING
   initTime += std::clock() - starttime;
-#endif 
+#endif
 
   //Main loop
   // 1) Make a simulated image
@@ -256,12 +269,13 @@ void simManagerDouble::doSims(bool verbose=false) {
   // 3) Optionally, map out the likelihood around that
   for (unsigned int i = 0; i < nsims; ++i) {
     if (verbose) {
-      std::cout << "Doing simulation " << i + 1 << " of " << nsims 
+      std::cout << "Doing simulation " << i + 1 << " of " << nsims
 		<< std::endl;
     }
     //Make simulated image, don't mean sub until we have mn estimate
     // so we can estimate shifts
-    simim.realize(model, n0, true, filt1, filt2, use_binning, like_sparcity);
+    simim->realize(model, n0, true, filt1, filt2, use_binning,
+      like_sparcity);
 
     //Now set up the minimization; note this involves calling minfunc
     // so we can't do it until all the arguments are ready
@@ -284,13 +298,13 @@ void simManagerDouble::doSims(bool verbose=false) {
       a = n0 * (1.0 - curr_initrange);
       b = n0 * (1.0 + curr_initrange);
       fa = minfunc(a, params);
-      fb = minfunc(b, params);   
+      fb = minfunc(b, params);
 
       //Now, update current init range.  We step a quarter way in log
-      // space between here and 1.0. 
-      next_initrange = exp2(0.75 * log2(curr_initrange)); 
+      // space between here and 1.0.
+      next_initrange = exp2(0.75 * log2(curr_initrange));
     } while ((exp_iter < max_expiter) && ( (fa <= fm) || (fb <= fm) ));
-    
+
     if ((fa <= fm) || (fb <= fm)) {
       std::stringstream errstr;
       errstr << "Unable to bracket minimum in -log likelihood."
@@ -327,7 +341,7 @@ void simManagerDouble::doSims(bool verbose=false) {
       //Get current limits
       currmin = gsl_min_fminimizer_x_lower(s);
       currmax = gsl_min_fminimizer_x_upper(s);
-    
+
       //Convergence test
       status = gsl_min_test_interval(currmin, currmax, 0.0, reltol);
     } while (status == GSL_CONTINUE && iter < max_iter);
@@ -337,13 +351,13 @@ void simManagerDouble::doSims(bool verbose=false) {
       errstr << "GSL minimizer failed to converge with code: " << status
 	     << std::endl;
       errstr << "GSL error message: " << gsl_strerror(status);
-      throw pofdExcept("simManagerDouble", "doSims", 
+      throw pofdExcept("simManagerDouble", "doSims",
 		       errstr.str(), 2);
     }
 
     bestn0[i] = gsl_min_fminimizer_x_minimum(s);
     bestlike[i] = -gsl_min_fminimizer_f_minimum(s); //From -Log like to log like
-    
+
     //Now -- optional likelihood map
     if (do_map_like) {
       //Compute n0 array
@@ -351,7 +365,7 @@ void simManagerDouble::doSims(bool verbose=false) {
 	double max_n0;
 	min_n0[i] = bestn0[i] * (1.0 - n0rangefrac);
 	max_n0 = bestn0[i] * (1.0 + n0rangefrac);
-	delta_n0[i] = (max_n0 - min_n0[i]) / 
+	delta_n0[i] = (max_n0 - min_n0[i]) /
 	  (static_cast<double>(nlike) - 1.0);
       } else {
 	//Note that for 1 likelihood we just hit n0, not the best fit
@@ -368,7 +382,7 @@ void simManagerDouble::doSims(bool verbose=false) {
       double curr_n0;
       for (unsigned int j = 0; j < nlike; ++j) {
 	curr_n0 = min_n0[i] + static_cast<double>(j)*delta_n0[i];
-	
+
 #ifdef TIMING
 	starttime = std::clock();
 #endif
@@ -376,12 +390,12 @@ void simManagerDouble::doSims(bool verbose=false) {
 #ifdef TIMING
 	getTime += std::clock() - starttime;
 #endif
-	
+
 	//Get like
 #ifdef TIMING
 	starttime = std::clock();
 #endif
-	likearr[i][j] =  pd.getLogLike(simim, like_sparcity);
+	likearr[i][j] =  pd.getLogLike(*simim, like_sparcity);
 #ifdef TIMING
 	getLikeTime += std::clock() - starttime;
 #endif
@@ -408,7 +422,7 @@ void simManagerDouble::resetTime() {
 void simManagerDouble::summarizeTime() const {
   std::cout << "initPD time: " << 1.0*initTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "getPD time: " << 1.0*getTime/CLOCKS_PER_SEC << std::endl;
-  std::cout << "getLogLike time: " << 1.0*getLikeTime/CLOCKS_PER_SEC 
+  std::cout << "getLogLike time: " << 1.0*getLikeTime/CLOCKS_PER_SEC
 	    << std::endl;
   std::cout << "Within PDFactoryDouble: " << std::endl;
   pdfac.summarizeTime(2);
@@ -433,10 +447,10 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   //We are going to do this as a big ol table
   //The contents of the table depend if we mapped out the likelihood or
   // just maximized
-  //A tricky/irritating bit is constructing the tform argument 
+  //A tricky/irritating bit is constructing the tform argument
   // for the LOGLIKE column
   if (do_map_like) {
-    char* ttype[] = {"BEST_N0", "BEST_LOGLIKE", "MIN_N0", 
+    char* ttype[] = {"BEST_N0", "BEST_LOGLIKE", "MIN_N0",
 		     "DELTA_N0", "LOGLIKE"};
     char* tform[5];
     char* tform0 = "1D";
@@ -445,7 +459,7 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
     char* tform2 = new char[ndigits+5];
     sprintf(tform2, "%uE", nlike); //E is the format code for 32 bit float
     tform[4] = tform2;
-    fits_create_tbl(fp, BINARY_TBL, 0, 5, ttype, tform, nullptr, "RESULTS", 
+    fits_create_tbl(fp, BINARY_TBL, 0, 5, ttype, tform, nullptr, "RESULTS",
 		    &status);
     delete[] tform2;
   } else {
@@ -453,7 +467,7 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
     char* tform[2];
     char* tform0 = "1D";
     tform[0] = tform0; tform[1] = tform0;
-    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, nullptr, "RESULTS", 
+    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, nullptr, "RESULTS",
 		    &status);
   }
 
@@ -462,248 +476,255 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   int itmp = 0;
   double dtmp = 0.0;
   fits_write_key(fp, TSTRING, const_cast<char*>("MODEL"),
-		 const_cast<char*>("Spline-Log Normal"), 
+		 const_cast<char*>("Spline-Log Normal"),
 		 const_cast<char*>("Model type"),
 		 &status);
   dtmp = n0; //Must copy to temporary for const type handling
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("N0"), &dtmp, 
-		 const_cast<char*>("Number of sources per sq deg"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("N0"), &dtmp,
+		 const_cast<char*>("Number of sources per sq deg"),
 		 &status);
 
   //Base model parameters
   dtmp = model.getBaseN0();
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("BASEN0"), &dtmp, 
-		 const_cast<char*>("Base number of sources per sq deg"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BASEN0"), &dtmp,
+		 const_cast<char*>("Base number of sources per sq deg"),
 		 &status);
 
   //Sim params
   dtmp = inv_bmhist.getFWHM().first;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp, 
-		 const_cast<char*>("Beam fwhm, band 1 [arcsec]"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp,
+		 const_cast<char*>("Beam fwhm, band 1 [arcsec]"),
 		 &status);
   dtmp = inv_bmhist.getFWHM().second;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp, 
-		 const_cast<char*>("Beam fwhm, band 2 [arcsec]"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp,
+		 const_cast<char*>("Beam fwhm, band 2 [arcsec]"),
 		 &status);
   dtmp = inv_bmhist.getNFWHMKeep();
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp, 
-		 const_cast<char*>("Number of FWHM kept"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
+		 const_cast<char*>("Number of FWHM kept"),
 		 &status);
   utmp = inv_bmhist.getNbins();
-  fits_write_key(fp, TUINT, const_cast<char*>("NBMBINS"), &utmp, 
-		 const_cast<char*>("Number of Beam hist bins"), 
+  fits_write_key(fp, TUINT, const_cast<char*>("NBMBINS"), &utmp,
+		 const_cast<char*>("Number of Beam hist bins"),
 		 &status);
   std::pair<double,double> dpr;
-  dpr = simim.getBeamSum();
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREA1"), &dpr.first, 
-		 const_cast<char*>("Beam area, band 1 [pixels]"), 
+  dpr = simim->getBeamFWHM();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIMFWHM1"), &dpr.first,
+     const_cast<char*>("Simulated Image Beam1 FWHM [arcsec]"),
+     &status);
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIMFWHM2"), &dpr.second,
+     const_cast<char*>("Simulated Image Beam2 FWHM [arcsec]"),
+     &status);
+  dpr = simim->getBeamSum();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREA1"), &dpr.first,
+		 const_cast<char*>("Beam area, band 1 [pixels]"),
 		 &status);
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREA2"), &dpr.second, 
-		 const_cast<char*>("Beam area, band 2 [pixels]"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREA2"), &dpr.second,
+		 const_cast<char*>("Beam area, band 2 [pixels]"),
 		 &status);
-  dpr = simim.getBeamSumSq();
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMARESQ1"), &dpr.first, 
-		 const_cast<char*>("Beam squared area, band 1 [pixels]"), 
+  dpr = simim->getBeamSumSq();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMARESQ1"), &dpr.first,
+		 const_cast<char*>("Beam squared area, band 1 [pixels]"),
 		 &status);
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMARESQ2"), &dpr.second, 
-		 const_cast<char*>("Beam squared area, band 2 [pixels]"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMARESQ2"), &dpr.second,
+		 const_cast<char*>("Beam squared area, band 2 [pixels]"),
 		 &status);
 
-  if (simim.isSmoothed()) {
+  if (simim->isSmoothed()) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
-		   const_cast<char*>("Additional smoothing applied"), 
+		   const_cast<char*>("Additional smoothing applied"),
 		   &status);
-    dpr = simim.getEsmooth();
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH1"), &dpr.first, 
-		   const_cast<char*>("Extra smoothing fwhm, band 1 [arcsec]"), 
+    dpr = simim->getEsmooth();
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH1"), &dpr.first,
+		   const_cast<char*>("Extra smoothing fwhm, band 1 [arcsec]"),
 		   &status);
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH2"), &dpr.second, 
-		   const_cast<char*>("Extra smoothing fwhm, band 2 [arcsec]"), 
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH2"), &dpr.second,
+		   const_cast<char*>("Extra smoothing fwhm, band 2 [arcsec]"),
 		   &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
-		   const_cast<char*>("Additional smoothing applied"), 
+		   const_cast<char*>("Additional smoothing applied"),
 		   &status);
   }
-  
-  dpr = simim.getInstNoise();
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_1"), &dpr.first, 
-		 const_cast<char*>("Raw instrument noise, band 1"), 
+
+  dpr = simim->getInstNoise();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_1"), &dpr.first,
+		 const_cast<char*>("Raw instrument noise, band 1"),
 		 &status);
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &dpr.second, 
-		 const_cast<char*>("Raw instrument noise, band 2"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI_2"), &dpr.second,
+		 const_cast<char*>("Raw instrument noise, band 2"),
 		 &status);
   dpr = sigi_final;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL1"), &dpr.first, 
-		 const_cast<char*>("Final instrument noise, band 1"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL1"), &dpr.first,
+		 const_cast<char*>("Final instrument noise, band 1"),
 		 &status);
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL2"), &dpr.second, 
-		 const_cast<char*>("Final instrument noise, band 2"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL2"), &dpr.second,
+		 const_cast<char*>("Final instrument noise, band 2"),
 		 &status);
 
-  if (simim.isOversampled()) {
-    utmp = simim.getOversampling();
-    fits_write_key(fp, TUINT, const_cast<char*>("OVERSMPL"), &utmp, 
-		   const_cast<char*>("Oversampling factor"), 
+  if (simim->isOversampled()) {
+    utmp = simim->getOversampling();
+    fits_write_key(fp, TUINT, const_cast<char*>("OVERSMPL"), &utmp,
+		   const_cast<char*>("Oversampling factor"),
 		   &status);
   }
 
-  itmp = static_cast<int>(simim.isClustered());
+  itmp = static_cast<int>(simim->isClustered());
   fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &itmp,
 		 const_cast<char*>("Use clustered positions"), &status);
 
   if (use_binning) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("USEBIN"), &itmp,
-		   const_cast<char*>("Use binned likelihood"), 
+		   const_cast<char*>("Use binned likelihood"),
 		   &status);
-    utmp = simim.getNBins();
+    utmp = simim->getNBins();
     fits_write_key(fp, TUINT, const_cast<char*>("NBINS"), &utmp,
-		   const_cast<char*>("Number of bins in Likelihood"), 
+		   const_cast<char*>("Number of bins in Likelihood"),
 		   &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("USEBIN"), &itmp,
-		   const_cast<char*>("Use binned likelihood"), 
+		   const_cast<char*>("Use binned likelihood"),
 		   &status);
   }
 
-  
-  dtmp = simim.getPixSize();
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp, 
-		 const_cast<char*>("Simulation pixel size [arcsec]"), 
+
+  dtmp = simim->getPixSize();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp,
+		 const_cast<char*>("Simulation pixel size [arcsec]"),
 		 &status);
-  dtmp = simim.getArea();
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("AREA"), &dtmp, 
-		 const_cast<char*>("Simulation area size [sq deg]"), 
+  dtmp = simim->getArea();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("AREA"), &dtmp,
+		 const_cast<char*>("Simulation area size [sq deg]"),
 		 &status);
-  
+
   utmp = nsims;
-  fits_write_key(fp, TUINT, const_cast<char*>("NSIMS"), &utmp, 
-		 const_cast<char*>("Number of simulations"), 
+  fits_write_key(fp, TUINT, const_cast<char*>("NSIMS"), &utmp,
+		 const_cast<char*>("Number of simulations"),
 		 &status);
   utmp = fftsize;
-  fits_write_key(fp, TUINT, const_cast<char*>("FFTSIZE"), &utmp, 
-		 const_cast<char*>("Size of FFT transformation"), 
+  fits_write_key(fp, TUINT, const_cast<char*>("FFTSIZE"), &utmp,
+		 const_cast<char*>("Size of FFT transformation"),
 		 &status);
   dtmp = n0initrange;
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("N0INIRNG"), &dtmp, 
-		 const_cast<char*>("N0 range fraction for minimization"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("N0INIRNG"), &dtmp,
+		 const_cast<char*>("N0 range fraction for minimization"),
 		 &status);
 
-  itmp = simim.isHipassFiltered().first;
+  itmp = simim->isHipassFiltered().first;
   fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT1"), &itmp,
-		 const_cast<char*>("Has hipass filtering been applied in band1?"), 
+		 const_cast<char*>("Has hipass filtering been applied in band1?"),
 		 &status);
   if (itmp) {
-    dtmp = simim.getFiltScale().first;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL1"), &dtmp, 
-		 const_cast<char*>("Hipass filtering scale1 [arcsec]"), 
+    dtmp = simim->getFiltScale().first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL1"), &dtmp,
+		 const_cast<char*>("Hipass filtering scale1 [arcsec]"),
 		 &status);
-    dtmp = simim.getFiltQFactor().first;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ1"), &dtmp, 
-		 const_cast<char*>("Hipass filtering apodization1"), 
+    dtmp = simim->getFiltQFactor().first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ1"), &dtmp,
+		 const_cast<char*>("Hipass filtering apodization1"),
 		 &status);
-  } 
-  itmp = simim.isMatchFiltered().first;
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT1"), &itmp, 
-		 const_cast<char*>("Has matched filtering been applied in band1?"), 
+  }
+  itmp = simim->isMatchFiltered().first;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT1"), &itmp,
+		 const_cast<char*>("Has matched filtering been applied in band1?"),
 		 &status);
   if (itmp) {
-    dtmp = simim.getFiltFWHM().first;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTFWHM1"), &dtmp, 
-		 const_cast<char*>("Matched filtering fwhm1 [arcsec]"), 
+    dtmp = simim->getFiltFWHM().first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTFWHM1"), &dtmp,
+		 const_cast<char*>("Matched filtering fwhm1 [arcsec]"),
 		 &status);
-    dtmp = simim.getFiltSigInst().first;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGI1"), &dtmp, 
-		 const_cast<char*>("Matched filtering sig_i1 [Jy]"), 
+    dtmp = simim->getFiltSigInst().first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGI1"), &dtmp,
+		 const_cast<char*>("Matched filtering sig_i1 [Jy]"),
 		 &status);
-    dtmp = simim.getFiltSigConf().first;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGC1"), &dtmp, 
-		 const_cast<char*>("Matched filtering sig_c1 [Jy]"), 
+    dtmp = simim->getFiltSigConf().first;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGC1"), &dtmp,
+		 const_cast<char*>("Matched filtering sig_c1 [Jy]"),
 		 &status);
-  } 
-  itmp = simim.isHipassFiltered().second;
+  }
+  itmp = simim->isHipassFiltered().second;
   fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT2"), &itmp,
-		 const_cast<char*>("Has hipass filtering been applied in band2?"), 
+		 const_cast<char*>("Has hipass filtering been applied in band2?"),
 		 &status);
   if (itmp) {
-    dtmp = simim.getFiltScale().second;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL2"), &dtmp, 
-		 const_cast<char*>("Hipass filtering scale2 [arcsec]"), 
+    dtmp = simim->getFiltScale().second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL2"), &dtmp,
+		 const_cast<char*>("Hipass filtering scale2 [arcsec]"),
 		 &status);
-    dtmp = simim.getFiltQFactor().second;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ2"), &dtmp, 
-		 const_cast<char*>("Hipass filtering apodization2"), 
+    dtmp = simim->getFiltQFactor().second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ2"), &dtmp,
+		 const_cast<char*>("Hipass filtering apodization2"),
 		 &status);
-  } 
-  itmp = simim.isMatchFiltered().second;
-  fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT2"), &itmp, 
-		 const_cast<char*>("Has matched filtering been applied in band2?"), 
+  }
+  itmp = simim->isMatchFiltered().second;
+  fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT2"), &itmp,
+		 const_cast<char*>("Has matched filtering been applied in band2?"),
 		 &status);
   if (itmp) {
-    dtmp = simim.getFiltFWHM().second;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTFWHM2"), &dtmp, 
-		 const_cast<char*>("Matched filtering fwhm2 [arcsec]"), 
+    dtmp = simim->getFiltFWHM().second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTFWHM2"), &dtmp,
+		 const_cast<char*>("Matched filtering fwhm2 [arcsec]"),
 		 &status);
-    dtmp = simim.getFiltSigInst().second;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGI2"), &dtmp, 
-		 const_cast<char*>("Matched filtering sig_i2 [Jy]"), 
+    dtmp = simim->getFiltSigInst().second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGI2"), &dtmp,
+		 const_cast<char*>("Matched filtering sig_i2 [Jy]"),
 		 &status);
-    dtmp = simim.getFiltSigConf().second;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGC2"), &dtmp, 
-		 const_cast<char*>("Matched filtering sig_c2 [Jy]"), 
+    dtmp = simim->getFiltSigConf().second;
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSIGC2"), &dtmp,
+		 const_cast<char*>("Matched filtering sig_c2 [Jy]"),
 		 &status);
-  } 
+  }
 
   utmp = getN1();
-  fits_write_key(fp, TUINT, const_cast<char*>("N1"), &utmp, 
-		 const_cast<char*>("Image extent, dimension 1"), 
+  fits_write_key(fp, TUINT, const_cast<char*>("N1"), &utmp,
+		 const_cast<char*>("Image extent, dimension 1"),
 		 &status);
   utmp = getN2();
-  fits_write_key(fp, TUINT, const_cast<char*>("N2"), &utmp, 
-		 const_cast<char*>("Image extent, dimension 2"), 
+  fits_write_key(fp, TUINT, const_cast<char*>("N2"), &utmp,
+		 const_cast<char*>("Image extent, dimension 2"),
 		 &status);
 
   if (like_sparcity > 1) {
     utmp = like_sparcity;
-    fits_write_key(fp, TUINT, const_cast<char*>("LIKESPAR"), &utmp, 
-		   const_cast<char*>("Like sampling sparcity"), 
+    fits_write_key(fp, TUINT, const_cast<char*>("LIKESPAR"), &utmp,
+		   const_cast<char*>("Like sampling sparcity"),
 		   &status);
   }
 
   if (do_map_like) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MAPLIKE"), &itmp,
-		   const_cast<char*>("Do map out likelihood"), 
+		   const_cast<char*>("Do map out likelihood"),
 		   &status);
     utmp = nlike;
-    fits_write_key(fp, TUINT, const_cast<char*>("NLIKE"), &utmp, 
-		   const_cast<char*>("Number of likelihoods"), 
+    fits_write_key(fp, TUINT, const_cast<char*>("NLIKE"), &utmp,
+		   const_cast<char*>("Number of likelihoods"),
 		   &status);
     dtmp = n0rangefrac;
-    fits_write_key(fp, TDOUBLE, const_cast<char*>("N0RANGE"), &dtmp, 
-		   const_cast<char*>("N0 range fraction"), 
+    fits_write_key(fp, TDOUBLE, const_cast<char*>("N0RANGE"), &dtmp,
+		   const_cast<char*>("N0 range fraction"),
 		   &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MAPLIKE"), &itmp,
-		   const_cast<char*>("Do map out likelihood"), 
+		   const_cast<char*>("Do map out likelihood"),
 		   &status);
   }
-  
+
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
-		 const_cast<char*>(pofd_coverage::version), 
+		 const_cast<char*>(pofd_coverage::version),
 		 const_cast<char*>("pofd_coverage version"),
 		 &status);
-  
-  fits_write_history(fp, 
+
+  fits_write_history(fp,
 		     const_cast<char*>("Simulation results from pofd_delta"),
 		     &status);
   fits_write_date(fp, &status);
-  
+
   //Now write out the data We write the actual array of likelihoods
   // (if present) as the logLikes minus bestlike so that we can use
   // floats rather than doubles
@@ -723,11 +744,11 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
       fits_write_col(fp, TDOUBLE, 4, i+1, 1, 1, &val, &status);
       rowptr = likearr[i];
       for (unsigned int j = 0; j < nlike; ++j)
-	like_row[j] = static_cast<float>(rowptr[j] - blike); 
+	like_row[j] = static_cast<float>(rowptr[j] - blike);
       fits_write_col(fp, TFLOAT, 5, i+1, 1, nlike, like_row, &status);
     }
     delete[] like_row;
-  } else     
+  } else
     for (unsigned int i = 0; i < nsims; ++i) {
       double val;
       val = bestn0[i];
@@ -739,28 +760,28 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   //Add the model information to another extension
   char* mttype[] = {"KNOTPOS","LOG10KNOTVAL"};
   char* mtform[] = {"1D", "1D"};
-  fits_create_tbl(fp, BINARY_TBL, 0, 2, mttype, mtform, nullptr, 
+  fits_create_tbl(fp, BINARY_TBL, 0, 2, mttype, mtform, nullptr,
 		  "BASEMODEL", &status);
   //Base model parameters, write to this extension header as well
   dtmp = model.getBaseN0();
-  fits_write_key(fp, TDOUBLE, const_cast<char*>("BASEN0"), &dtmp, 
-		 const_cast<char*>("Base number of sources per sq deg"), 
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BASEN0"), &dtmp,
+		 const_cast<char*>("Base number of sources per sq deg"),
 		 &status);
   utmp = model.getNKnots();
-  fits_write_key(fp, TUINT, const_cast<char*>("NKNOTS"), &utmp, 
-		 const_cast<char*>("Number of 1D model knots"), 
+  fits_write_key(fp, TUINT, const_cast<char*>("NKNOTS"), &utmp,
+		 const_cast<char*>("Number of 1D model knots"),
 		 &status);
   utmp = model.getNSigmaKnots();
-  fits_write_key(fp, TUINT, const_cast<char*>("NSIGKNOTS"), &utmp, 
-		 const_cast<char*>("Number of model sigma knots"), 
+  fits_write_key(fp, TUINT, const_cast<char*>("NSIGKNOTS"), &utmp,
+		 const_cast<char*>("Number of model sigma knots"),
 		 &status);
   utmp = model.getNOffsetKnots();
-  fits_write_key(fp, TUINT, const_cast<char*>("NOFFKNOTS"), &utmp, 
-		 const_cast<char*>("Number of model offset knots"), 
+  fits_write_key(fp, TUINT, const_cast<char*>("NOFFKNOTS"), &utmp,
+		 const_cast<char*>("Number of model offset knots"),
 		 &status);
   utmp = model.getNTotalKnots();
-  fits_write_key(fp, TUINT, const_cast<char*>("NTOTKNOT"), &utmp, 
-		 const_cast<char*>("Number of total knots"), 
+  fits_write_key(fp, TUINT, const_cast<char*>("NTOTKNOT"), &utmp,
+		 const_cast<char*>("Number of total knots"),
 		 &status);
   fits_insert_rows(fp, 0, utmp, &status);
   for (unsigned int i = 0; i < model.getNKnots(); ++i) {
@@ -821,31 +842,41 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
 
   // Model info (as a group)
   hid_t group_id;
-  group_id = H5Gcreate(file_id, "Model", H5P_DEFAULT, H5P_DEFAULT, 
+  group_id = H5Gcreate(file_id, "Model", H5P_DEFAULT, H5P_DEFAULT,
 		      H5P_DEFAULT);
   if (H5Iget_ref(group_id) < 0)
     throw pofdExcept("simManager", "writeToHDF5",
 		     "Failed to create HDF5 model group", 2);
   model.writeToHDF5Handle(group_id);
-  H5Gclose(group_id); 
+  H5Gclose(group_id);
 
   // Beam group
-  group_id = H5Gcreate(file_id, "Beam", H5P_DEFAULT, H5P_DEFAULT, 
+  group_id = H5Gcreate(file_id, "Beam", H5P_DEFAULT, H5P_DEFAULT,
 		      H5P_DEFAULT);
   if (H5Iget_ref(group_id) < 0)
     throw pofdExcept("simManager", "writeToHDF5",
 		     "Failed to create HDF5 beam group", 2);
-  adims = 1; 
+  adims = 1;
   mems_id = H5Screate_simple(1, &adims, nullptr);
 
   ptmp = inv_bmhist.getFWHM();
   att_id = H5Acreate2(group_id, "FWHM1", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.first);
-  H5Aclose(att_id);  
+  H5Aclose(att_id);
 
   att_id = H5Acreate2(group_id, "FWHM2", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.second);
+  H5Aclose(att_id);
+
+  ptmp = simim->getBeamFWHM();
+  att_id = H5Acreate2(group_id, "SimBeamFWHM1", H5T_NATIVE_DOUBLE,
+          mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.first);
+  H5Aclose(att_id);
+  att_id = H5Acreate2(group_id, "SimBeamFWHM2", H5T_NATIVE_DOUBLE,
+          mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.second);
   H5Aclose(att_id);
 
@@ -853,169 +884,169 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
   att_id = H5Acreate2(group_id, "NFWHMKept", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
-  H5Aclose(att_id);  
+  H5Aclose(att_id);
 
   utmp = inv_bmhist.getNbins();
   att_id = H5Acreate2(group_id, "NBeamBins", H5T_NATIVE_UINT,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
-  H5Aclose(att_id);  
+  H5Aclose(att_id);
 
   ptmp = inv_bmhist.getEffectiveArea();
   att_id = H5Acreate2(group_id, "BeamEffArea1", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.first);
-  H5Aclose(att_id);  
+  H5Aclose(att_id);
 
   att_id = H5Acreate2(group_id, "BeamEffArea2", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.second);
   H5Aclose(att_id);
 
-  if (simim.isOversampled()) {
-    utmp = simim.getOversampling();
+  if (simim->isOversampled()) {
+    utmp = simim->getOversampling();
     att_id = H5Acreate2(group_id, "Oversampling", H5T_NATIVE_UINT,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
-    H5Aclose(att_id); 
+    H5Aclose(att_id);
   }
 
   H5Sclose(mems_id);
   H5Gclose(group_id);
 
   // Filter group
-  group_id = H5Gcreate(file_id, "Filter", H5P_DEFAULT, H5P_DEFAULT, 
+  group_id = H5Gcreate(file_id, "Filter", H5P_DEFAULT, H5P_DEFAULT,
 		       H5P_DEFAULT);
   if (H5Iget_ref(group_id) < 0)
     throw pofdExcept("simManager", "writeToHDF5",
 		     "Failed to create HDF5 filter group", 3);
-  adims = 1; 
+  adims = 1;
   mems_id = H5Screate_simple(1, &adims, nullptr);
 
-  bl = static_cast<hbool_t>(simim.isHipassFiltered().first);
+  bl = static_cast<hbool_t>(simim->isHipassFiltered().first);
   att_id = H5Acreate2(group_id, "IsHighPassFiltered1", H5T_NATIVE_HBOOL,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
   if (bl) {
-    dtmp = simim.getFiltScale().first;
+    dtmp = simim->getFiltScale().first;
     att_id = H5Acreate2(group_id, "HighPassFiltScale1", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
 
-    dtmp = simim.getFiltQFactor().first;
+    dtmp = simim->getFiltQFactor().first;
     att_id = H5Acreate2(group_id, "HighPassQFactor1", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
-  } 
-  bl = static_cast<hbool_t>(simim.isMatchFiltered().first);
+  }
+  bl = static_cast<hbool_t>(simim->isMatchFiltered().first);
   att_id = H5Acreate2(group_id, "IsMatchFiltered1", H5T_NATIVE_HBOOL,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
   if (bl) {
-    dtmp = simim.getFiltFWHM().first;
+    dtmp = simim->getFiltFWHM().first;
     att_id = H5Acreate2(group_id, "MatchedFiltFWHM1", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
 
-    dtmp = simim.getFiltSigInst().first;
+    dtmp = simim->getFiltSigInst().first;
     att_id = H5Acreate2(group_id, "MatchedFiltSigInst1", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
 
-    dtmp = simim.getFiltSigConf().first;
+    dtmp = simim->getFiltSigConf().first;
     att_id = H5Acreate2(group_id, "MatchedFiltSigConf1", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
-  } 
+  }
 
-  bl = static_cast<hbool_t>(simim.isHipassFiltered().second);
+  bl = static_cast<hbool_t>(simim->isHipassFiltered().second);
   att_id = H5Acreate2(group_id, "IsHighPassFiltered2", H5T_NATIVE_HBOOL,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
   if (bl) {
-    dtmp = simim.getFiltScale().second;
+    dtmp = simim->getFiltScale().second;
     att_id = H5Acreate2(group_id, "HighPassFiltScale2", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
 
-    dtmp = simim.getFiltQFactor().second;
+    dtmp = simim->getFiltQFactor().second;
     att_id = H5Acreate2(group_id, "HighPassQFactor2", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
-  } 
-  bl = static_cast<hbool_t>(simim.isMatchFiltered().second);
+  }
+  bl = static_cast<hbool_t>(simim->isMatchFiltered().second);
   att_id = H5Acreate2(group_id, "IsMatchFiltered2", H5T_NATIVE_HBOOL,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
   if (bl) {
-    dtmp = simim.getFiltFWHM().second;
+    dtmp = simim->getFiltFWHM().second;
     att_id = H5Acreate2(group_id, "MatchedFiltFWHM2", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
 
-    dtmp = simim.getFiltSigInst().second;
+    dtmp = simim->getFiltSigInst().second;
     att_id = H5Acreate2(group_id, "MatchedFiltSigInst2", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
 
-    dtmp = simim.getFiltSigConf().second;
+    dtmp = simim->getFiltSigConf().second;
     att_id = H5Acreate2(group_id, "MatchedFiltSigConf2", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
     H5Aclose(att_id);
-  } 
+  }
   H5Sclose(mems_id);
   H5Gclose(group_id);
 
   // Sim group
-  group_id = H5Gcreate(file_id, "Simulations", H5P_DEFAULT, H5P_DEFAULT, 
+  group_id = H5Gcreate(file_id, "Simulations", H5P_DEFAULT, H5P_DEFAULT,
 		       H5P_DEFAULT);
   if (H5Iget_ref(group_id) < 0)
     throw pofdExcept("simManager", "writeToHDF5",
 		     "Failed to create HDF5 simulation group", 4);
-  adims = 1; 
+  adims = 1;
   mems_id = H5Screate_simple(1, &adims, nullptr);
 
   att_id = H5Acreate2(group_id, "N0", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0);
-  H5Aclose(att_id);  
+  H5Aclose(att_id);
 
-  bl = static_cast<hbool_t>(simim.isSmoothed());
+  bl = static_cast<hbool_t>(simim->isSmoothed());
   att_id = H5Acreate2(group_id, "Smoothed", H5T_NATIVE_HBOOL,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
-  H5Aclose(att_id);  
+  H5Aclose(att_id);
   if (bl) {
-    ptmp = simim.getEsmooth();
+    ptmp = simim->getEsmooth();
     att_id = H5Acreate2(group_id, "ExtraSmoothing1", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.first);
-    H5Aclose(att_id);  
+    H5Aclose(att_id);
     att_id = H5Acreate2(group_id, "ExtraSmoothing2", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.second);
-    H5Aclose(att_id);  
+    H5Aclose(att_id);
   }
 
-  ptmp = simim.getInstNoise();
+  ptmp = simim->getInstNoise();
   att_id = H5Acreate2(group_id, "SigmaInst1", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.first);
-  H5Aclose(att_id);  
+  H5Aclose(att_id);
   att_id = H5Acreate2(group_id, "SigmaInst2", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.second);
@@ -1024,55 +1055,55 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
   att_id = H5Acreate2(group_id, "SigmaInstFinal1", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &sigi_final.first);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
   att_id = H5Acreate2(group_id, "SigmaInstFinal2", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &sigi_final.second);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
 
-  if (simim.isOversampled()) {
-    utmp = simim.getOversampling();
+  if (simim->isOversampled()) {
+    utmp = simim->getOversampling();
     att_id = H5Acreate2(group_id, "Oversampling", H5T_NATIVE_UINT,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
-    H5Aclose(att_id); 
+    H5Aclose(att_id);
   }
 
   // Write information about positions
-  simim.writePositionGeneratorToHDF5Handle(group_id);
+  simim->writePositionGeneratorToHDF5Handle(group_id);
 
   bl = static_cast<hbool_t>(use_binning);
   att_id = H5Acreate2(group_id, "DataBinned", H5T_NATIVE_HBOOL,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
   if (use_binning) {
-    utmp = simim.getNBins();
+    utmp = simim->getNBins();
     att_id = H5Acreate2(group_id, "NDataBins", H5T_NATIVE_UINT,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
-    H5Aclose(att_id); 
-  } 
+    H5Aclose(att_id);
+  }
 
   utmp = getN1();
   att_id = H5Acreate2(group_id, "N1", H5T_NATIVE_UINT,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
 
   utmp = getN2();
   att_id = H5Acreate2(group_id, "N2", H5T_NATIVE_UINT,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &utmp);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
 
-  dtmp = simim.getPixSize();
+  dtmp = simim->getPixSize();
   att_id = H5Acreate2(group_id, "PixelSize", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
   H5Aclose(att_id);
 
-  dtmp = simim.getArea();
+  dtmp = simim->getArea();
   att_id = H5Acreate2(group_id, "SimAreaSqDeg", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
@@ -1081,12 +1112,12 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
   att_id = H5Acreate2(group_id, "NSims", H5T_NATIVE_UINT,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &nsims);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
 
   att_id = H5Acreate2(group_id, "FFTSize", H5T_NATIVE_UINT,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &fftsize);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
 
   att_id = H5Acreate2(group_id, "N0InitRange", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
@@ -1097,25 +1128,25 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
     att_id = H5Acreate2(group_id, "LikelihoodSparcity", H5T_NATIVE_UINT,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_UINT, &like_sparcity);
-    H5Aclose(att_id); 
+    H5Aclose(att_id);
   }
 
   bl = static_cast<hbool_t>(do_map_like);
   att_id = H5Acreate2(group_id, "DoMapLike", H5T_NATIVE_HBOOL,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
-  H5Aclose(att_id); 
+  H5Aclose(att_id);
   if (do_map_like) {
     att_id = H5Acreate2(group_id, "NLike", H5T_NATIVE_UINT,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_UINT, &nlike);
-    H5Aclose(att_id); 
+    H5Aclose(att_id);
 
     att_id = H5Acreate2(group_id, "N0LikeRangeFraction", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT);
     H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0rangefrac);
     H5Aclose(att_id);
-  }  
+  }
 
   H5Sclose(mems_id); // The rest is not scalar
 
@@ -1126,25 +1157,25 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
 
     dat_id = H5Dcreate2(group_id, "BestN0", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+    H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
 	     H5P_DEFAULT, bestn0);
     H5Dclose(dat_id);
-    
+
     dat_id = H5Dcreate2(group_id, "BestLike", H5T_NATIVE_DOUBLE,
 			mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+    H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
 	     H5P_DEFAULT, bestlike);
     H5Dclose(dat_id);
 
     if (do_map_like) {
       dat_id = H5Dcreate2(group_id, "MinN0", H5T_NATIVE_DOUBLE,
 			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
 	       H5P_DEFAULT, min_n0);
       H5Dclose(dat_id);
       dat_id = H5Dcreate2(group_id, "DeltaN0", H5T_NATIVE_DOUBLE,
 			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
+      H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
 	       H5P_DEFAULT, delta_n0);
       H5Dclose(dat_id);
     }
@@ -1170,8 +1201,8 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
       plist = H5Pcreate(H5P_DATASET_CREATE);
       H5Pset_chunk(plist, 2, cdims);
       H5Pset_deflate(plist, 6); // Gzip, compression 6
-      dat_id = H5Dcreate2(group_id, "LogLikelihood", H5T_NATIVE_FLOAT, 
-			  mems_id, H5P_DEFAULT, plist, H5P_DEFAULT); 
+      dat_id = H5Dcreate2(group_id, "LogLikelihood", H5T_NATIVE_FLOAT,
+			  mems_id, H5P_DEFAULT, plist, H5P_DEFAULT);
       H5Dwrite(dat_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, wrk);
       H5Dclose(dat_id);
       H5Pclose(plist);

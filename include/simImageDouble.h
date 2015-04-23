@@ -46,7 +46,7 @@ class simImageDouble {
   dblpair matched_sigi; //!< Instrument sigma of matched filter
   dblpair matched_sigc; //!< Confusion sigma of matched filter
 
-  // The sigi_final are only computed when needed, since they isn't 
+  // The sigi_final are only computed when needed, since they isn't
   // totally free to do if there is filtering
   mutable bool sigi_final_computed; //!< Has sig_final been computed
   mutable unsigned int sigi_final_ntrials; //!< Number of trials we did to determine sigi_final
@@ -70,7 +70,7 @@ class simImageDouble {
 
   double *data1; //!< Data in band 1, final
   double *data2; //!< Data in band 2, final
-  
+
   //Working variables
   mutable double *work; //!< Temporary array to hold convolution product
   mutable double *gen_1; //!< Holds generated image, band 1 if oversample > 1
@@ -93,10 +93,10 @@ class simImageDouble {
 
   /*! \brief Downsample arrays to final resolution */
   void downSample(unsigned int, unsigned int, double* const,
-		  unsigned int, unsigned int, double* const); 
+		  unsigned int, unsigned int, double* const);
 
-  double getFinalNoiseHelper(unsigned int ntrials, double* const data, 
-			     double sigi, double fwhm, double esmooth, 
+  double getFinalNoiseHelper(unsigned int ntrials, double* const data,
+			     double sigi, double fwhm, double esmooth,
 			     unsigned int ngauss_add,
 			     const double* const gauss_add,
 			     const fourierFilter* const filt) const;
@@ -119,18 +119,18 @@ class simImageDouble {
 
  public:
 
-  simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE, 
+  simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
 		 double FWHM1, double FWHM2, double SIGI1,
-		 double SIGI2, double ESMOOTH1=0.0, double ESMOOTH2=0.0, 
-		 unsigned int OVERSAMPLE=1, unsigned int NBINS=1000, 
+		 double SIGI2, double ESMOOTH1=0.0, double ESMOOTH2=0.0,
+		 unsigned int OVERSAMPLE=1, unsigned int NBINS=1000,
 		 const std::string& powerspec="");
   ~simImageDouble(); //!< Destructor
 
   /*! \brief Set random number generator seed */
   void setSeed(unsigned long long int seed) const { rangen.set_seed(seed); }
-  
+
   /*! Generate realization of model */
-  void realize(const numberCountsDouble& model, double n0, bool meansub=false, 
+  void realize(const numberCountsDouble& model, double n0, bool meansub=false,
 	       const fourierFilter* const filt1=nullptr,
 	       const fourierFilter* const filt2=nullptr,
 	       bool bin=false, unsigned int sparsebin=1);
@@ -154,6 +154,8 @@ class simImageDouble {
   dblpair getFiltSigInst() const { return matched_sigi; }
   dblpair getFiltSigConf() const { return matched_sigc; }
 
+  /*! \brief Get Beam FWHM values [arcsec] */
+  dblpair getBeamFWHM() const { return std::make_pair(fwhm1, fwhm2); }
   bool isSmoothed() const { return (esmooth1 > 0.0) || (esmooth2 > 0.0); }
   dblpair getEsmooth() const { return std::make_pair(esmooth1, esmooth2); }
 
@@ -170,13 +172,13 @@ class simImageDouble {
   /*! \brief Get mean and variance of image in each band */
   void getMeanAndVar(double&, double&, double&, double&) const;
   /*! \brief Get minimum and maximum of image in each band */
-  void getMinMax(double& min1, double& max1, double& min2, 
+  void getMinMax(double& min1, double& max1, double& min2,
 		 double& max2) const; //!< Get minima and maxima in both bands
 
   /*! \brief Returns sum of beams (i.e., area in pixels) */
-  dblpair getBeamSum() const; 
+  dblpair getBeamSum() const;
   /*! \brief Returns sum of beams squared (i.e., area in pixels of bm^2) */
-  dblpair getBeamSumSq() const; 
+  dblpair getBeamSumSq() const;
 
   unsigned int getN1() const { return n1; } //!< Get image extent, band 1
   unsigned int getN2() const { return n2; } //!< Get image extent, band 1

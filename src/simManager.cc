@@ -115,11 +115,12 @@ simManager::simManager(const std::string& MODELFILE,
   initTime = getTime = getLikeTime = 0;
 #endif
 
-  if (std::isnan(SIMFWHM) || SIMFWHM <= 0.0) SIMFWHM = FWHM;
   // Setup simim
+  if (std::isnan(SIMFWHM) || SIMFWHM <= 0.0) SIMFWHM = FWHM;
   simim = new simImage(N1, N2, PIXSIZE, SIMFWHM, SIGI, ESMOOTH,
     OVERSAMPLE, NBINS, POWERSPECFILE);
-  if (simim->isSmoothed())
+
+  if (esmooth > 0)
     bm.setFWHM(std::sqrt(FWHM * FWHM + esmooth * esmooth));
   else
     bm.setFWHM(FWHM);

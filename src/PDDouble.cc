@@ -752,7 +752,7 @@ void PDDouble::writeToHDF5(const std::string& outputfile) const {
     flux[i] = static_cast<double>(i) * dflux1 + minflux1;
   adims = n1;
   mems_id = H5Screate_simple(1, &adims, nullptr);
-  dat_id = H5Dcreate2(file_id, "flux1", H5T_NATIVE_DOUBLE,
+  dat_id = H5Dcreate2(file_id, "Flux1", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
 	   H5P_DEFAULT, flux);
@@ -761,7 +761,7 @@ void PDDouble::writeToHDF5(const std::string& outputfile) const {
     flux[i] = static_cast<double>(i) * dflux2 + minflux2;
   adims = n2;
   mems_id = H5Screate_simple(1, &adims, nullptr);
-  dat_id = H5Dcreate2(file_id, "flux2", H5T_NATIVE_DOUBLE,
+  dat_id = H5Dcreate2(file_id, "Flux2", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
 	   H5P_DEFAULT, flux);

@@ -467,7 +467,7 @@ void PD::writeToHDF5(const std::string& outputfile) const {
     flux[i] = static_cast<double>(i) * dflux + minflux;
   adims = n;
   mems_id = H5Screate_simple(1, &adims, nullptr);
-  dat_id = H5Dcreate2(file_id, "flux", H5T_NATIVE_DOUBLE,
+  dat_id = H5Dcreate2(file_id, "Flux", H5T_NATIVE_DOUBLE,
 		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
 	   H5P_DEFAULT, flux);

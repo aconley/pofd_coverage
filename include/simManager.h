@@ -13,13 +13,12 @@
 #include<gsl/gsl_math.h>
 #include<gsl/gsl_min.h>
 
+#include "../include/global_settings.h"
 #include "../include/simImage.h"
 #include "../include/beam.h"
 #include "../include/PD.h"
 #include "../include/PDFactory.h"
 #include "../include/numberCounts.h"
-
-const double qnan = std::numeric_limits<double>::quiet_NaN();
 
 /*!
   \brief Class for managing simulations of single band maps and mapping
@@ -91,7 +90,7 @@ class simManager {
 		      double N0RANGEFRAC=0.1, unsigned int FFTSIZE=262144,
 		      unsigned int N1=720, unsigned int N2=720,
 		      double PIXSIZE=5.0, double FWHM=15.0,
-		      double NFWHM=15.0, double SIMFWHM=qnan,
+		      double NFWHM=15.0, double SIMFWHM=pofd_coverage::qnan,
           double SIGI=0.005, double FILTSCALE=0.0, double QFACTOR=0.2,
 		      bool MATCHED=false, double SIGMI=0.0, double SIGMC=0.006,
 		      unsigned int NBEAMBINS=100,

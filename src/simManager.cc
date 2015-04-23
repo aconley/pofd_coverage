@@ -165,7 +165,7 @@ simManager::simManager(const std::string& MODELFILE,
   varr = new void*[4];
   s = gsl_min_fminimizer_alloc(gsl_min_fminimizer_brent);
 
-  sigi_final = qnan;
+  sigi_final = pofd_coverage::qnan;
 }
 
 simManager::~simManager() {

@@ -37,7 +37,7 @@ double beam::getEffectiveAreaSq() const {
   \param[out] fac Returns beam factor.  Must be pre-allocated by
                    caller and be of length n
 
-  The beam is center normalized.  Filtering is not supported.	     
+  The beam is center normalized.  Filtering is not supported.
  */
 void beam::getBeamFac(unsigned int n, double pixsize,
 		      double* const fac) const {
@@ -72,7 +72,7 @@ void beam::getBeamFac(unsigned int n, double pixsize,
   int no2 = ni / 2;
   double dist;
   for (int i = 0; i < ni; ++i) {
-    dist = fabs(i - no2);
+    dist = abs(i - no2);
     fac[i] = exp(expfac * dist * dist);
   }
 }
@@ -128,7 +128,7 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2, double pixsize,
     int no2 = ni / 2;
     double dist;
     for (int i = 0; i < ni; ++i) {
-      dist = fabs(i - no2);
+      dist = abs(i - no2);
       fac[i] = exp(expfac * dist * dist);
     }
 
@@ -140,7 +140,7 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2, double pixsize,
       for (unsigned int j = 0; j < n1; ++j)
 	rowptr[j] = val * fac[j];
     }
-    
+
     delete[] fac;
   } else {
     double* fac1 = new double[n1];
@@ -148,14 +148,14 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2, double pixsize,
     int no2 = ni / 2;
     double dist;
     for (int i = 0; i < ni; ++i) {
-      dist = fabs(i - no2);
+      dist = abs(i - no2);
       fac1[i] = exp(expfac * dist * dist);
     }
     double* fac2 = new double[n2];
     ni = static_cast<int>(n2);
     no2 = ni / 2;
     for (int i = 0; i < ni; ++i) {
-      dist = fabs(i - no2);
+      dist = abs(i - no2);
       fac2[i] = exp(expfac * dist * dist);
     }
 
@@ -167,7 +167,7 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2, double pixsize,
       for (unsigned int j = 0; j < n2; ++j)
 	rowptr[j] = val * fac2[j];
     }
-    
+
     delete[] fac1;
     delete[] fac2;
   }
@@ -192,7 +192,7 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2, double pixsize,
   The beam is centered as well as possible, but unless n1 and n2 are odd,
    it can't quite be centered.
 */
-void beam::getRawBeam(unsigned int n1, unsigned int n2, 
+void beam::getRawBeam(unsigned int n1, unsigned int n2,
 		      double pixsize, unsigned int oversamp,
 		      double* const bm) const {
 
@@ -250,19 +250,19 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2,
   double dist;
   double normfac = 1.0 / static_cast<double>(oversamp);
   for (int i = 0; i < ni; ++i) {
-    dist = fabs(i - no2);
+    dist = abs(i - no2);
     fac1[i] = normfac * exp(expfac * dist * dist);
   }
-  
+
   if (n1 != n2) {
     // Need a different fac2
     ngen = oversamp * n2;
     ni = static_cast<int>(ngen);
     no2 = ni / 2;
     for (int i = 0; i < ni; ++i) {
-      dist = fabs(i - no2);
-      fac2[i] = normfac * exp(expfac * dist * dist);  
-    } 
+      dist = abs(i - no2);
+      fac2[i] = normfac * exp(expfac * dist * dist);
+    }
   } else fac2 = fac1; //Re-use -- but be careful to clean up correctly!
 
   // Form the sum
@@ -292,12 +292,12 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2,
   \param[in] n  Number of pixels along each dimension.  Should be odd
   \param[in] pixsize Size of pixels in arcsec
   \param[in] bm Beam. Must be pre-allocated by caller and be of length n * n
-  \param[in] filter Hi-pass/matched filter to apply.  If null, don't apply 
+  \param[in] filter Hi-pass/matched filter to apply.  If null, don't apply
                      filtering
 
   This is only properly centered if n is odd.
 */
-void beam::getBeam(unsigned int n, double pixsize, double* const bm, 
+void beam::getBeam(unsigned int n, double pixsize, double* const bm,
 		   const fourierFilter* const filter) const {
 
   // pre-filtered beam
@@ -313,13 +313,13 @@ void beam::getBeam(unsigned int n, double pixsize, double* const bm,
   \param[in] n2 Number of pixels along dimension 2
   \param[in] pixsize Size of pixels in arcsec
   \param[in] bm Beam. Must be pre-allocated by caller and be of length n * n
-  \param[in] filter Hi-pass/matched filter to apply.  If null, don't apply 
+  \param[in] filter Hi-pass/matched filter to apply.  If null, don't apply
                      filtering
 
   This is only properly centered if n1 and n2 are odd.
 */
-void beam::getBeam(unsigned int n1, unsigned int n2, 
-		   double pixsize, double* const bm, 
+void beam::getBeam(unsigned int n1, unsigned int n2,
+		   double pixsize, double* const bm,
 		   const fourierFilter* const filter) const {
 
   // pre-filtered beam
@@ -332,15 +332,15 @@ void beam::getBeam(unsigned int n1, unsigned int n2,
 
 
 /*!
-  \param[in] n  Number of pixels along each dimension.  
+  \param[in] n  Number of pixels along each dimension.
   \param[in] pixsize Size of pixels in arcsec
   \param[in] oversamp Oversampling.  Must be odd
   \param[in] bm Beam. Must be pre-allocated by
                    caller and be of length n * n
-  \param[in] filter Hi-pass/Matched filter to apply.  If null, don't 
+  \param[in] filter Hi-pass/Matched filter to apply.  If null, don't
                 apply filter
 
-  This is only properly centered if n is odd.		
+  This is only properly centered if n is odd.
 */
 void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
 		   double* const bm, const fourierFilter* const filter) const {
@@ -360,13 +360,13 @@ void beam::getBeam(unsigned int n, double pixsize, unsigned int oversamp,
   \param[in] oversamp Oversampling.  Must be odd
   \param[in] bm Beam. Must be pre-allocated by
                    caller and be of length n * n
-  \param[in] filter Hi-pass/Matched filter to apply.  If null, don't 
+  \param[in] filter Hi-pass/Matched filter to apply.  If null, don't
                 apply filter
 
-  This is only properly centered if n is odd.		
+  This is only properly centered if n is odd.
 */
-void beam::getBeam(unsigned int n1, unsigned int n2, double pixsize, 
-		   unsigned int oversamp, double* const bm, 
+void beam::getBeam(unsigned int n1, unsigned int n2, double pixsize,
+		   unsigned int oversamp, double* const bm,
 		   const fourierFilter* const filter) const {
 
   // Pre-filtered beam
@@ -383,27 +383,27 @@ void beam::getBeam(unsigned int n1, unsigned int n2, double pixsize,
   \param[in] outputfile Name of FITS file to write to
   \param[in] pixsize Pixel size, in arcseconds
   \param[in] nfwhm Number of FWHM out to go.
-  \param[in] oversamp Oversampling to use.  Must be odd.  
+  \param[in] oversamp Oversampling to use.  Must be odd.
   \param[in] filt High-pass filter to apply.  If nullptr, no filtering is done.
   \param[in] inverse Compute inverse beam rather than beam.
 */
-void beam::writeToFits(const std::string& outputfile, double pixsize, 
+void beam::writeToFits(const std::string& outputfile, double pixsize,
 		       double nfwhm, unsigned int oversamp,
 		       const fourierFilter* const filt, bool inverse) const {
   if (nfwhm <= 0.0)
     throw pofdExcept("beam", "writeToFits", "Invalid (non-positive) nfwhm", 1);
   if (pixsize <= 0.0)
-    throw pofdExcept("beam", "writeToFits", 
+    throw pofdExcept("beam", "writeToFits",
 		     "Invalid (non-positive) pixel size", 3);
   if (oversamp % 2 == 0)
-    throw pofdExcept("beam", "writeToFits", 
+    throw pofdExcept("beam", "writeToFits",
 		     "Invalid (non-odd) oversampling", 4);
 
   // Figure out how many pixels we are going to use
-  unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize + 
+  unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize +
 						0.9999999999);
   npix = 2 * npix + 1;
-  
+
   // Get
   double *bmtmp = (double*) fftw_malloc(sizeof(double) * npix * npix);
   getBeam(npix, pixsize, oversamp, bmtmp, filt); // Also filters
@@ -411,7 +411,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   // Write
   int status = 0;
   fitsfile *fp;
-  
+
   fits_create_file(&fp, outputfile.c_str(), &status);
   if (status) {
     fits_report_error(stderr, status);
@@ -421,7 +421,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   axissize[0] = static_cast<long>(npix);
   axissize[1] = static_cast<long>(npix);
   fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
-  
+
   // Header
   bool ubl;
   double dtmp;
@@ -448,12 +448,12 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
       dtmp = filt->getFiltScale();
       if (dtmp > 0)
 	fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
-		       const_cast<char*>("Hipass filtering scale [arcsec]"), 
+		       const_cast<char*>("Hipass filtering scale [arcsec]"),
 		       &status);
       dtmp = filt->getQFactor();
       if (dtmp > 0)
 	fits_write_key(fp, TDOUBLE, const_cast<char*>("QFACTOR"), &dtmp,
-		       const_cast<char*>("Hipass filtering apodization"), 
+		       const_cast<char*>("Hipass filtering apodization"),
 		       &status);
     }
     ubl = filt->isMatched();
@@ -463,7 +463,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
       dtmp = filt->getSigInst();
       if (dtmp > 0)
 	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGI"), &dtmp,
-		       const_cast<char*>("Matched filtering sig_i [Jy]"), 
+		       const_cast<char*>("Matched filtering sig_i [Jy]"),
 		       &status);
       dtmp = filt->getSigConf();
       if (dtmp > 0)
@@ -482,14 +482,14 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
 		   const_cast<char*>("Oversampling"), &status);
   }
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
-		 const_cast<char*>(pofd_coverage::version), 
+		 const_cast<char*>(pofd_coverage::version),
 		 const_cast<char*>("pofd_coverage version"),
 		 &status);
-  
+
   fits_write_history(fp,const_cast<char*>("Beam from pofd_coverage"),
 		     &status);
   fits_write_date(fp, &status);
-  
+
   // Data.  Must transpose.  Well -- the beam is symmetric,
   // so actually we don't.  But to support possible future changes
   // in filtering, treat it as if it might not be symmetric
@@ -497,7 +497,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   long fpixel[2] = { 1, 1 };
   for (unsigned int j = 0; j < npix; ++j) {
     if (inverse)
-      for (unsigned int i = 0; i < npix; ++i) 
+      for (unsigned int i = 0; i < npix; ++i)
 	tmpdata[i] = 1.0 / bmtmp[i * npix + j];
     else
       for (unsigned int i = 0; i < npix; ++i) tmpdata[i] = bmtmp[i * npix + j];
@@ -505,7 +505,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
     fits_write_pix(fp, TDOUBLE, fpixel, npix, tmpdata, &status);
   }
   delete[] tmpdata;
-  
+
   //Close up and go home
   fftw_free(bmtmp);
   fits_close_file(fp, &status);
@@ -522,7 +522,7 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
 */
 beamHist::beamHist(unsigned int NBINS):
   has_data(false), inverse(false), nbins(0), fwhm(0.0), nfwhm(4.0),
-  nfwhmkeep(4.0), pixsize(0.0), eff_area(0.0), oversamp(1), 
+  nfwhmkeep(4.0), pixsize(0.0), eff_area(0.0), oversamp(1),
   n_pos(0), n_neg(0) {
 
   if (NBINS == 0)
@@ -570,7 +570,7 @@ void beamHist::fill(const beam& bm, double num_fwhm, double pixsz,
 		    double num_fwhm_keep) {
 
   // Get how many pixels we will go out
-  unsigned int npix = 
+  unsigned int npix =
     static_cast<unsigned int>(num_fwhm * bm.getFWHM() / pixsz +
 			      0.9999999999);
   npix = 2 * npix + 1;
@@ -634,7 +634,7 @@ void beamHist::fill(const beam& bm, unsigned int n1, unsigned int n2,
       matched_fwhm = filt->getFWHM();
       matched_sigi = filt->getSigInst();
       matched_sigc = filt->getSigConf();
-    } 
+    }
   }
 
   minmax_pos = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
@@ -647,13 +647,13 @@ void beamHist::fill(const beam& bm, unsigned int n1, unsigned int n2,
   if (nfwhmkeep < nfwhm) {
     // We want to set up logical indexing into the array to only keep
     //  the part we want.  Recall the beam is centered at n1/2, n2/2 (integer)
-    unsigned int nclippix = 
+    unsigned int nclippix =
       static_cast<unsigned int>(nfwhmkeep * fwhm / pixsize + 0.9999999999);
     unsigned int nclippix_tot = 2 * nclippix + 1;
     // Recall that the beam is centered at n1/2, n2/2
     if (nclippix_tot < n1) {
       minidx1 = n1 / 2 - nclippix; // Range is [minidx1, maxidx1)
-      maxidx1 = minidx1 + nclippix_tot; 
+      maxidx1 = minidx1 + nclippix_tot;
       // assert(minidx1 < n1); // unsigned, will wrap on problem
       // assert(maxidx1 <= n1);
     } else {
@@ -674,7 +674,7 @@ void beamHist::fill(const beam& bm, unsigned int n1, unsigned int n2,
     maxidx1 = n1;
     maxidx2 = n2;
   }
-    
+
   // Histogram
   // Find minimum and maximum non-zero parts for neg/pos histograms
   bool has_pos = false;
@@ -702,13 +702,13 @@ void beamHist::fill(const beam& bm, unsigned int n1, unsigned int n2,
   }
 
   if (!(has_pos || has_neg))
-    throw pofdExcept("beamHist", "fill", 
+    throw pofdExcept("beamHist", "fill",
 		     "No pos or negative components", 1);
 
   if (has_pos) minmax_pos = std::make_pair(minbinval_pos, maxbinval_pos);
   if (has_pos) minmax_neg = std::make_pair(minbinval_neg, maxbinval_neg);
   if (!(has_pos || has_neg))
-    throw pofdExcept("beamHist", "fill", 
+    throw pofdExcept("beamHist", "fill",
 		     "Found no positive or negative pix", 1);
 
   // Set bin size
@@ -746,7 +746,7 @@ void beamHist::fill(const beam& bm, unsigned int n1, unsigned int n2,
 	val = rowptr[j];
 	if (val <= minval) continue;  //skip: too close to zero or negative
 	lval = log2(val);
-	idx = static_cast<unsigned int>((lval - minbinval_pos) / 
+	idx = static_cast<unsigned int>((lval - minbinval_pos) /
 					histstep_pos);
 	tmphist[idx] += val;
 	tmpwt[idx] += 1;
@@ -786,7 +786,7 @@ void beamHist::fill(const beam& bm, unsigned int n1, unsigned int n2,
 	if (val > testval) continue;  //skip; too close to 0 or positive
 	val = fabs(val); // Work with abs value
 	lval = log2(val);
-	idx = static_cast<unsigned int>((lval - minbinval_neg) / 
+	idx = static_cast<unsigned int>((lval - minbinval_neg) /
 					histstep_neg);
 	tmphist[idx] += val;
 	tmpwt[idx] += 1;
@@ -825,7 +825,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   // Write as binary table
   int status = 0;
   fitsfile *fp;
-  
+
   fits_create_file(&fp, outputfile.c_str(), &status);
   if (status) {
     fits_report_error(stderr, status);
@@ -840,7 +840,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
     fits_report_error(stderr, status);
     return;
   }
-  
+
   // Primary header
   unsigned int utmp;
   int itmp;
@@ -860,7 +860,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
   dtmp = nfwhmkeep;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHMKP"), &dtmp,
 		 const_cast<char*>("Number of FWHM kept"), &status);
-  
+
   if (isHipass) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
@@ -882,7 +882,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
 		   const_cast<char*>("Is beam match filtered?"), &status);
     dtmp = matched_fwhm;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITFWHM"), &dtmp,
-		   const_cast<char*>("Matched filtering FWHM [arcsec]"), 
+		   const_cast<char*>("Matched filtering FWHM [arcsec]"),
 		   &status);
     dtmp = matched_sigi;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGI"), &dtmp,
@@ -895,7 +895,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
 		   const_cast<char*>("Is beam match filtered?"), &status);
   }
-  
+
   if (oversamp > 1) {
     utmp = oversamp;
     fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
@@ -907,20 +907,20 @@ void beamHist::writeToFits(const std::string& outputfile) const {
 		 const_cast<char*>("Number of bins"), &status);
 
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
-		 const_cast<char*>(pofd_coverage::version), 
+		 const_cast<char*>(pofd_coverage::version),
 		 const_cast<char*>("pofd_coverage version"),
 		 &status);
   fits_write_history(fp, const_cast<char*>("Beam from pofd_coverage"),
 		     &status);
   fits_write_date(fp, &status);
-  
+
 
   char* ttype[]= {"WEIGHT", "BEAM"};
   char* tform[] = {"1I", "1D"};
-  
+
   // Pos beam
   if (n_pos > 0) {
-    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, nullptr, "POSBEAM", 
+    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, nullptr, "POSBEAM",
 		    &status);
     fits_insert_rows(fp, 0, n_pos, &status);
     for (unsigned int i = 0; i < n_pos; ++i) {
@@ -932,7 +932,7 @@ void beamHist::writeToFits(const std::string& outputfile) const {
 
   }
   if (n_neg > 0) {
-    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, nullptr, "NEGBEAM", 
+    fits_create_tbl(fp, BINARY_TBL, 0, 2, ttype, tform, nullptr, "NEGBEAM",
 		    &status);
     fits_insert_rows(fp, 0, n_neg, &status);
     for (unsigned int i = 0; i < n_neg; ++i) {

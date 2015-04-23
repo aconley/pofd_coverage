@@ -25,7 +25,7 @@ class simImage {
   unsigned int ngen1; //!< Number of generated pixels in dimension 1
   unsigned int ngen2; //!< Number of generated pixels in dimension 2
   double pixsize_gen; //!< Size of pixels in internal mode
-  
+
   double fwhm; //!< Beam FWHM in arcsec
   double sigi; //!< Raw instrumental noise, before any smoothing/filtering
   double esmooth; //!< Additional Gaussian smoothing FWHM in arcsec
@@ -39,11 +39,11 @@ class simImage {
   double matched_sigi; //!< Instrument sigma of matched filter
   double matched_sigc; //!< Confusion sigma of matched filter
 
-  // sigi_final is only computed when needed, since it isn't 
+  // sigi_final is only computed when needed, since it isn't
   // totally free to do if there is filtering
   mutable bool sigi_final_computed; //!< Has sig_final been computed
   mutable unsigned int sigi_final_ntrials; //!< Number of trials we did to determine sigi_final
-  mutable double sigi_final; //!< Instrumental noise after smoothing/filtering. 
+  mutable double sigi_final; //!< Instrumental noise after smoothing/filtering.
 
   bool is_binned; //!< Has data been binned
   unsigned int nbins; //!< Number of bins
@@ -61,7 +61,7 @@ class simImage {
   bool is_full; //!< A realization has been generated
 
   double *data; //!< Data
-  
+
   //Working variables
   mutable double *work; //!< Holds temporary array during convolution
   mutable double *gen_image; //!< Used to generate raw image if oversampling
@@ -76,7 +76,7 @@ class simImage {
 
   /*! \brief Downsample array */
   void downSample(unsigned int, unsigned int, double* const,
-		  unsigned int, unsigned int, double* const); 
+		  unsigned int, unsigned int, double* const);
 
   /*! \brief Does model have valid params */
   bool isValid() const;
@@ -96,18 +96,18 @@ class simImage {
  public:
   /*!\brief Constructor */
   simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
-	   double FWHM, double SIGI, double ESMOOTH=0.0, 
-	   unsigned int OVERSAMPLE=1, unsigned int NBINS=1000, 
+	   double FWHM, double SIGI, double ESMOOTH=0.0,
+	   unsigned int OVERSAMPLE=1, unsigned int NBINS=1000,
 	   const std::string& powerfile="");
   ~simImage(); //!< Destructor
 
   /*! \brief Set random number generator seed */
   void setSeed(unsigned long long int seed) const { rangen.set_seed(seed); }
-  
+
   /*! \brief Generate realization of model */
-  void realize(const numberCounts& model, double n0, 
+  void realize(const numberCounts& model, double n0,
 	       bool meansub=false, const fourierFilter* const filt=nullptr,
-	       bool bin=false, unsigned int sparsebin=1); 
+	       bool bin=false, unsigned int sparsebin=1);
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 
@@ -132,22 +132,23 @@ class simImage {
   /*! \brief Get Raw instrument noise */
   double getInstNoise() const { return sigi; }
 
-  /*! \brief Returns noise level estimate for image after smoothing or 
+  /*! \brief Returns noise level estimate for image after smoothing or
     filtering */
   double getFinalNoise(unsigned int ntrials=3,
-		       const fourierFilter* const filt=nullptr) const; 
+		       const fourierFilter* const filt=nullptr) const;
 
   double meanSubtract(); //!< Subtract mean from image
   void getMinMax(double& min, double& max) const; //!< Get minima and maxima of data
   double getMean() const; //!< Get the mean of the image
   void getMeanAndVar(double&, double&) const; //!< Get mean and variance
 
+  double getBeamFWHM() const { return fwhm; } //!< Get FWHM (arcsec)
   double getBeamSum() const; //!< Returns sum of beam (i.e., area in pixels)
   double getBeamSumSq() const; //!< Returns sum of beam squared
 
   unsigned int getN1() const { return n1; } //!< Gets number of pixels in band1
   unsigned int getN2() const { return n2; } //!< Gets number of pixels in band2
-  bool isOversampled() const { return oversample > 1; } 
+  bool isOversampled() const { return oversample > 1; }
   unsigned int getOversampling() const { return oversample; } //!< Gets amount of oversampling
   double getPixSize() const { return pixsize; } //!< Gets pixel size (arcsec)
   const double* getData() const { return data; } //!< Gets data pointer

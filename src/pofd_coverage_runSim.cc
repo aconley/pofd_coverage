@@ -4,6 +4,7 @@
 #include<vector>
 #include<fstream>
 #include<cstdlib>
+#include<limits>
 
 #include<getopt.h>
 
@@ -43,6 +44,7 @@ static struct option long_options[] = {
   {"sigma_matched", required_argument, 0, '7'},
   {"sigma_matched1", required_argument, 0, '9'},
   {"sigma_matched2", required_argument, 0, '0'},
+  {"simfwhm", required_argument, 0, '*'},
   {"sparcity", required_argument, 0, '%'},
   {"seed", required_argument, 0, 'S'},
   {"verbose", no_argument, 0, 'v'},
@@ -51,7 +53,7 @@ static struct option long_options[] = {
   {0, 0, 0, 0}
 };
 
-char optstring[] = "hbde:!:@:f:F:1:mn:5:6:N2:3:4:o:p:q:s:#:$:,:.:/:7:9:0:%:S:vVw:";
+char optstring[] = "hbde:!:@:f:F:1:mn:5:6:N2:3:4:o:p:q:s:#:$:,:.:/:7:9:0:*:%:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -62,7 +64,7 @@ int runSimSingle(int argc, char **argv) {
   double sigma; // Instrument noise
   unsigned int nsims, nlike, n1, n2, fftsize, nbins;
   unsigned int oversample, sparcity, nbeambins;
-  double pixsize, n0rangefrac, n0initrange, nfwhm;
+  double pixsize, n0rangefrac, n0initrange, nfwhm, simfwhm;
   double filtscale, qfactor, sigmc, sigmi; //Filtering parameters
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; //Power spectrum file
@@ -80,6 +82,7 @@ int runSimSingle(int argc, char **argv) {
   verbose             = false;
   has_wisdom          = false;
   esmooth             = 0.0;
+  simfwhm             = std::numeric_limits<double>::quiet_NaN();
   has_user_seed       = false;
   seed                = 1024;
   oversample          = 1;
@@ -98,9 +101,9 @@ int runSimSingle(int argc, char **argv) {
 
   int c;
   int option_index = 0;
-  optind = 1; //Rewind 
+  optind = 1; //Rewind
   while ((c = getopt_long(argc,argv,optstring,long_options,
-			  &option_index)) != -1) 
+			  &option_index)) != -1)
     switch(c) {
     case 'b':
       use_binning = true;
@@ -159,6 +162,9 @@ int runSimSingle(int argc, char **argv) {
     case '7':
       sigmi = atof(optarg);
       break;
+    case '*':
+      simfwhm = atof(optarg);
+      break;
     case '%':
       sparcity = atoi(optarg);
       break;
@@ -207,6 +213,11 @@ int runSimSingle(int argc, char **argv) {
     std::cout << "Invalid (non-positive) FWHM" << std::endl;
     return 1;
   }
+  if (!std::isnan(simfwhm) && simfwhm <= 0.0) {
+    std::cout << "Invalid (non-positive) user provided sim FWHM"
+      << std::endl;
+    return 1;
+  }
   if (nfwhm <= 0.0) {
     std::cout << "Invalid (non-positive) NFWHM: " << nfwhm << std::endl;
     return 1;
@@ -216,7 +227,7 @@ int runSimSingle(int argc, char **argv) {
     return 1;
   }
   if (nbeambins > 10000) {
-    std::cout << "Invalid number of beam bins -- too large: " 
+    std::cout << "Invalid number of beam bins -- too large: "
 	      << nbeambins << std::endl;
     return 1;
   }
@@ -261,7 +272,7 @@ int runSimSingle(int argc, char **argv) {
     return 1;
   }
   if (qfactor < 0.0) {
-    std::cout << "Invalid (negative) high-pass filter q factor" 
+    std::cout << "Invalid (negative) high-pass filter q factor"
 	      << qfactor << std::endl;
     return 1;
   }
@@ -303,7 +314,9 @@ int runSimSingle(int argc, char **argv) {
       printf("   N0:                 %0.3e\n", n0);
       printf("   sigma:              %0.4f\n", sigma);
       printf("   fftsize:            %u\n", fftsize);
-      if (esmooth > 0) 
+      if (!std::isnan(simfwhm))
+	printf("  sim fwhm:            %0.2f\n", simfwhm);
+      if (esmooth > 0)
 	printf("   esmooth:            %0.2f\n",esmooth);
       if (oversample > 1)
 	printf("   oversampling:       %u\n", oversample);
@@ -328,10 +341,10 @@ int runSimSingle(int argc, char **argv) {
       }
     }
 
-    simManager sim(modelfile, nsims, n0initrange, map_like, nlike, 
-		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, nfwhm,
-		   sigma, filtscale, qfactor, matched, sigmi, sigmc, nbeambins, 
-		   n0, esmooth, oversample, powerspecfile, sparcity, 
+    simManager sim(modelfile, nsims, n0initrange, map_like, nlike,
+		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, nfwhm, simfwhm,
+		   sigma, filtscale, qfactor, matched, sigmi, sigmc, nbeambins,
+		   n0, esmooth, oversample, powerspecfile, sparcity,
 		   use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
@@ -339,7 +352,7 @@ int runSimSingle(int argc, char **argv) {
     sim.doSims(verbose);
 
     //Write it
-    if (verbose) std::cout << "Writing simulation results to " << outputfile 
+    if (verbose) std::cout << "Writing simulation results to " << outputfile
 			   << std::endl;
     utility::outfiletype oft = utility::getOutputFileType(outputfile);
     if (oft == utility::HDF5 || oft == utility::UNKNOWN)
@@ -357,7 +370,7 @@ int runSimSingle(int argc, char **argv) {
   } catch (const std::bad_alloc& ba) {
     std::cout << "Bad allocation error: " << ba.what() << std::endl;
     return 16;
-  } 
+  }
 
   return 0;
 }
@@ -422,9 +435,9 @@ int runSimDouble(int argc, char **argv) {
 
   int c;
   int option_index = 0;
-  optind = 1; //Rewind 
+  optind = 1; //Rewind
   while ((c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index)) != -1) 
+			    &option_index)) != -1)
     switch(c) {
     case 'b':
       use_binning = true;
@@ -563,12 +576,12 @@ int runSimDouble(int argc, char **argv) {
     return 1;
   }
   if (esmooth1 < 0.0) {
-    std::cout << "Invalid (negative) additional smoothing, band 1:" 
+    std::cout << "Invalid (negative) additional smoothing, band 1:"
 	      << esmooth1 << std::endl;
     return 1;
   }
   if (esmooth2 < 0.0) {
-    std::cout << "Invalid (negative) additional smoothing, band 2:" 
+    std::cout << "Invalid (negative) additional smoothing, band 2:"
 	      << esmooth2 << std::endl;
     return 1;
   }
@@ -589,7 +602,7 @@ int runSimDouble(int argc, char **argv) {
     return 1;
   }
   if (nbeambins > 10000) {
-    std::cout << "Invalid number of beam bins -- too large: " 
+    std::cout << "Invalid number of beam bins -- too large: "
 	      << nbeambins << std::endl;
     return 1;
   }
@@ -622,7 +635,7 @@ int runSimDouble(int argc, char **argv) {
     return 1;
   }
   if (qfactor < 0.0) {
-    std::cout << "Invalid (negative) high-pass filter q factor" 
+    std::cout << "Invalid (negative) high-pass filter q factor"
 	      << qfactor << std::endl;
     return 1;
   }
@@ -705,9 +718,9 @@ int runSimDouble(int argc, char **argv) {
       printf("   sigma1:             %0.4f\n",sigma1);
       printf("   sigma2:             %0.4f\n",sigma2);
       printf("   fftsize:            %u by %u\n", fftsize, fftsize);
-      if (esmooth1 > 0) 
+      if (esmooth1 > 0)
 	printf("   esmooth1:           %0.2f\n",esmooth1);
-      if (esmooth2 > 0) 
+      if (esmooth2 > 0)
 	printf("   esmooth2:           %0.2f\n",esmooth2);
       if (oversample > 1)
 	printf("   oversampling:       %u\n",oversample);
@@ -741,11 +754,11 @@ int runSimDouble(int argc, char **argv) {
       }
     }
 
-    simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike, 
-			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2, 
+    simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike,
+			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2,
 			 nfwhm, sigma1, sigma2, single_filt, filterscale,
 			 qfactor, matched, sigm1, sigm2, sigc1, sigc2,
-			 nbeambins, n0, esmooth1, esmooth2, oversample, 
+			 nbeambins, n0, esmooth1, esmooth2, oversample,
 			 powerspecfile, sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
@@ -754,7 +767,7 @@ int runSimDouble(int argc, char **argv) {
     sim.doSims(verbose);
 
     //Write it
-    if (verbose) std::cout << "Writing simulation results to " << outputfile 
+    if (verbose) std::cout << "Writing simulation results to " << outputfile
 			   << std::endl;
     utility::outfiletype oft = utility::getOutputFileType(outputfile);
     if (oft == utility::HDF5 || oft == utility::UNKNOWN)
@@ -772,7 +785,7 @@ int runSimDouble(int argc, char **argv) {
   } catch (const std::bad_alloc& ba) {
     std::cout << "Bad allocation error: " << ba.what() << std::endl;
     return 16;
-  } 
+  }
 
   return 0;
 }
@@ -784,15 +797,15 @@ int runSimDouble(int argc, char **argv) {
 
 int main(int argc, char **argv) {
   bool twod;
-  
+
   twod = false;
-  
+
   //Only interested in a) displaying help and b) figuring out
   // if this is 1D or 2D c) displaying the version number
   int c;
   int option_index = 0;
   while ( ( c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index ) ) != -1 ) 
+			    &option_index ) ) != -1 )
     switch(c) {
     case 'h':
       std::cout << "NAME" << std::endl;
@@ -810,7 +823,7 @@ int main(int argc, char **argv) {
       std::cout << "\t One-dimensional case:" << std::endl;
       std::cout << "\t  pofd_coverage_runSim [options] n0 modelfile "
 		<< "fwhm pixsize n1 n2" << std::endl;
-      std::cout << "\t    outputfile" << std::endl;      
+      std::cout << "\t    outputfile" << std::endl;
       std::cout << std::endl;
       std::cout << "\t Two-dimensional case:" << std::endl;
       std::cout << "\t  pofd_coverage_runSim [options] -d n0 modelfile "
@@ -854,7 +867,7 @@ int main(int argc, char **argv) {
 		<< " in Jy" << std::endl;
       std::cout << "\tand n is the log10 differential number counts in"
 		<< " deg^-2 Jy^-1" << std::endl;
-      std::cout << "\tat the corresponding flux density.  Additional entries" 
+      std::cout << "\tat the corresponding flux density.  Additional entries"
 		<< " on each"<< std::endl;
       std::cout << "\tline are ignored, and # denotes a comment line."
 		<< std::endl;
@@ -899,7 +912,7 @@ int main(int argc, char **argv) {
       std::cout << "\t-f, --fftsize FFTSIZE" << std::endl;
       std::cout << "\t\tSize of FFT to use when computing P(D) (def: 131072 in"
 		<< std::endl;
-      std::cout << "\t\tone dimension and 4096 in two dimensions.)" 
+      std::cout << "\t\tone dimension and 4096 in two dimensions.)"
 		<< std::endl;
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
@@ -919,12 +932,12 @@ int main(int argc, char **argv) {
       std::cout << "\t\tNumber of FWHM kept after filtering. (def: 15.0)"
 		<< std::endl;
       std::cout << "\t-n, --nsims NSIMS" << std::endl;
-      std::cout << "\t\tThe number of simulations to do (def: 100)." 
+      std::cout << "\t\tThe number of simulations to do (def: 100)."
 		<< std::endl;
       std::cout << "\t-N, --nolike" << std::endl;
       std::cout << "\t\tDo not map out the likelihood values." << std::endl;
       std::cout << "\t--nlike NLIKE" << std::endl;
-      std::cout << "\t\tThe number of likelihoods to compute for each sim if" 
+      std::cout << "\t\tThe number of likelihoods to compute for each sim if"
 		<< std::endl;
       std::cout << "\t\t --nolike is not set (def: 500)." << std::endl;
       std::cout << "\t--n0initrange N0INITRANGE" << std::endl;
@@ -938,7 +951,7 @@ int main(int argc, char **argv) {
       std::cout << "\t\tif doing likelihood map (def: 0.1)."
 		<< std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
-      std::cout << "\t\tAmount of oversampling to use (integral) when " 
+      std::cout << "\t\tAmount of oversampling to use (integral) when "
 		<< "generating" << std::endl;
       std::cout << "\t\timage.  The data is then down-binned to the specified"
 		<< "size." << std::endl;
@@ -967,7 +980,7 @@ int main(int argc, char **argv) {
       std::cout << "\t-V, --version" << std::endl;
       std::cout << "\t\tOutput version number and exit" << std::endl;
       std::cout << "\t-w, --wisdom wisdomfile" << std::endl;
-      std::cout << "\t\tName of wisdom file (prepared with fftw-wisdom)." 
+      std::cout << "\t\tName of wisdom file (prepared with fftw-wisdom)."
 		<< std::endl;
       std::cout << "ONE-DIMENSIONAL OPTIONS" << std::endl;
       std::cout << "\t-e, --esmooth ESMOOTH" << std::endl;
@@ -983,6 +996,14 @@ int main(int argc, char **argv) {
       std::cout << "\t--sigma_matched VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
 		<< " sigma)" << std::endl;
+      std::cout << "\t--simfwhm VALUE" << std::endl;
+      std::cout << "\t\tSimulated image FWHM, in arcsec.  If not provided,"
+		<< " the" << std::endl;
+      std::cout << "\t\tsame FWHM is used for the simulations as for the "
+		<< "P(D)." << std::endl;
+      std::cout << "\t\tThis is intended as a mechanism for studying beam"
+		<< std::endl;
+      std::cout << "\t\tsystematics." << std::endl;
       std::cout << "TWO-DIMENSIONAL OPTIONS" << std::endl;
       std::cout << "\t---esmooth1 ESMOOTH" << std::endl;
       std::cout << "\t\tExtra smoothing FWHM (in arcsec), band 1" << std::endl;
@@ -1020,7 +1041,7 @@ int main(int argc, char **argv) {
       twod = true;
       break;
     case 'V':
-      std::cout << "pofd_coverage version number: " << pofd_coverage::version 
+      std::cout << "pofd_coverage version number: " << pofd_coverage::version
 		<< std::endl;
       return 0;
       break;
@@ -1028,6 +1049,6 @@ int main(int argc, char **argv) {
 
   if (!twod)
     return runSimSingle(argc, argv);
-  else 
+  else
     return runSimDouble(argc, argv);
 }

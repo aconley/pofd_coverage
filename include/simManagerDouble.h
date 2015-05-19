@@ -10,6 +10,7 @@
 #include<gsl/gsl_math.h>
 #include<gsl/gsl_min.h>
 
+#include "../include/global_settings.h"
 #include "../include/simImageDouble.h"
 #include "../include/doublebeam.h"
 #include "../include/PDDouble.h"
@@ -43,7 +44,7 @@ class simManagerDouble {
   //Holds result of likelihood maximization
   double *bestn0; //!< N0 that maximized the likelihood
   double *bestlike; //!< 1D array holding best likelihood value
-  
+
   //Holds results of likelihood map
 
   double **likearr; //!< 2D Array of computed log likelihoods (nsims x nlike)
@@ -56,7 +57,7 @@ class simManagerDouble {
   //Stuff for doing individual sims
   doublebeam bm; //!< Beam
   doublebeamHist inv_bmhist; //!< Histogrammed inverse beam
-  mutable simImageDouble simim; //!< Simulated image
+  simImageDouble *simim; //!< Simulated image
   bool use_binning; //!< Work on binned images in likelihood
   mutable PDDouble pd; //!< Holds computed P(D)
   mutable PDFactoryDouble pdfac; //!< Computes P(D)
@@ -83,31 +84,33 @@ class simManagerDouble {
  public:
   explicit simManagerDouble(const std::string& MODELFILE,
 			    unsigned int NSIMS=200, double N0INITRANGE=0.3,
-			    bool MAPLIKE=true, unsigned int NLIKE=401, 
-			    double N0RANGEFRAC=0.1, unsigned int FFTSIZE=4096, 
-			    unsigned int N1=720, unsigned int N2=720, 
-			    double PIXSIZE=5.0, double FWHM1=15, 
+			    bool MAPLIKE=true, unsigned int NLIKE=401,
+			    double N0RANGEFRAC=0.1, unsigned int FFTSIZE=4096,
+			    unsigned int N1=720, unsigned int N2=720,
+			    double PIXSIZE=5.0, double FWHM1=15,
 			    double FWHM2=20, double NFWHM=15.0,
+          double SIMFWHM1=pofd_coverage::qnan,
+          double SIMFWHM2=pofd_coverage::qnan,
 			    double SIGI1=0.004, double SIGI2=0.006,
-			    bool SINGLEFILT=true, double FILTSCALE=0.0, 
+			    bool SINGLEFILT=true, double FILTSCALE=0.0,
 			    double QFACTOR=0.2, bool MATCHED=false, double SIGMI1=0.0,
-			    double SIGMI2=0.0, double SIGC1=0.006, 
-			    double SIGC2=0.006, unsigned int NBEAMBINS=150, 
-			    double N0=2.63e3, double ESMOOTH1=0, 
-			    double ESMOOTH2=0, unsigned int OVERSAMPLE=1, 
-			    const std::string& POWERSPECFILE="", 
-			    unsigned int SPARCITY=1, bool USEBIN=false, 
+			    double SIGMI2=0.0, double SIGC1=0.006,
+			    double SIGC2=0.006, unsigned int NBEAMBINS=150,
+			    double N0=2.63e3, double ESMOOTH1=0,
+			    double ESMOOTH2=0, unsigned int OVERSAMPLE=1,
+			    const std::string& POWERSPECFILE="",
+			    unsigned int SPARCITY=1, bool USEBIN=false,
 			    unsigned int NBINS=1000);
   ~simManagerDouble();
 
-  void setSeed(unsigned long long int seed) { simim.setSeed(seed); }
+  void setSeed(unsigned long long int seed) { simim->setSeed(seed); }
 
   void addWisdom(const std::string& filename) { pdfac.addWisdom(filename); }
   void setNEdge(unsigned int edglen) { pdfac.setNEdge(edglen); }
 
-  unsigned int getN1() const { return simim.getN1(); }
-  unsigned int getN2() const { return simim.getN2(); }
-  double getArea() const { return simim.getArea(); }
+  unsigned int getN1() const { return simim->getN1(); }
+  unsigned int getN2() const { return simim->getN2(); }
+  double getArea() const { return simim->getArea(); }
   std::pair<double, double> getFWHM() const { return bm.getFWHM(); }
 
 #ifdef TIMING

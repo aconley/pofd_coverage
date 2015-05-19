@@ -8,10 +8,12 @@
 #endif
 
 #include<string>
+#include<limits>
 
 #include<gsl/gsl_math.h>
 #include<gsl/gsl_min.h>
 
+#include "../include/global_settings.h"
 #include "../include/simImage.h"
 #include "../include/beam.h"
 #include "../include/PD.h"
@@ -33,7 +35,7 @@ class simManager {
 
   unsigned int nsims; //!< Number of simulations to do
   double n0initrange; //!< Initial range for likelihood peak finding step
-  
+
   //Stuff for likelihood map
   bool do_map_like; //!< Create the likelihood map?
   unsigned int nlike; //!< Number of likelihoods to compute
@@ -45,7 +47,7 @@ class simManager {
   //Holds result of likelihood maximization
   double *bestn0; //!< N0 that maximized the likelihood
   double *bestlike; //!< 1D array holding best likelihood value
-  
+
   //Holds results of likelihood map
   double **likearr; //!< 2D Array of computed log likelihoods (nsims x nlike)
   double *min_n0; //!< Minimum n0 for each sim (nsims elements)
@@ -57,7 +59,7 @@ class simManager {
   //Stuff for doing individual sims
   beam bm; //!< Beam
   beamHist inv_bmhist; //!< Histogrammed inverse beam
-  mutable simImage simim; //!< Simulated image
+  simImage *simim; //!< Simulated image
   bool use_binning; //!< Work on binned images in likelihood
   mutable PD pd; //!< Holds computed P(D)
   mutable PDFactory pdfac; //!< Computes P(D)
@@ -83,29 +85,29 @@ class simManager {
 
  public:
   explicit simManager(const std::string& MODELFILE,
-		      unsigned int NSIMS=1000, double N0INITRANGE=0.3, 
-		      bool MAPLIKE=true, unsigned int NLIKE=401, 
-		      double N0RANGEFRAC=0.1, unsigned int FFTSIZE=262144, 
+		      unsigned int NSIMS=1000, double N0INITRANGE=0.3,
+		      bool MAPLIKE=true, unsigned int NLIKE=401,
+		      double N0RANGEFRAC=0.1, unsigned int FFTSIZE=262144,
 		      unsigned int N1=720, unsigned int N2=720,
-		      double PIXSIZE=5.0, double FWHM=15.0, 
-		      double NFWHM=15.0, double SIGI=0.005, 
-		      double FILTSCALE=0.0, double QFACTOR=0.2, 
+		      double PIXSIZE=5.0, double FWHM=15.0,
+		      double NFWHM=15.0, double SIMFWHM=pofd_coverage::qnan,
+          double SIGI=0.005, double FILTSCALE=0.0, double QFACTOR=0.2,
 		      bool MATCHED=false, double SIGMI=0.0, double SIGMC=0.006,
-		      unsigned int NBEAMBINS=100, 
+		      unsigned int NBEAMBINS=100,
 		      double N0=2.6e3, double ESMOOTH=0.0,
-		      unsigned int OVERSAMPLE=1, 
+		      unsigned int OVERSAMPLE=1,
 		      const std::string& POWERSPECFILE="",
-		      unsigned int SPARCITY=1, bool USEBIN=false, 
+		      unsigned int SPARCITY=1, bool USEBIN=false,
 		      unsigned int NBINS=1000);
   ~simManager();
 
-  void setSeed(unsigned long long int seed) { simim.setSeed(seed); }
+  void setSeed(unsigned long long int seed) { simim->setSeed(seed); }
 
   void addWisdom(const std::string& filename) { pdfac.addWisdom(filename); }
 
-  unsigned int getN1() const { return simim.getN1(); }
-  unsigned int getN2() const { return simim.getN2(); }
-  double getArea() const { return simim.getArea(); }
+  unsigned int getN1() const { return simim->getN1(); }
+  unsigned int getN2() const { return simim->getN2(); }
+  double getArea() const { return simim->getArea(); }
   double getFWHM() const { return bm.getFWHM(); }
 
 #ifdef TIMING

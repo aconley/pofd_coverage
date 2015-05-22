@@ -78,6 +78,8 @@ static double minfunc(double x, void* params) {
               a fraction of FILTSCALE.
   \param[in] MATCHED Apply matched filtering using the FWHM of the beam,
                the instrument noise (SIGI), and SIGC
+  \param[in] FILTFWHM Filter FWHM to use in matched filter.  If 0,
+              defaults to actual FWHM.	      
   \param[in] SIGMI The matched filter instrument noise, if matched filtering
               is used.  If zero, defaults to SIGI
   \param[in] SIGMC The matched filter confusion noise, if matched filtering
@@ -100,9 +102,9 @@ simManager::simManager(const std::string& MODELFILE,
 		       unsigned int N1, unsigned int N2,
 		       double PIXSIZE, double FWHM, double NFWHM,
 		       double SIMFWHM, double SIGI, double FILTSCALE,
-           double QFACTOR, bool MATCHED, double SIGMI, double SIGMC,
-		       unsigned int NBEAMBINS, double N0,
-		       double ESMOOTH, unsigned int OVERSAMPLE,
+		       double QFACTOR, bool MATCHED, double FILTFWHM,
+		       double SIGMI, double SIGMC, unsigned int NBEAMBINS,
+		       double N0, double ESMOOTH, unsigned int OVERSAMPLE,
 		       const std::string& POWERSPECFILE,
 		       unsigned int SPARCITY,
 		       bool USEBIN, unsigned int NBINS) :
@@ -145,15 +147,17 @@ simManager::simManager(const std::string& MODELFILE,
   }
 
   // Set up filter if needed
+  double filt_fwhm;
+  if (FILTFWHM > 0) filt_fwhm = FILTFWHM; else filt_fwhm = FWHM;
   if (MATCHED && SIGMI == 0) SIGMI = SIGI;
   if (FILTSCALE > 0) {
     if (MATCHED) // Hipass and matched
-      filt = new fourierFilter(PIXSIZE, FWHM, SIGMI, SIGMC, FILTSCALE,
+      filt = new fourierFilter(PIXSIZE, filt_fwhm, SIGMI, SIGMC, FILTSCALE,
 			       QFACTOR, false, true);
     else // hipass only
       filt = new fourierFilter(PIXSIZE, FILTSCALE, QFACTOR, false, true);
   } else if (MATCHED) // Matched only
-    filt = new fourierFilter(PIXSIZE, FWHM, SIGMI, SIGMC, false, true);
+    filt = new fourierFilter(PIXSIZE, filt_fwhm, SIGMI, SIGMC, false, true);
 
   // Set up the histogrammed beam
   //  If we are filtering take a large piece

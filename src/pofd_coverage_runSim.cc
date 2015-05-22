@@ -23,6 +23,7 @@ static struct option long_options[] = {
   {"extra_smooth2", required_argument, 0, '@'},
   {"fftsize", required_argument, 0, 'f'},
   {"filtscale", required_argument, 0, 'F'},
+  {"filtfwhm", required_argument, 0, '+'},
   {"matched", no_argument, 0, 'm'},
   {"nbeambins", required_argument, 0, '5'},
   {"nbins", required_argument, 0, '1'},
@@ -55,7 +56,7 @@ static struct option long_options[] = {
   {0, 0, 0, 0}
 };
 
-char optstring[] = "hbde:!:@:f:F:1:mn:5:6:N2:3:4:o:p:q:s:#:$:,:.:/:7:9:0:*:(:):%:S:vVw:";
+char optstring[] = "hbde:!:@:f:F:+:1:mn:5:6:N2:3:4:o:p:q:s:#:$:,:.:/:7:9:0:*:(:):%:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -67,7 +68,7 @@ int runSimSingle(int argc, char **argv) {
   unsigned int nsims, nlike, n1, n2, fftsize, nbins;
   unsigned int oversample, sparcity, nbeambins;
   double pixsize, n0rangefrac, n0initrange, nfwhm, simfwhm;
-  double filtscale, qfactor, sigmc, sigmi; //Filtering parameters
+  double filtscale, filt_fwhm, qfactor, sigmc, sigmi; //Filtering parameters
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; //Power spectrum file
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like, matched;
@@ -89,6 +90,7 @@ int runSimSingle(int argc, char **argv) {
   seed                = 1024;
   oversample          = 1;
   filtscale           = 0.0;
+  filt_fwhm           = 0.0;
   qfactor             = 0.2;
   matched             = false;
   sigmi               = 0.0;  // Means: use sigma
@@ -118,6 +120,9 @@ int runSimSingle(int argc, char **argv) {
       break;
     case 'F':
       filtscale = atof(optarg);
+      break;
+    case '+':
+      filt_fwhm = atof(optarg);
       break;
     case 'm':
       matched = true;
@@ -273,6 +278,11 @@ int runSimSingle(int argc, char **argv) {
     std::cout << "Invalid (negative) filter scale: " << filtscale << std::endl;
     return 1;
   }
+  if (filt_fwhm < 0.0) {
+    std::cout << "Invalid (negative) filt fwhm for matched filter"
+	      << std::endl;
+    return 1;
+  }
   if (qfactor < 0.0) {
     std::cout << "Invalid (negative) high-pass filter q factor"
 	      << qfactor << std::endl;
@@ -317,7 +327,7 @@ int runSimSingle(int argc, char **argv) {
       printf("   sigma:              %0.4f\n", sigma);
       printf("   fftsize:            %u\n", fftsize);
       if (!std::isnan(simfwhm))
-	printf("  sim fwhm:            %0.2f\n", simfwhm);
+	printf("   sim fwhm:           %0.2f\n", simfwhm);
       if (esmooth > 0)
 	printf("   esmooth:            %0.2f\n",esmooth);
       if (oversample > 1)
@@ -327,7 +337,10 @@ int runSimSingle(int argc, char **argv) {
 	printf("   filtering q:        %0.2f\n", qfactor);
       }
       if (matched > 0) {
-	printf("   matched fwhm:       %0.1f\n", fwhm);
+	if (filt_fwhm > 0)
+	  printf("   matched fwhm:       %0.1f\n", filt_fwhm);
+	else
+	  printf("   matched fwhm:       %0.1f\n", fwhm);
 	printf("   matched sigi:       %0.4f\n", sigmi);
 	printf("   matched sigc:       %0.4f\n", sigmc);
       }
@@ -345,9 +358,9 @@ int runSimSingle(int argc, char **argv) {
 
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike,
 		   n0rangefrac, fftsize, n1, n2, pixsize, fwhm, nfwhm, simfwhm,
-		   sigma, filtscale, qfactor, matched, sigmi, sigmc, nbeambins,
-		   n0, esmooth, oversample, powerspecfile, sparcity,
-		   use_binning, nbins);
+		   sigma, filtscale, qfactor, matched, filt_fwhm, sigmi,
+		   sigmc, nbeambins, n0, esmooth, oversample, powerspecfile,
+		   sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -394,7 +407,7 @@ int runSimDouble(int argc, char **argv) {
   // Filtering params
   bool matched, single_filt;
   double filterscale, qfactor; // Hipass
-  double sigm1, sigm2, sigc1, sigc2, sigm, sigc; // Matched
+  double filt_fwhm, sigm1, sigm2, sigc1, sigc2, sigm, sigc; // Matched
 
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; // Power spectrum file
@@ -429,6 +442,7 @@ int runSimDouble(int argc, char **argv) {
   sigc                = 0.006;
   sigc1               = 0.0; // Use sigc if not set
   sigc2               = 0.0; // ditto
+  filt_fwhm           = 0.0; // Use actual FWHM if not set
   sparcity            = 1;
   nbins               = 1000;
   use_binning         = false;
@@ -457,6 +471,9 @@ int runSimDouble(int argc, char **argv) {
       break;
     case 'F':
       filterscale = atof(optarg);
+      break;
+    case '+':
+      filt_fwhm = atof(optarg);
       break;
     case '1':
       nbins = atoi(optarg);
@@ -654,6 +671,10 @@ int runSimDouble(int argc, char **argv) {
     std::cout << "Invalid (negative) filter scale: " << filterscale << std::endl;
     return 1;
   }
+  if (filt_fwhm < 0.0) {
+    std::cout << "Invalid (negative) filt_fwhm" << std::endl;
+    return 1;
+  }
   if (qfactor < 0.0) {
     std::cout << "Invalid (negative) high-pass filter q factor"
 	      << qfactor << std::endl;
@@ -739,9 +760,9 @@ int runSimDouble(int argc, char **argv) {
       printf("   sigma2:             %0.4f\n",sigma2);
       printf("   fftsize:            %u by %u\n", fftsize, fftsize);
       if (!std::isnan(simfwhm1))
-  printf(" sim fwhm1:            %0.2f\n", simfwhm1);
+	printf("   sim fwhm1:          %0.2f\n", simfwhm1);
      if (!std::isnan(simfwhm2))
-  printf(" sim fwhm2:            %0.2f\n", simfwhm2);
+       printf("    sim fwhm2:          %0.2f\n", simfwhm2);
       if (esmooth1 > 0)
 	printf("   esmooth1:           %0.2f\n",esmooth1);
       if (esmooth2 > 0)
@@ -754,12 +775,19 @@ int runSimDouble(int argc, char **argv) {
       }
       if (matched > 0) {
 	if (single_filt) {
-	  printf("   matched fwhm:       %0.1f\n", fwhm1);
+	  if (filt_fwhm > 0)
+	    printf("   matched fwhm:       %0.1f\n", filt_fwhm);
+	  else
+	    printf("   matched fwhm:       %0.1f\n", fwhm1);
 	  printf("   matched sigi:       %0.4f\n", sigm1);
 	  printf("   matched sigc:       %0.4f\n", sigc1);
 	} else {
-	  printf("   matched fwhm1:      %0.1f\n", fwhm1);
-	  printf("   matched fwhm2:      %0.1f\n", fwhm2);
+	  if (filt_fwhm > 0)
+	    printf("   matched fwhm:       %0.1f\n", filt_fwhm);
+	  else {
+	    printf("   matched fwhm1:      %0.1f\n", fwhm1);
+	    printf("   matched fwhm2:      %0.1f\n", fwhm2);
+	  }
 	  printf("   matched sigm1:      %0.4f\n", sigm1);
 	  printf("   matched sigm2:      %0.4f\n", sigm2);
 	  printf("   matched sigc1:      %0.4f\n", sigc1);
@@ -780,10 +808,11 @@ int runSimDouble(int argc, char **argv) {
 
     simManagerDouble sim(modelfile, nsims, n0initrange, map_like, nlike,
 			 n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2,
-			 nfwhm, simfwhm1, simfwhm2, sigma1, sigma2, single_filt,
-       filterscale, qfactor, matched, sigm1, sigm2, sigc1, sigc2,
-			 nbeambins, n0, esmooth1, esmooth2, oversample,
-			 powerspecfile, sparcity, use_binning, nbins);
+			 nfwhm, simfwhm1, simfwhm2, sigma1, sigma2,
+			 single_filt, filterscale, qfactor, matched,
+			 filt_fwhm, sigm1, sigm2, sigc1, sigc2, nbeambins,
+			 n0, esmooth1, esmooth2, oversample, powerspecfile,
+			 sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
 
@@ -933,6 +962,9 @@ int main(int argc, char **argv) {
       std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
 		<< std::endl;
       std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
+      std::cout << "\t--filtfwhm VALUE" << std::endl;
+      std::cout << "\t\tMatched filter FWHM.  If not set, defaults to actual"
+		<< " value(s)." << std::endl;
       std::cout << "\t-f, --fftsize FFTSIZE" << std::endl;
       std::cout << "\t\tSize of FFT to use when computing P(D) (def: 131072 in"
 		<< std::endl;
@@ -941,10 +973,11 @@ int main(int argc, char **argv) {
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
 		<< " matching the" << std::endl;
-      std::cout << "\t\tbeam.  In the two-d case, a different filter is "
-		<< "applied in" << std::endl;
-      std::cout << "\t\teach band matching the properties of that band.  Off"
-		<< " by default." << std::endl;
+      std::cout << "\t\tbeam.  In the two-d case, the same different filter "
+		<< "is applied in" << std::endl;
+      std::cout << "\t\teach band unless individual sigm or sigc values are "
+		<< "supplied." << std::endl;
+      std::cout << "\t\tOff by default." << std::endl;
       std::cout << "\t--nbeambins NBINS" << std::endl;
       std::cout << "\t\tNumber of histogram bins to use for beams. (def: 100"
 		<< std::endl;

@@ -71,13 +71,16 @@ static double minfunc(double x, void* params) {
              band 1
   \param[in] SIGI2 Instrument noise (without smoothing or filtering) in Jy,
              band 2
-  \param[in] SINGLEFILT Use the same filter in both bands, based on band1 values.
+  \param[in] SINGLEFILT Use the same filter in both bands, based on band1 
+              values.
   \param[in] FILTSCALE High-pass filtering scale, in arcsec.  If 0, no
               high-pass filtering is applied.
   \param[in] QFACTOR High-pass Gaussian filtering apodization sigma as
               a fraction of FILTSCALE.
   \param[in] MATCHED Apply matched filtering using the FWHM of the beam,
                the instrument noise (SIGI), and SIGC
+  \param[in] FILTFWHM Specify matched filtering FWHM directly.  If zero,
+              defaults to FWHM1 (or FWHM2 in band 2 if not single filtering)
   \param[in] SIGMI1 The matched filter instrument noise, if matched filtering
               is used, band 1.  If zero, defaults to SIGI1
   \param[in] SIGMI2 The matched filter instrument noise, if matched filtering
@@ -104,10 +107,12 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
 				   double N0RANGEFRAC, unsigned int FFTSIZE,
 				   unsigned int N1, unsigned int N2,
 				   double PIXSIZE, double FWHM1, double FWHM2,
-				   double NFWHM, double SIMFWHM1, double SIMFWHM2,
-           double SIGI1, double SIGI2,
-				   bool SINGLEFILT, double FILTSCALE, double QFACTOR,
-				   bool MATCHED, double SIGMI1, double SIGMI2,
+				   double NFWHM, double SIMFWHM1,
+				   double SIMFWHM2, double SIGI1, double SIGI2,
+				   bool SINGLEFILT,  double FILTSCALE,
+				   double QFACTOR,
+				   bool MATCHED, double FILTFWHM,
+				   double SIGMI1, double SIGMI2,
 				   double SIGMC1, double SIGMC2,
 				   unsigned int NBEAMBINS, double N0,
 				   double ESMOOTH1, double ESMOOTH2,
@@ -163,21 +168,34 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
   // Set up filter(s) if needed.
   if (MATCHED && SIGMI1 == 0) SIGMI1 = SIGI1;
   if (MATCHED && SIGMI2 == 0) SIGMI2 = SIGI2;
+
+  double filt_fwhm1, filt_fwhm2;
+  if (FILTFWHM <= 0.0) {
+    if (SINGLEFILT) filt_fwhm1 = filt_fwhm2 = FWHM1;
+    else {
+      filt_fwhm1 = FWHM1;
+      filt_fwhm2 = FWHM2;
+    }
+  } else {
+    filt_fwhm1 = filt_fwhm2 = FILTFWHM;
+  }
+  
   if (FILTSCALE > 0) {
     if (MATCHED) {// Hipass and matched
-      filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGMI1, SIGMC1,
+      filt1 = new fourierFilter(PIXSIZE, filt_fwhm1, SIGMI1, SIGMC1,
 				FILTSCALE, QFACTOR, false, true);
       if (!SINGLEFILT)
 	if ((FWHM1 != FWHM2) || (SIGMI1 != SIGMI2) || (SIGMC1 != SIGMC2))
-	  filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGMI2, SIGMC2,
+	  filt2 = new fourierFilter(PIXSIZE, filt_fwhm2, SIGMI2, SIGMC2,
 				    FILTSCALE, QFACTOR, false, true);
     } else // hipass only, can always use just one filter
       filt1 = new fourierFilter(PIXSIZE, FILTSCALE, QFACTOR, false, true);
   } else if (MATCHED) { // Matched only
-    filt1 = new fourierFilter(PIXSIZE, FWHM1, SIGMI1, SIGMC1, false, true);
+    filt1 = new fourierFilter(PIXSIZE, filt_fwhm1, SIGMI1, SIGMC1,
+			      false, true);
     if (!SINGLEFILT) // Maybe use two, if any args differ
       if ((FWHM1 != FWHM2) || (SIGI1 != SIGI2) || (SIGMC1 != SIGMC2))
-	filt2 = new fourierFilter(PIXSIZE, FWHM2, SIGMI2, SIGMC2,
+	filt2 = new fourierFilter(PIXSIZE, filt_fwhm2, SIGMI2, SIGMC2,
 				  FILTSCALE, QFACTOR, false, true);
   }
 

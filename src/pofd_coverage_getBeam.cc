@@ -139,7 +139,7 @@ int getBeamSingle(int argc, char **argv) {
   }
   if (pixsize >= fwhm / 2.0) {
     std::cout << "WARNING: Insufficient (FWHM/2) beam sampling based"
-              << "on pixel size" << std::endl;
+              << " on pixel size" << std::endl;
     std::cout << "Proceeding anyways, but results may be unreliable"
               << std::endl;
   }
@@ -353,7 +353,7 @@ int getBeamDouble(int argc, char **argv) {
   }
   if (pixsize >= fwhm1 / 2.0 || pixsize >= fwhm2 / 2.0) {
     std::cout << "WARNING: Insufficient (FWHM/2) beam sampling based"
-              << "on pixel size" << std::endl;
+              << " on pixel size" << std::endl;
     std::cout << "Proceeding anyways, but results may be unreliable"
               << std::endl;
   }

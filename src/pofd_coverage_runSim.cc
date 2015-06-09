@@ -973,7 +973,7 @@ int main(int argc, char **argv) {
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
 		<< " matching the" << std::endl;
-      std::cout << "\t\tbeam.  In the two-d case, the same different filter "
+      std::cout << "\t\tbeam.  In the two-d case, the same filter "
 		<< "is applied in" << std::endl;
       std::cout << "\t\teach band unless individual sigm or sigc values are "
 		<< "supplied." << std::endl;

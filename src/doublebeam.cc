@@ -2,8 +2,10 @@
 
 #include<sstream>
 #include<limits>
-#include<fitsio.h>
 #include<cstring>
+#include<ctime>
+
+#include<fitsio.h>
 
 #include "../include/doublebeam.h"
 #include "../include/pofdExcept.h"
@@ -14,29 +16,50 @@
   \param[in] FWHM1     FWHM of beam, in arcsec, band 1
   \param[in] FWHM2     FWHM of beam, in arcsec, band 2
 */
-doublebeam::doublebeam(double FWHM1, double FWHM2) {
+doublebeam::doublebeam(double FWHM1, double FWHM2) noexcept {
   setFWHM(FWHM1, FWHM2);
+  rangen = nullptr;
 }
+
+doublebeam::~doublebeam() { if (rangen != nullptr) delete rangen; }
 
 /*!
   \param[in] FWHM1    New FWHM of doublebeam, in arcsec, band 1
   \param[in] FWHM2    New FWHM of doublebeam, in arcsec, band 2
 */
-void doublebeam::setFWHM(double FWHM1, double FWHM2) {
+void doublebeam::setFWHM(double FWHM1, double FWHM2) noexcept {
   fwhm1 = FWHM1;
   rhosq1 = pofd_coverage::rhofac / (FWHM1 * FWHM1);
   fwhm2 = FWHM2;
   rhosq2 = pofd_coverage::rhofac / (FWHM2 * FWHM2);
 }
 
-dblpair doublebeam::getEffectiveArea() const {
+dblpair doublebeam::getEffectiveArea() const noexcept {
   return std::make_pair(pofd_coverage::pi/rhosq1,
                         pofd_coverage::pi/rhosq2);
 }
 
-dblpair doublebeam::getEffectiveAreaSq() const {
+dblpair doublebeam::getEffectiveAreaSq() const noexcept {
   return std::make_pair(0.5 * pofd_coverage::pi/rhosq1,
                         0.5 * pofd_coverage::pi/rhosq2);
+}
+
+/*!
+  \param[in] n Number of values in bm
+  \param[in] noiseval Gaussian noise sigma
+  \param[inout] bm Data to modify, treated as 1D array of length n
+*/
+void doublebeam::addNoise(unsigned int n, double noiseval,
+                          double* const bm) const {
+  if (noiseval == 0) return; // Negative noise is okay
+  if (rangen == nullptr) {
+    unsigned long long int seed;
+    seed = static_cast<unsigned long long int>(time(nullptr));
+    seed += static_cast<unsigned long long int>(clock());
+    rangen = new ran(seed);
+  }
+  for (unsigned int i = 0; i < n; ++i)
+    bm[i] += noiseval * rangen->gauss();
 }
 
 /*!
@@ -46,7 +69,7 @@ dblpair doublebeam::getEffectiveAreaSq() const {
   \param[out] fac Returns doublebeam factor.  Must be pre-allocated by
                    caller and be of length n
 
-  The doublebeam is center normalized.
+  The doublebeam is center normalized.  No noise is included.
 */
 void doublebeam::getBeamFac(unsigned int band, unsigned int n, double pixsize,
                             double* const fac) const {
@@ -107,7 +130,8 @@ void doublebeam::getBeamFac(unsigned int band, unsigned int n, double pixsize,
                    caller and be of length n1 * n2
 
   The beam is center normalized.  Filtering not supported.  The
-  center of the beam is at n1/2, n2/2 (integer arithmetic).
+  center of the beam is at n1/2, n2/2 (integer arithmetic).  No noise
+  is included.
 */
 void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
                             unsigned int n2, double pixsize,
@@ -203,7 +227,7 @@ void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
 
   The center of the beam is at n1/2, n2/2 (integer arithmetic)
 
-  Filtering is not supported
+  Filtering is not supported.  No noise is included.
 */
 void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
                             unsigned int n2, double pixsize,
@@ -321,6 +345,7 @@ void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
                apply filtering
 
   The center of the beam is at n/2, n/2 (integer arithmetic).
+  Noise is added if set.
 */
 void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
                          double* const bm,
@@ -328,6 +353,9 @@ void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
 
   // pre-filtered beam
   getRawBeam(band, n, n, pixsize, bm);
+
+  // Add noise if needed
+  if (noise > 0) addNoise(n * n, noise, bm);
 
   // Apply filtering
   if (filter != nullptr)
@@ -344,6 +372,7 @@ void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
                apply filtering
 
   The center of the beam is at n1/2, n2/2 (integer arithmetic).
+  Noise is added if set.
 */
 void doublebeam::getBeam(unsigned int band, unsigned int n1,
                          unsigned int n2, double pixsize, double* const bm,
@@ -351,6 +380,9 @@ void doublebeam::getBeam(unsigned int band, unsigned int n1,
 
   // pre-filtered beam
   getRawBeam(band, n1, n2, pixsize, bm);
+
+  // Add noise if needed
+  if (noise > 0) addNoise(n1 * n2, noise, bm);
 
   // Apply filtering
   if (filter != nullptr)
@@ -369,6 +401,7 @@ void doublebeam::getBeam(unsigned int band, unsigned int n1,
                  filtering
 
   The center of the beam is at n/2, n/2 (integer arithmetic).
+  Noise is added if set.
 */
 void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
                          unsigned int oversamp, double* const bm,
@@ -376,6 +409,9 @@ void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
 
   // Pre-filtered beam
   getRawBeam(band, n, n, pixsize, oversamp, bm);
+
+  // Add noise if needed
+  if (noise > 0) addNoise(n * n, noise, bm);
 
   // Apply filtering
   if (filter != nullptr)
@@ -394,6 +430,7 @@ void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
                  filtering
 
   The center of the beam is at n1/2, n2/2 (integer arithmetic).
+  Noise is added if set.
 */
 void doublebeam::getBeam(unsigned int band, unsigned int n1,
                          unsigned int n2, double pixsize,
@@ -402,6 +439,9 @@ void doublebeam::getBeam(unsigned int band, unsigned int n1,
 
   // Pre-filtered beam
   getRawBeam(band, n1, n2, pixsize, oversamp, bm);
+
+  // Add noise if needed
+  if (noise > 0) addNoise(n1 * n2, noise, bm);
 
   // Apply filtering
   if (filter != nullptr)
@@ -571,6 +611,9 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
   dtmp = nfwhm;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
                  const_cast<char*>("Number of FWHM out"), &status);
+  dtmp = noise;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NOISE"), &dtmp,
+                 const_cast<char*>("Fractional noise"), &status);
 
   if (f2 != nullptr) {
     ubl = true;

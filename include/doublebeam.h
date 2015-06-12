@@ -6,6 +6,7 @@
 #define __doublebeam__
 
 #include "../include/global_settings.h"
+#include "../include/ran.h"
 #include "../include/fourierFilter.h"
 
 /*!
@@ -21,7 +22,13 @@ class doublebeam {
   double fwhm2; //!< FWHM of beam, in arcsec, band 2
   double rhosq1; //!< Convenience variable \f$\rho = 4 \log\left(2\right) 3600^2/FWHM^2)\f$, band 1
   double rhosq2; //!< Convenience variable \f$\rho = 4 \log\left(2\right) 3600^2/FWHM^2)\f$, band 2
-  
+  double noise; //!< Fractional beam noise
+
+  mutable ran *rangen; //!< Random number generator, if needed for fills
+
+  /*! \brief Inner function to add noise */
+  void addNoise(unsigned int, double, double* const) const;
+
   /*!\brief Inner beam generator, no filtering*/
   void getRawBeam(unsigned int band, unsigned int n1, unsigned int n2, 
                   double pixsize, double* const bm) const;
@@ -32,18 +39,22 @@ class doublebeam {
                   double* const bm) const;
 
  public :
-  doublebeam(double FWHM1=10.0, double FWHM2=15.0); //!< Constructor with FWHM
+  doublebeam(double FWHM1=10.0, double FWHM2=15.0) noexcept; //!< Constructor with FWHM
+  ~doublebeam();
 
-  void setFWHM(double, double); //!< Set the FWHM values
+  void setFWHM(double, double) noexcept; //!< Set the FWHM values
 
-  double getMaxFWHM() const { return std::max(fwhm1, fwhm2); }
-  dblpair getFWHM() const { return std::make_pair(fwhm1, fwhm2); }
-  dblpair getRhoSq() const {return std::make_pair(rhosq1, rhosq2);}
+  double getMaxFWHM() const noexcept { return std::max(fwhm1, fwhm2); }
+  dblpair getFWHM() const noexcept { return std::make_pair(fwhm1, fwhm2); }
+  dblpair getRhoSq() const noexcept {return std::make_pair(rhosq1, rhosq2);}
+
+  void setNoise(double NOISE) noexcept { noise = NOISE; } //!< Set the beam noise
+  double getNoise() const noexcept { return noise; } //!< Get beam noise
 
   /*! \brief Get effective areas of beam in sq deg*/
-  dblpair getEffectiveArea() const; 
+  dblpair getEffectiveArea() const noexcept; 
   /*! \brief Get effective areas of beam^2 in sq deg*/
-  dblpair getEffectiveAreaSq() const;
+  dblpair getEffectiveAreaSq() const noexcept;
 
   /*! \brief Get factorized beam*/
   void getBeamFac(unsigned int band, unsigned int n, 

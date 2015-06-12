@@ -823,7 +823,7 @@ int runSimDouble(int argc, char **argv) {
                          n0rangefrac, fftsize, n1, n2, pixsize, fwhm1, fwhm2,
                          nfwhm, simfwhm1, simfwhm2, sigma1, sigma2,
                          single_filt, filterscale, qfactor, matched,
-                         filt_fwhm, sigm1, sigm2, sigc1, sigc2, nbeambins,
+                         filt_fwhm, sigm1, sigm2, sigc1, sigc2, bmnoise, nbeambins,
                          n0, esmooth1, esmooth2, oversample, powerspecfile,
                          sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);

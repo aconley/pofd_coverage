@@ -49,7 +49,7 @@ void beam::addNoise(unsigned int n, double noiseval, double* const bm) const {
     rangen = new ran(seed);
   }
   for (unsigned int i = 0; i < n; ++i)
-    bm[i] += noise * rangen->gauss();
+    bm[i] += noiseval * rangen->gauss();
 }
 
 /*!
@@ -59,6 +59,7 @@ void beam::addNoise(unsigned int n, double noiseval, double* const bm) const {
                    caller and be of length n
 
   The beam is center normalized.  Filtering is not supported.
+  No noise is included.
  */
 void beam::getBeamFac(unsigned int n, double pixsize,
                       double* const fac) const {
@@ -108,7 +109,7 @@ void beam::getBeamFac(unsigned int n, double pixsize,
 
   The beam is center normalized.  Filtering not supported.
   The beam is centered as well as possible, but unless n1 and n2 are odd,
-   it can't quite be centered.
+   it can't quite be centered.  No noise is included.
 */
 void beam::getRawBeam(unsigned int n1, unsigned int n2, double pixsize,
                       double* const bm) const {
@@ -211,7 +212,7 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2, double pixsize,
   Filtering is not supported
 
   The beam is centered as well as possible, but unless n1 and n2 are odd,
-   it can't quite be centered.
+   it can't quite be centered.  No noise is included.
 */
 void beam::getRawBeam(unsigned int n1, unsigned int n2,
                       double pixsize, unsigned int oversamp,
@@ -316,7 +317,7 @@ void beam::getRawBeam(unsigned int n1, unsigned int n2,
   \param[in] filter Hi-pass/matched filter to apply.  If null, don't apply
                      filtering
 
-  This is only properly centered if n is odd.
+  This is only properly centered if n is odd.  Noise will be added if set.
 */
 void beam::getBeam(unsigned int n, double pixsize, double* const bm,
                    const fourierFilter* const filter) const {
@@ -340,7 +341,8 @@ void beam::getBeam(unsigned int n, double pixsize, double* const bm,
   \param[in] filter Hi-pass/matched filter to apply.  If null, don't apply
                      filtering
 
-  This is only properly centered if n1 and n2 are odd.
+  This is only properly centered if n1 and n2 are odd.  Noise will be
+  added if set.
 */
 void beam::getBeam(unsigned int n1, unsigned int n2,
                    double pixsize, double* const bm,
@@ -464,6 +466,10 @@ void beam::writeToFits(const std::string& outputfile, double pixsize,
   dtmp = nfwhm;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
                  const_cast<char*>("Number of FWHM out"), &status);
+  dtmp = noise;
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("NOISE"), &dtmp,
+                 const_cast<char*>("Fractional noise"), &status);
+
   if (filt != nullptr) {
     ubl = true;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,

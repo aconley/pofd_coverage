@@ -89,6 +89,8 @@ static double minfunc(double x, void* params) {
               is used, band 1
   \param[in] SIGMC2 The matched filter confusion noise, if matched filtering
               is used, band 2
+  \param[in] BMNOISE Fractional noise added to unfiltered beam for P(D)
+             calculation; def: 0.0
   \param[in] NBEAMBINS Number of bins to use in beam histogram; def 150
   \param[in] N0 Simulated number of sources per sq deg.
   \param[in] ESMOOTH1 Amount of extra Gaussian smoothing to apply, band 1
@@ -110,10 +112,9 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
                                    double NFWHM, double SIMFWHM1,
                                    double SIMFWHM2, double SIGI1, double SIGI2,
                                    bool SINGLEFILT,  double FILTSCALE,
-                                   double QFACTOR,
-                                   bool MATCHED, double FILTFWHM,
+                                   double QFACTOR, bool MATCHED, double FILTFWHM,
                                    double SIGMI1, double SIGMI2,
-                                   double SIGMC1, double SIGMC2,
+                                   double SIGMC1, double SIGMC2, double BMNOISE,
                                    unsigned int NBEAMBINS, double N0,
                                    double ESMOOTH1, double ESMOOTH2,
                                    unsigned int OVERSAMPLE,
@@ -145,6 +146,9 @@ simManagerDouble::simManagerDouble(const std::string& MODELFILE,
                std::sqrt(FWHM2 * FWHM2 + esmooth2 * esmooth2));
   else
     bm.setFWHM(FWHM1, FWHM2);
+
+  if (BMNOISE > 0)
+    bm.setNoise(BMNOISE);
 
   if (nsims > 0) {
     bestn0 = new double[nsims];
@@ -533,6 +537,10 @@ int simManagerDouble::writeToFits(const std::string& outputfile) const {
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIMFWHM2"), &dpr.second,
      const_cast<char*>("Simulated Image Beam2 FWHM [arcsec]"),
      &status);
+  dtmp = bm.getNoise();
+  fits_write_key(fp, TDOUBLE, const_cast<char*>("BMNOISE"), &dtmp,
+                 const_cast<char*>("P(D) Beam fractional noise"),
+                 &status);
   dpr = simim->getBeamSum();
   fits_write_key(fp, TDOUBLE, const_cast<char*>("BMAREA1"), &dpr.first,
                  const_cast<char*>("Beam area, band 1 [pixels]"),
@@ -886,6 +894,12 @@ void simManagerDouble::writeToHDF5(const std::string& outputfile) const {
   att_id = H5Acreate2(group_id, "FWHM2", H5T_NATIVE_DOUBLE,
                       mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &ptmp.second);
+  H5Aclose(att_id);
+
+  dtmp = bm.getNoise();
+  att_id = H5Acreate2(group_id, "BeamNoise", H5T_NATIVE_DOUBLE,
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dtmp);
   H5Aclose(att_id);
 
   ptmp = simim->getBeamFWHM();

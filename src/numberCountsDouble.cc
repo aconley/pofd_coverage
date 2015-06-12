@@ -33,7 +33,7 @@ const double numberCountsDouble::ftol = 1e-4;
   \param[in] modelfile Name of file to read base model from
 */
 numberCountsDouble::numberCountsDouble(const std::string& modelfile,
-				       unsigned int NINTERP) :
+                                       unsigned int NINTERP) :
   gen_ninterp(NINTERP) {
   //Read in file
   unsigned int nk, ns, no; //Number of knots, sigmas, offsets
@@ -49,7 +49,7 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
     std::stringstream errmsg;
     errmsg << "Unable to open file:" << modelfile << std::endl;
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
-		       errmsg.str(), 1);
+                       errmsg.str(), 1);
   }
 
   //Read in number of knots in band1, sigmas, offsets
@@ -69,23 +69,23 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   if (!has_nknots) {
     initfs.close();
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
-		     "Unable to find number of knots line", 2);
+                     "Unable to find number of knots line", 2);
   }
   if (nk < 2) {
     initfs.close();
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
-		       "Need at least 2 band 1 knots", 3);
+                       "Need at least 2 band 1 knots", 3);
   }
   if (ns < 1) {
     initfs.close();
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
-		       "Need at least one sigma color model knot", 4);
+                       "Need at least one sigma color model knot", 4);
 
   }
   if (no < 1) {
     initfs.close();
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
-		       "Need at least one offset color model knot", 5);
+                       "Need at least one offset color model knot", 5);
   }
   
   //Read in values
@@ -107,9 +107,9 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   if (wvec1.size() != ntot) {
     std::stringstream errstr;
     errstr << "Expected " << ntot << " values from " << modelfile << ", got: " 
-	   << wvec1.size();
+           << wvec1.size();
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
-		       errstr.str(), 6);
+                       errstr.str(), 6);
   }
 
   //Set up band 1
@@ -131,9 +131,9 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
 
   acc = gsl_interp_accel_alloc();
   splinelog = gsl_spline_alloc(gsl_interp_cspline,
-			       static_cast<size_t>(nknots));
+                               static_cast<size_t>(nknots));
   gsl_spline_init(splinelog, logknotpos, logknotvals, 
-		  static_cast<size_t>(nknots));
+                  static_cast<size_t>(nknots));
 
   //Now set up band 2 info
   // First, the sigma spline
@@ -147,13 +147,13 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   accsigma = nullptr;
   if (nsigma == 2)
       sigmainterp = gsl_interp_alloc(gsl_interp_linear,
-				     static_cast<size_t>(nsigma));
+                                     static_cast<size_t>(nsigma));
   else if (nsigma > 2)
     sigmainterp = gsl_interp_alloc(gsl_interp_cspline,
-				   static_cast<size_t>(nsigma));
+                                   static_cast<size_t>(nsigma));
   if (nsigma > 1) {
     gsl_interp_init(sigmainterp, sigmapos, sigmavals,
-		    static_cast<size_t>(nsigma));
+                    static_cast<size_t>(nsigma));
     accsigma = gsl_interp_accel_alloc();
   }
 
@@ -167,20 +167,20 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   accoffset = nullptr;
   if (noffset == 2)
       offsetinterp = gsl_interp_alloc(gsl_interp_linear,
-				      static_cast<size_t>(noffset));
+                                      static_cast<size_t>(noffset));
   else if (noffset > 2)
     offsetinterp = gsl_interp_alloc(gsl_interp_cspline,
-				    static_cast<size_t>(noffset));
+                                    static_cast<size_t>(noffset));
   if (noffset > 1) {
     gsl_interp_init(offsetinterp, offsetpos, offsetvals,
-		    static_cast<size_t>(noffset));
+                    static_cast<size_t>(noffset));
     accoffset = gsl_interp_accel_alloc();
   }
 
   //Make sure what we read makes sense
   if (!isValidLoaded())
     throw pofdExcept("numberCountsDouble", "numberCountsDouble",
-		     "Invalid base model parameters", 7);
+                     "Invalid base model parameters", 7);
 
   // Need to set base_n0, base_flux, etc.
   gsl_work = gsl_integration_workspace_alloc(1000);
@@ -200,7 +200,7 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   // more sources
   if (gen_ninterp < 2)
     throw pofdExcept("numberCountsDouble","numberCountsDouble",
-		     "Number of interpolation generation points must be >2", 8);
+                     "Number of interpolation generation points must be >2", 8);
   // Two ingredients -- the cumulative normalized probablity (gen_interp_cumsum)
   // and the corresponding flux densities.
   // First, set up the flux densities -- note they are the log2 values!
@@ -238,10 +238,10 @@ numberCountsDouble::numberCountsDouble(const std::string& modelfile,
   // Now stick in the interpolation object.  Use linear interpolation
   // to avoid the probability oscillating negative or something
   gen_interp = gsl_interp_alloc(gsl_interp_linear,
-				static_cast<size_t>(gen_ninterp));
+                                static_cast<size_t>(gen_ninterp));
   gen_interp_acc = gsl_interp_accel_alloc();
   gsl_interp_init(gen_interp, gen_interp_cumsum, gen_interp_flux,
-		  static_cast<size_t>(gen_ninterp));
+                  static_cast<size_t>(gen_ninterp));
 
 }
 
@@ -309,7 +309,7 @@ double numberCountsDouble::getSigmaInner(double f1) const {
   if (f1 <= sigmapos[0]) return sigmavals[0];
   if (f1 >= sigmapos[nsigma-1]) return sigmavals[nsigma - 1];
   return gsl_interp_eval(sigmainterp, sigmapos, sigmavals, 
-			 f1, accsigma );
+                         f1, accsigma );
 }
 
 /*!
@@ -323,7 +323,7 @@ double numberCountsDouble::getOffsetInner(double f1) const {
   if (f1 <= offsetpos[0]) return offsetvals[0];
   if (f1 >= offsetpos[noffset-1]) return offsetvals[noffset - 1];
   return gsl_interp_eval(offsetinterp, offsetpos, offsetvals,
-			 f1, accoffset );
+                         f1, accoffset );
 }
 
 /*!
@@ -437,7 +437,7 @@ double numberCountsDouble::getBaseFluxSqPerArea2() const {
 dblpair numberCountsDouble::getMaxFluxEstimate() const {
   if (!isValid())
     throw pofdExcept("numberCountsDouble", "getMaxFluxEstimate",
-		     "Invalid model", 1);
+                     "Invalid model", 1);
   //Easy in band one. 
   double mflux1 = knotpos[nknots-1];
 
@@ -532,7 +532,7 @@ double numberCountsDouble::powerInt(double alpha, double beta) const {
   F.params = params;
 
   gsl_integration_qag(&F, minknot, maxknot, 0, 1e-5, 1000,
-		      GSL_INTEG_GAUSS41, gsl_work, &result, &error); 
+                      GSL_INTEG_GAUSS41, gsl_work, &result, &error); 
   return result;
 }
 
@@ -544,17 +544,17 @@ double numberCountsDouble::powerInt(double alpha, double beta) const {
   \returns R(x1, x2) computed for the base input model.
 */
 double numberCountsDouble::getR(double x1, double x2, 
-				const doublebeamHist& bm) const {
+                                const doublebeamHist& bm) const {
 
   if (!isValid())
     throw pofdExcept("numberCountsDouble", "getR", 
-		     "Invalid model", 1);
+                     "Invalid model", 1);
   if (!bm.hasData())
     throw pofdExcept("numberCountsDouble", "getR", 
-		     "Beam histogram not filled", 2);
+                     "Beam histogram not filled", 2);
   if (!bm.isInverse())
     throw pofdExcept("numberCountsDouble", "getR", 
-		     "Beam histogram not inverse", 3);
+                     "Beam histogram not inverse", 3);
 
   //Do actual R computation
   unsigned int curr_n;
@@ -591,18 +591,18 @@ double numberCountsDouble::getR(double x1, double x2,
   \param[out] R   R value, preallocated by caller of dimension n1*n2.  
 */
 void numberCountsDouble::getR(unsigned int n1, const double* const x1,
-			      unsigned int n2, const double* const x2,
-			      const doublebeamHist& bm, double* const R) const {
+                              unsigned int n2, const double* const x2,
+                              const doublebeamHist& bm, double* const R) const {
   
   if (!isValid())
     throw pofdExcept("numberCountsDouble", "getR", 
-		     "Invalid model", 1);
+                     "Invalid model", 1);
   if (!bm.hasData())
     throw pofdExcept("numberCountsDouble", "getR", 
-		     "Beam histogram not filled", 2);
+                     "Beam histogram not filled", 2);
   if (!bm.isInverse())
     throw pofdExcept("numberCountsDouble", "getR", 
-		     "Beam histogram not inverse", 3);
+                     "Beam histogram not inverse", 3);
 
   //Do R computation
   // It is possible to do this computation much more efficiently
@@ -643,18 +643,18 @@ void numberCountsDouble::getR(unsigned int n1, const double* const x1,
       sgn = sgn1 + (cx2 >= 0 ? 0 : 1); // Beam sign component
       curr_n = nsgn[sgn]; // Number of beam elements for matching component
       if (curr_n > 0) {
-	ax2 = fabs(cx2);
-	wtptr = wtptr4[sgn];
-	ibmptr1 = ibmptr14[sgn];
-	ibmptr2 = ibmptr24[sgn];
-	Rsum = 0.0;
-	for (unsigned int i = 0; i < curr_n; ++i) {
-	  ieta1 = ibmptr1[i];
-	  ieta2 = ibmptr2[i];
-	  cts = getNumberCountsInner(ax1 * ieta1, ax2 * ieta2);
-	  if (cts > 0) Rsum += wtptr[i] * ieta1 * ieta2 * cts;
-	}
-	rowptr[k] += Rsum;
+        ax2 = fabs(cx2);
+        wtptr = wtptr4[sgn];
+        ibmptr1 = ibmptr14[sgn];
+        ibmptr2 = ibmptr24[sgn];
+        Rsum = 0.0;
+        for (unsigned int i = 0; i < curr_n; ++i) {
+          ieta1 = ibmptr1[i];
+          ieta2 = ibmptr2[i];
+          cts = getNumberCountsInner(ax1 * ieta1, ax2 * ieta2);
+          if (cts > 0) Rsum += wtptr[i] * ieta1 * ieta2 * cts;
+        }
+        rowptr[k] += Rsum;
       }
     }
   }
@@ -680,7 +680,7 @@ dblpair numberCountsDouble::genSource(double udev, double gdev) const {
   //We first generate a flux from band 1.  This is easy because
   // we pre-tabulated what we needed
   f1 = exp2(gsl_interp_eval(gen_interp, gen_interp_cumsum,
-			    gen_interp_flux, udev, gen_interp_acc));
+                            gen_interp_flux, udev, gen_interp_acc));
 
   //Now we need the flux in band 2.  This is also easy because
   // a log normal distribution is just one where the log follows
@@ -724,11 +724,11 @@ bool numberCountsDouble::writeToStream(std::ostream& os) const {
 void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
   if (H5Iget_ref(obj_id) < 0)
     throw pofdExcept("numberCountsDouble", "writeToHDF5Handle",
-		     "Given non-open objid to write to", 1);
+                     "Given non-open objid to write to", 1);
 
   if (!isValid())
     throw pofdExcept("numberCountsDouble", "writeToHDF5Handle",
-		     "Asked to write invalid model", 2);
+                     "Asked to write invalid model", 2);
 
   hsize_t adims;
   hid_t mems_id, att_id, dat_id;
@@ -741,27 +741,27 @@ void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
   hid_t datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, strlen(modeltype)); 
   att_id = H5Acreate1(obj_id, "ModelType", datatype,
-		      mems_id, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT);
   H5Awrite(att_id, datatype, modeltype);
   H5Aclose(att_id);
 
   att_id = H5Acreate2(obj_id, "BaseN0", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &base_n0);
   H5Aclose(att_id);  
 
   att_id = H5Acreate2(obj_id, "NKnots", H5T_NATIVE_UINT,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &nknots);
   H5Aclose(att_id);  
 
   att_id = H5Acreate2(obj_id, "NSigma", H5T_NATIVE_UINT,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &nsigma);
   H5Aclose(att_id);  
 
   att_id = H5Acreate2(obj_id, "NOffset", H5T_NATIVE_UINT,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &noffset);
   H5Aclose(att_id);  
 
@@ -771,9 +771,9 @@ void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
   adims = nknots;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(obj_id, "KnotPositions", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, knotpos);
+           H5P_DEFAULT, knotpos);
   H5Dclose(dat_id);
 
   // Copy over knot values to temp variable to make log10
@@ -781,9 +781,9 @@ void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
   for (unsigned int i = 0; i < nknots; ++i)
     ktmp[i] = getLog10KnotValue(i);
   dat_id = H5Dcreate2(obj_id, "Log10KnotValues", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, ktmp);
+           H5P_DEFAULT, ktmp);
   H5Dclose(dat_id);
 
   delete[] ktmp;
@@ -793,15 +793,15 @@ void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
   adims = nsigma;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(obj_id, "SigmaKnotPositions", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, sigmapos);
+           H5P_DEFAULT, sigmapos);
   H5Dclose(dat_id);
 
   dat_id = H5Dcreate2(obj_id, "SigmaKnotValues", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, sigmavals);
+           H5P_DEFAULT, sigmavals);
   H5Dclose(dat_id);
   H5Sclose(mems_id);
 
@@ -809,15 +809,15 @@ void numberCountsDouble::writeToHDF5Handle(hid_t obj_id) const {
   adims = noffset;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(obj_id, "OffsetKnotPositions", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, offsetpos);
+           H5P_DEFAULT, offsetpos);
   H5Dclose(dat_id);
 
   dat_id = H5Dcreate2(obj_id, "OffsetKnotValues", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, offsetvals);
+           H5P_DEFAULT, offsetvals);
   H5Dclose(dat_id);
   H5Sclose(mems_id);
 
@@ -885,9 +885,9 @@ static double evalPowfNDoubleLogNormal(double s1, void* params) {
       else if (s1 <= offsetpos[0]) mu = offsetval[0];
       else if (s1 >= offsetpos[noffsets-1]) mu = offsetval[noffsets-1];
       else {
-	gsl_interp* ospl = static_cast<gsl_interp*>(vptr[7]);
-	gsl_interp_accel* oacc = static_cast<gsl_interp_accel*>(vptr[8]);
-	mu = gsl_interp_eval(ospl, offsetpos, offsetval, s1, oacc);
+        gsl_interp* ospl = static_cast<gsl_interp*>(vptr[7]);
+        gsl_interp_accel* oacc = static_cast<gsl_interp_accel*>(vptr[8]);
+        mu = gsl_interp_eval(ospl, offsetpos, offsetval, s1, oacc);
       }
       expbit = const1 * mu;
     } else expbit = 0.0;
@@ -902,9 +902,9 @@ static double evalPowfNDoubleLogNormal(double s1, void* params) {
       else if (s1 <= sigmapos[0]) sigma = sigmaval[0];
       else if (s1 >= sigmapos[nsigmas-1]) sigma = sigmaval[nsigmas-1];
       else {
-	gsl_interp* sspl = static_cast<gsl_interp*>(vptr[12]);
-	gsl_interp_accel* sacc = static_cast<gsl_interp_accel*>(vptr[13]);
-	sigma = gsl_interp_eval(sspl, sigmapos, sigmaval, s1, sacc);
+        gsl_interp* sspl = static_cast<gsl_interp*>(vptr[12]);
+        gsl_interp_accel* sacc = static_cast<gsl_interp_accel*>(vptr[13]);
+        sigma = gsl_interp_eval(sspl, sigmapos, sigmaval, s1, sacc);
       }
       expbit += const2 * sigma * sigma;
     } 

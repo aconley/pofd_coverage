@@ -65,14 +65,14 @@ class fourierFilter {
 
   /*! \brief Matched filtering only constructor */
   explicit fourierFilter(double pixsize, double fwhm, double sigi, double sigc, 
-			 bool quickfft=false, bool fixedsize=false);
+                         bool quickfft=false, bool fixedsize=false);
   /*! \brief Hipass filtering only constructor */
   explicit fourierFilter(double pixsize, double fscale, double q=0.2, 
-			 bool quickfft=false, bool fixedsize=false);
+                         bool quickfft=false, bool fixedsize=false);
   /*! \brief Both types of filtering constructor */
   explicit fourierFilter(double pixsize, double fwhm, double sigi, 
-			 double sigc, double fscale, double q=0.2, 
-			 bool quickfft=false, bool fixedsize=false);
+                         double sigc, double fscale, double q=0.2, 
+                         bool quickfft=false, bool fixedsize=false);
   ~fourierFilter();
   
   bool isMatched() const { return doMatched; }
@@ -86,7 +86,7 @@ class fourierFilter {
 
   /*! \brief Apply filtering*/
   void filter(unsigned int n1, unsigned int n2, double pixsize,
-	      double* const data) const;
+              double* const data) const;
 };
 
 #endif

@@ -19,13 +19,13 @@ static double evalPowfNKnotsSpline(double, void*); //!< Evaluates f^pow dN/dS
   \param[in] modelfile Name of file to read base model from
 */
 numberCounts::numberCounts(const std::string& modelfile,
-			   unsigned int NINTERP) : gen_ninterp(NINTERP) {
+                           unsigned int NINTERP) : gen_ninterp(NINTERP) {
 
   //We have to read in the input file
   std::ifstream ifs(modelfile.c_str());
   if (!ifs)
     throw pofdExcept("numberCounts","numberCounts",
-		     "Unable to open input model file",1);
+                     "Unable to open input model file",1);
   
   //Do the read into temporary vectors, then copy
   std::string line;
@@ -52,7 +52,7 @@ numberCounts::numberCounts(const std::string& modelfile,
   nknots = kp.size();
   if (nknots < 2)
     throw pofdExcept("numberCounts","numberCounts",
-		     "Need two valid knots from modelfile",2);
+                     "Need two valid knots from modelfile",2);
   knotpos = new double[nknots];
   for (unsigned int i = 0; i < nknots; ++i)
     knotpos[i] = kp[i];
@@ -70,9 +70,9 @@ numberCounts::numberCounts(const std::string& modelfile,
 
   acc = gsl_interp_accel_alloc();
   splinelog = gsl_spline_alloc(gsl_interp_cspline,
-			       static_cast<size_t>(nknots));
+                               static_cast<size_t>(nknots));
   gsl_spline_init(splinelog, logknotpos, logknotvals, 
-		  static_cast<size_t>(nknots));
+                  static_cast<size_t>(nknots));
 
   // Need to set base_n0, base_flux, etc.
   gsl_work = gsl_integration_workspace_alloc(1000);
@@ -90,7 +90,7 @@ numberCounts::numberCounts(const std::string& modelfile,
   // more sources
   if (gen_ninterp < 2)
     throw pofdExcept("numberCounts","numberCounts",
-		     "Number of interpolation generation points must be >2", 3);
+                     "Number of interpolation generation points must be >2", 3);
   // Two ingredients -- the cumulative normalized probablity (gen_interp_cumsum)
   // and the corresponding flux densities.
   // First, set up the flux densities -- note they are the log2 values!
@@ -128,10 +128,10 @@ numberCounts::numberCounts(const std::string& modelfile,
   // Now stick in the interpolation object.  Use linear interpolation
   // to avoid the probability oscillating negative or something
   gen_interp = gsl_interp_alloc(gsl_interp_linear,
-				static_cast<size_t>(gen_ninterp));
+                                static_cast<size_t>(gen_ninterp));
   gen_interp_acc = gsl_interp_accel_alloc();
   gsl_interp_init(gen_interp, gen_interp_cumsum, gen_interp_flux,
-		  static_cast<size_t>(gen_ninterp));
+                  static_cast<size_t>(gen_ninterp));
 }
 
 numberCounts::~numberCounts() {
@@ -185,7 +185,7 @@ double numberCounts::splineInt(double alpha) const {
   F.params = params;
 
   gsl_integration_qag(&F, minknot, maxknot, 0.0, 1e-5, 1000,
-  		      GSL_INTEG_GAUSS41, gsl_work, &result, &error); 
+                      GSL_INTEG_GAUSS41, gsl_work, &result, &error); 
   return result;
 }
 
@@ -294,10 +294,10 @@ double numberCounts::getR(double x, const beamHist& bm) const {
   \param[out] R The returned values of R, of length n.  Must
                 be pre-allocated by the caller
 
-  R is computed for the base model		 
+  R is computed for the base model               
 */
 void numberCounts::getR(unsigned int n, const double* const flux, 
-			const beamHist& bm, double* const R) const {
+                        const beamHist& bm, double* const R) const {
 
   //As for the scalar version of getR above, this could be done much more
   // efficiently but we aim for simplicity rather than efficiency
@@ -341,21 +341,21 @@ void numberCounts::getR(unsigned int n, const double* const flux,
     workR = 0.0;
     if (cflux > 0 && haspos) {
       for (unsigned int j = 0; j < npos; ++j) {
-	ibm = ibmptr_pos[j]; //1 / eta
-	cval = cflux * ibm;
-	if (cval < s_min) continue;
-	if (cval >= s_max) continue;
-	cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
-	workR += wtptr_pos[j] * cR * ibm;
+        ibm = ibmptr_pos[j]; //1 / eta
+        cval = cflux * ibm;
+        if (cval < s_min) continue;
+        if (cval >= s_max) continue;
+        cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
+        workR += wtptr_pos[j] * cR * ibm;
       }
     } else if (cflux < 0 && hasneg) {
       for (unsigned int j = 0; j < nneg; ++j) {
-	ibm = ibmptr_neg[j];
-	cval = fabs(cflux) * ibm;
-	if (cval < s_min) continue;
-	if (cval >= s_max) continue;
-	cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
-	workR += wtptr_neg[j] * cR * ibm;
+        ibm = ibmptr_neg[j];
+        cval = fabs(cflux) * ibm;
+        if (cval < s_min) continue;
+        if (cval >= s_max) continue;
+        cR = exp2(gsl_spline_eval(splinelog, log2(cval), acc));
+        workR += wtptr_neg[j] * cR * ibm;
       }
     }
     R[i] = prefac * workR;
@@ -373,7 +373,7 @@ double numberCounts::genSource(double udev) const {
   // just changes the number of sources, not their distribution
   // in flux density.  Recall that gen_interp_flux is the log2 flux.
   return exp2(gsl_interp_eval(gen_interp, gen_interp_cumsum,
-			      gen_interp_flux, udev, gen_interp_acc));
+                              gen_interp_flux, udev, gen_interp_acc));
   
 }
 
@@ -394,11 +394,11 @@ bool numberCounts::writeToStream(std::ostream& os) const {
 void numberCounts::writeToHDF5Handle(hid_t obj_id) const {
   if (H5Iget_ref(obj_id) < 0)
     throw pofdExcept("numberCounts", "writeToHDF5Handle",
-		     "Given non-open objid to write to", 1);
+                     "Given non-open objid to write to", 1);
 
   if (!isValid())
     throw pofdExcept("numberCounts", "writeToHDF5Handle",
-		     "Asked to write invalid model", 2);
+                     "Asked to write invalid model", 2);
 
   hsize_t adims;
   hid_t mems_id, att_id, dat_id;
@@ -411,17 +411,17 @@ void numberCounts::writeToHDF5Handle(hid_t obj_id) const {
   hid_t datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, strlen(modeltype)); 
   att_id = H5Acreate1(obj_id, "ModelType", datatype,
-		      mems_id, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT);
   H5Awrite(att_id, datatype, modeltype);
   H5Aclose(att_id);
 
   att_id = H5Acreate2(obj_id, "BaseN0", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &base_n0);
   H5Aclose(att_id);  
 
   att_id = H5Acreate2(obj_id, "NKnots", H5T_NATIVE_UINT,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &nknots);
   H5Aclose(att_id);  
 
@@ -431,9 +431,9 @@ void numberCounts::writeToHDF5Handle(hid_t obj_id) const {
   adims = nknots;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(obj_id, "KnotPositions", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, knotpos);
+           H5P_DEFAULT, knotpos);
   H5Dclose(dat_id);
 
   // Copy over knot values to temp variable to make log10
@@ -441,9 +441,9 @@ void numberCounts::writeToHDF5Handle(hid_t obj_id) const {
   for (unsigned int i = 0; i < nknots; ++i)
     ktmp[i] = getLog10KnotValue(i);
   dat_id = H5Dcreate2(obj_id, "Log10KnotValues", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, ktmp);
+           H5P_DEFAULT, ktmp);
   H5Dclose(dat_id);
 
   delete[] ktmp;

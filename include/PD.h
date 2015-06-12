@@ -66,7 +66,7 @@ class PD {
 
   /*! \brief Fill contents from array*/
   void fill(unsigned int, double, double,
-	    const double* const, bool LOG=true); 
+            const double* const, bool LOG=true); 
 
   double getFluxVal(unsigned int i) const { return minflux+static_cast<double>(i)*dflux; }
   double getPDVal(unsigned int i) const { return pd_[i]; }

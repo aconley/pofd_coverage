@@ -68,7 +68,7 @@ int getBeamSingle(int argc, char **argv) {
   int option_index = 0;
   optind = 1; //Reset parse
   while ((c = getopt_long(argc,argv,optstring,long_options,
-			  &option_index)) != -1) 
+                          &option_index)) != -1) 
     switch(c) {
     case 'F':
       filterscale = atof(optarg);
@@ -111,7 +111,7 @@ int getBeamSingle(int argc, char **argv) {
   if (optind >= argc - 2) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   fwhm       = atof(argv[optind]);
@@ -121,7 +121,7 @@ int getBeamSingle(int argc, char **argv) {
   // Input checks
   if (histogram && (nbins == 0)) {
     std::cout << "Invalid (non-positive) number of beam histogram bins"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (fwhm <= 0.0) {
@@ -130,7 +130,7 @@ int getBeamSingle(int argc, char **argv) {
   }
   if (nfwhm <= 0) {
     std::cout << "Invalid (non-positive) number of beam FWHMs"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (nkeep < 0) {
@@ -149,23 +149,23 @@ int getBeamSingle(int argc, char **argv) {
   }
   if (filterscale < 0.0) {
     std::cout << "Invalid (negative) high-pass filter scale " 
-	      << filterscale << std::endl;
+              << filterscale << std::endl;
     return 1;
   }
   if (qfactor < 0.0) {
     std::cout << "Invalid (negative) high-pass filter q factor" 
-	      << qfactor << std::endl;
+              << qfactor << std::endl;
     return 1;
   }
   if (matched) {
     if (sigi <= 0.0) {
       std::cout << "Invalid (non-positive) sigi for matched filter"
-		<< std::endl;
+                << std::endl;
       return 1;
     }
     if (sigc <= 0.0) {
       std::cout << "Invalid (non-positive) sigc for matched filter"
-		<< std::endl;
+                << std::endl;
       return 1;
     }
   }
@@ -178,16 +178,16 @@ int getBeamSingle(int argc, char **argv) {
       printf("   Beam area:          %0.3e\n", bm.getEffectiveArea());
       printf("  Pixel size:          %0.2f\n", pixsize);
       if (filterscale > 0.0) {
-	printf("filter scale:          %0.2f\n", filterscale);
-	printf("    filter q:          %0.2f\n", qfactor);
+        printf("filter scale:          %0.2f\n", filterscale);
+        printf("    filter q:          %0.2f\n", qfactor);
       }
       if (matched) {
-	printf("matched fwhm:          %0.1f\n", bm.getFWHM());
-	printf("matched sigi:          %0.4f\n", sigi);
-	printf("matched sigc:          %0.4f\n", sigc);
+        printf("matched fwhm:          %0.1f\n", bm.getFWHM());
+        printf("matched sigi:          %0.4f\n", sigi);
+        printf("matched sigc:          %0.4f\n", sigc);
       }
       if (oversamp != 1)
-	printf("    oversamp:          %u\n", oversamp);
+        printf("    oversamp:          %u\n", oversamp);
       if (inverse) printf("Returning inverse beam\n");
       if (histogram) printf("Returning histogrammed beam\n");
     }
@@ -195,12 +195,12 @@ int getBeamSingle(int argc, char **argv) {
     fourierFilter *filt = nullptr;
     if (filterscale > 0) {
       if (matched)
-	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
-				 filterscale, qfactor, true);
+        filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
+                                 filterscale, qfactor, true);
       else
-	filt = new fourierFilter(pixsize, filterscale, qfactor, true);
+        filt = new fourierFilter(pixsize, filterscale, qfactor, true);
     } else if (matched)
-	filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
+        filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true);
 
     if (histogram) {
       // Get histogrammed beam
@@ -261,7 +261,7 @@ int getBeamDouble(int argc, char **argv) {
   int option_index = 0;
   optind = 1; //Reset parse
   while ((c = getopt_long(argc,argv,optstring,long_options,
-			  &option_index)) != -1) 
+                          &option_index)) != -1) 
     switch(c) {
     case 'F':
       filterscale = atof(optarg);
@@ -320,7 +320,7 @@ int getBeamDouble(int argc, char **argv) {
   if (optind >= argc - 3) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   fwhm1      = atof(argv[optind]);
@@ -331,7 +331,7 @@ int getBeamDouble(int argc, char **argv) {
   //Input tests
   if (histogram && (nbins == 0)) {
     std::cout << "Invalid (non-positive) number of beam histogram bins"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (fwhm1 <= 0.0) {
@@ -344,7 +344,7 @@ int getBeamDouble(int argc, char **argv) {
   }
   if (nfwhm <= 0) {
     std::cout << "Invalid (non-positive) number of beam FWHMs"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (nkeep < 0) {
@@ -359,12 +359,12 @@ int getBeamDouble(int argc, char **argv) {
   }
   if (filterscale < 0.0) {
     std::cout << "Invalid (negative) high-pass filter scale " 
-	      << filterscale << std::endl;
+              << filterscale << std::endl;
     return 1;
   }
   if (qfactor < 0.0) {
     std::cout << "Invalid (negative) high-pass filter q factor" 
-	      << qfactor << std::endl;
+              << qfactor << std::endl;
     return 1;
   }
 
@@ -376,14 +376,14 @@ int getBeamDouble(int argc, char **argv) {
   if (matched) {
     if (single_filt) {
       if (sigc <= 0.0) {
-	std::cout << "Invalid sigma_confusion for single matched filter: "
-		  << sigc << std::endl;
-	return 1;
+        std::cout << "Invalid sigma_confusion for single matched filter: "
+                  << sigc << std::endl;
+        return 1;
       }
       if (sigi <= 0.0) {
-	std::cout << "Invalid sigma_instrument for single matched filter: "
-		  << sigi << std::endl;
-	return 1;
+        std::cout << "Invalid sigma_instrument for single matched filter: "
+                  << sigi << std::endl;
+        return 1;
       }
     } else {
       // Different filters for each band.  More complex
@@ -392,24 +392,24 @@ int getBeamDouble(int argc, char **argv) {
       if (sigc1 == 0) sigc1 = sigc;
       if (sigc2 == 0) sigc2 = sigc;
       if (sigc1 <= 0.0) {
-	std::cout << "Invalid sigma_confusion1 for double matched filters: "
-		  << sigc1 << std::endl;
-	return 1;
+        std::cout << "Invalid sigma_confusion1 for double matched filters: "
+                  << sigc1 << std::endl;
+        return 1;
       }
       if (sigc2 <= 0.0) {
-	std::cout << "Invalid sigma_confusion2 for double matched filters: "
-		  << sigc2 << std::endl;
-	return 1;
+        std::cout << "Invalid sigma_confusion2 for double matched filters: "
+                  << sigc2 << std::endl;
+        return 1;
       }
       if (sigi1 <= 0.0) {
-	std::cout << "Invalid sigma_instrument1 for double matched filter: "
-		  << sigi1 << std::endl;
-	return 1;
+        std::cout << "Invalid sigma_instrument1 for double matched filter: "
+                  << sigi1 << std::endl;
+        return 1;
       }
       if (sigi2 <= 0.0) {
-	std::cout << "Invalid sigma_instrument2 for double matched filter: "
-		  << sigi2 << std::endl;
-	return 1;
+        std::cout << "Invalid sigma_instrument2 for double matched filter: "
+                  << sigi2 << std::endl;
+        return 1;
       }
     }
   }
@@ -428,25 +428,25 @@ int getBeamDouble(int argc, char **argv) {
       printf("   Beam area2:         %0.3e\n", dpr.second);
       printf("   Pixel size:         %0.2f\n", pixsize);
       if (filterscale > 0.0) {
-	printf(" filter scale:          %0.1f\n", filterscale);
-	printf("     filter q:          %0.2f\n", qfactor);
+        printf(" filter scale:          %0.1f\n", filterscale);
+        printf("     filter q:          %0.2f\n", qfactor);
       }
       if (matched) {
-	if (single_filt) {
-	  printf(" matched fwhm:          %0.1f\n", dpr.first);
-	  printf(" matched sigi:          %0.4f\n", sigi);
-	  printf(" matched sigc:          %0.4f\n", sigc);
-	} else {
-	  printf(" matched fwhm1:         %0.1f\n", dpr.first);
-	  printf(" matched fwhm2:         %0.1f\n", dpr.second);
-	  printf(" matched sigi1:         %0.4f\n", sigi1);
-	  printf(" matched sigi2:         %0.4f\n", sigi2);
-	  printf(" matched sigc1:         %0.4f\n", sigc1);
-	  printf(" matched sigc2:         %0.4f\n", sigc2);
-	}
+        if (single_filt) {
+          printf(" matched fwhm:          %0.1f\n", dpr.first);
+          printf(" matched sigi:          %0.4f\n", sigi);
+          printf(" matched sigc:          %0.4f\n", sigc);
+        } else {
+          printf(" matched fwhm1:         %0.1f\n", dpr.first);
+          printf(" matched fwhm2:         %0.1f\n", dpr.second);
+          printf(" matched sigi1:         %0.4f\n", sigi1);
+          printf(" matched sigi2:         %0.4f\n", sigi2);
+          printf(" matched sigc1:         %0.4f\n", sigc1);
+          printf(" matched sigc2:         %0.4f\n", sigc2);
+        }
       }
       if (oversamp != 1)
-	printf("    oversamp:          %u\n", oversamp);
+        printf("    oversamp:          %u\n", oversamp);
       if (inverse) printf("Returning inverse beam\n");
       if (histogram) printf("Returning histogrammed beam\n");
     }
@@ -455,24 +455,24 @@ int getBeamDouble(int argc, char **argv) {
     fourierFilter *filt1 = nullptr, *filt2 = nullptr;
     if (filterscale > 0) {
       if (matched) {
-	// Both highpass and matched
-	if (single_filt) {
-	  filt1 = new fourierFilter(pixsize, fwhm1, sigi, sigc,
-				    filterscale, qfactor, true);
-	} else {
-	  filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc1,
-				    filterscale, qfactor, true);
-	  filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc2,
-				    filterscale, qfactor, true);
-	}
+        // Both highpass and matched
+        if (single_filt) {
+          filt1 = new fourierFilter(pixsize, fwhm1, sigi, sigc,
+                                    filterscale, qfactor, true);
+        } else {
+          filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc1,
+                                    filterscale, qfactor, true);
+          filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc2,
+                                    filterscale, qfactor, true);
+        }
       } else // Just highpass, can always use one filter
-	filt1 = new fourierFilter(pixsize, filterscale, qfactor, true);
+        filt1 = new fourierFilter(pixsize, filterscale, qfactor, true);
     } else if (matched) {
       if (single_filt) {
-	filt1 = new fourierFilter(pixsize, fwhm1, sigi, sigc, true);
+        filt1 = new fourierFilter(pixsize, fwhm1, sigi, sigc, true);
       } else {
-	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc1, true);
-	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc2, true);
+        filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc1, true);
+        filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc2, true);
       }
     }
 
@@ -484,7 +484,7 @@ int getBeamDouble(int argc, char **argv) {
       bmhist.writeToFits(outputfile);
     } else
       bm.writeToFits(outputfile, pixsize, nfwhm, oversamp, filt1, filt2, 
-		     inverse);
+                     inverse);
 
     if (filt1 != nullptr) delete filt1; 
     if (filt2 != nullptr) delete filt2; 
@@ -513,38 +513,38 @@ int main( int argc, char** argv ) {
   int c;
   int option_index = 0;
   while ((c = getopt_long(argc,argv,optstring,long_options,
-			  &option_index)) != -1) 
+                          &option_index)) != -1) 
     switch(c) {
     case 'h':
       std::cout << "NAME" << std::endl;
       std::cout << "\tpofd_coverage_getBeam -- get the beam for the"
-		<< std::endl;
+                << std::endl;
       std::cout << "\t pofd_coverage model." << std::endl;
       std::cout << std::endl;
       std::cout << "SYNOPSIS" << std::endl;
       std::cout << "\t One-dimensional case:" << std::endl;
       std::cout << "\t  pofd_coverage_getBeam [options] fwhm pixsize"
-		<< " outfile" << std::endl; 
+                << " outfile" << std::endl; 
       std::cout << std::endl;
       std::cout << "\t Two-dimensional case:" << std::endl;
       std::cout << "\t  pofd_coverage_getBeam [options] -d fwhm1 fwhm2 pixsize"
-		<< std::endl;
+                << std::endl;
       std::cout << "\t    outfile" << std::endl; 
       std::cout << std::endl;
       std::cout << "DESCRIPTION" << std::endl;
       std::cout << "\tWrites the beam out to a FITS file.  The filtering options" 
-		<< std::endl;
+                << std::endl;
       std::cout << "\twork the same way as for pofd_coverage_makeSim; see that"
-		<< " documentation" << std::endl;
+                << " documentation" << std::endl;
       std::cout << "\tfor further details." << std::endl;
       std::cout << std::endl;
       std::cout << "OPTIONS" << std::endl;
       std::cout << "\t-d, --twod" << std::endl;
       std::cout << "\t\tIf set, the two-dimensional model is used."
-		<< std::endl;
+                << std::endl;
       std::cout << "\t-F, --filtscale VALUE" << std::endl;
       std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\tno filtering is applied (def: 0)." << std::endl;
       std::cout << "\t-h --help" << std::endl;
       std::cout << "\t\tPrint this message and exit." << std::endl;
@@ -552,60 +552,60 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tWrite out the histogrammed beam." << std::endl;
       std::cerr << "\t-i, --inverse" << std::endl;
       std::cout << "\t\tReturn the inverse beam rather than the beam."
-		<< std::endl;
+                << std::endl;
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
-		<< " matching the" << std::endl;
+                << " matching the" << std::endl;
       std::cout << "\t\tbeam (the band 1 beam in the 2d case) and the"
-		<< " instrument" << std::endl;
+                << " instrument" << std::endl;
       std::cout << "\t\tand confusion noise controlled by --sigi and --sigc,"
-		<< " or" << std::endl;
+                << " or" << std::endl;
       std::cout << "\t\tpossibly --sigi[12] and --sigc[12] in 2D.  Off by" 
-		<< " default." << std::endl;
+                << " default." << std::endl;
       std::cout << "\t--nbins value" << std::endl;
       std::cout << "\t\tNumber of bins to use in histogrammed beam. (def: 120)"
-		<< std::endl;
+                << std::endl;
       std::cout << "\t-N, --nfwhm VALUE" << std::endl;
       std::cout << "\t\tNumber of beam FWHM out to go when computing beam."
-		<< "(def: 3.5)" << std::endl;
+                << "(def: 3.5)" << std::endl;
       std::cout << "\t--nkeep VALUE" << std::endl;
       std::cout << "\t\tNumber of FWHM to keep after histogramming.  Only"
-		<< " applies" << std::endl;
+                << " applies" << std::endl;
       std::cout << "\t\tif the beam is histogrammed.  The default is to keep"
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\tall of the beam specified by --nfwhm." << std::endl;
       std::cout << "\t-o, --oversample VALUE" << std::endl;
       std::cout << "\t\tAmount to oversample the beam; must be odd integer."
-		<< " (def: 1)" << std::endl;
+                << " (def: 1)" << std::endl;
       std::cout << "\t-q, --qfactor VALUE" << std::endl;
       std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\tfiltscale. (def: 0.2)." << std::endl;
       std::cout << "\t--sigc VALUE" << std::endl;
       std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
-		<< " 0.006)" << std::endl;
+                << " 0.006)" << std::endl;
       std::cout << "\t--sigi VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
-		<< " 0.002)" << std::endl;
+                << " 0.002)" << std::endl;
       std::cout << "\t-v, --verbose" << std::endl;
       std::cout << "\t\tPrint informational messages while running"
-		<< std::endl;
+                << std::endl;
       std::cout << "TWO-DIMENSIONAL OPTIONS" << std::endl;
       std::cout << "\t--sigc1 VALUE" << std::endl;
       std::cout << "\t\tConfusion noise, band 1 for matched filtering, in Jy."
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\t(Def: sigc)" << std::endl;
       std::cout << "\t--sigc2 VALUE" << std::endl;
       std::cout << "\t\tConfusion noise, band 2 for matched filtering, in Jy."
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\t(Def: sigc)" << std::endl;
       std::cout << "\t--sigi1 VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, band 1, in "
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\tJy. (Def: sigi)" << std::endl;
       std::cout << "\t--sigi2 VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, band 2, in "
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\tJy. (Def: sigi)." << std::endl;
       std::cout << std::endl;
       return 0;
@@ -615,7 +615,7 @@ int main( int argc, char** argv ) {
       break;
     case 'V':
       std::cout << "pofd_coverage version number: " << pofd_coverage::version 
-		<< std::endl;
+                << std::endl;
       return 0;
       break;
     }

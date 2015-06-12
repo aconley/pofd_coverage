@@ -22,11 +22,11 @@ class beam {
   
   /*!\brief Inner beam generator, no filtering, arbitrary extent*/
   void getRawBeam(unsigned int n1, unsigned int n2, double pixsize, 
-		  double* const bm) const;
+                  double* const bm) const;
 
   /*!\brief Inner beam generator, no filtering, with oversampling, arb extent*/
   void getRawBeam(unsigned int n1, unsigned int n2, double pixsize, 
-		  unsigned int oversamp, double* const bm) const;
+                  unsigned int oversamp, double* const bm) const;
 
  public :
   beam(double FWHM=10.0); //!< Constructor with FWHM
@@ -44,25 +44,25 @@ class beam {
 
   /*!\brief Get 2D beam, square*/
   void getBeam(unsigned int n, double pixsize, double* const, 
-	       const fourierFilter* const=nullptr) const;
+               const fourierFilter* const=nullptr) const;
 
   /*!\brief Get 2D beam, arbitrary size*/
   void getBeam(unsigned int n1, unsigned int n2, double pixsize, double* const, 
-	       const fourierFilter* const=nullptr) const;
+               const fourierFilter* const=nullptr) const;
   
   /*!\brief Get 2D beam with oversampling, square*/
   void getBeam(unsigned int n, double pixsize, unsigned int oversamp,
-	       double* const, const fourierFilter* const=nullptr) const;
+               double* const, const fourierFilter* const=nullptr) const;
 
   /*!\brief Get 2D beam with oversampling, arbitrary size*/
   void getBeam(unsigned int n1, unsigned int n2, double pixsize, 
-	       unsigned int oversamp, double* const, 
-	       const fourierFilter* const=nullptr) const;
+               unsigned int oversamp, double* const, 
+               const fourierFilter* const=nullptr) const;
 
   /*!\brief Write the beam to a FITS file*/
   void writeToFits(const std::string& outfile, double pixsize, 
-		   double nfwhm=3.5, unsigned int oversamp=1,
-		   const fourierFilter* const=nullptr, bool inverse=false) const;
+                   double nfwhm=3.5, unsigned int oversamp=1,
+                   const fourierFilter* const=nullptr, bool inverse=false) const;
 };
 
 /*!
@@ -145,13 +145,13 @@ class beamHist {
 
   /*!\brief Fill from beam, symmetric number of fwhm version*/
   void fill(const beam& bm, double nfwhm, double pixsize,
-	    bool inv=false, unsigned int oversamp=1,
-	    const fourierFilter* const filt=nullptr, double num_fwhm_keep=0.0);
+            bool inv=false, unsigned int oversamp=1,
+            const fourierFilter* const filt=nullptr, double num_fwhm_keep=0.0);
 
   /*!\brief Fill from beam, arbitrary size version */
   void fill(const beam& bm, unsigned int n1, unsigned int n2, double pixsize,
-	    bool inv=false, unsigned int oversamp=1,
-	    const fourierFilter* const filt=nullptr, double num_fwhm_keep=0.0);
+            bool inv=false, unsigned int oversamp=1,
+            const fourierFilter* const filt=nullptr, double num_fwhm_keep=0.0);
 
   /*! \brief Write out as FITS file*/
   void writeToFits(const std::string&) const;

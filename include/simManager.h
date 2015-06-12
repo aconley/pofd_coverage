@@ -85,21 +85,21 @@ class simManager {
 
  public:
   explicit simManager(const std::string& MODELFILE,
-		      unsigned int NSIMS=1000, double N0INITRANGE=0.3,
-		      bool MAPLIKE=true, unsigned int NLIKE=401,
-		      double N0RANGEFRAC=0.1, unsigned int FFTSIZE=262144,
-		      unsigned int N1=720, unsigned int N2=720,
-		      double PIXSIZE=5.0, double FWHM=15.0,
-		      double NFWHM=15.0, double SIMFWHM=pofd_coverage::qnan,
-		      double SIGI=0.005, double FILTSCALE=0.0,
-		      double QFACTOR=0.2, bool MATCHED=false,
-		      double FILTFWHM=0.0, double SIGMI=0.0,
-		      double SIGMC=0.006, unsigned int NBEAMBINS=100,
-		      double N0=2.6e3, double ESMOOTH=0.0,
-		      unsigned int OVERSAMPLE=1,
-		      const std::string& POWERSPECFILE="",
-		      unsigned int SPARCITY=1, bool USEBIN=false,
-		      unsigned int NBINS=1000);
+                      unsigned int NSIMS=1000, double N0INITRANGE=0.3,
+                      bool MAPLIKE=true, unsigned int NLIKE=401,
+                      double N0RANGEFRAC=0.1, unsigned int FFTSIZE=262144,
+                      unsigned int N1=720, unsigned int N2=720,
+                      double PIXSIZE=5.0, double FWHM=15.0,
+                      double NFWHM=15.0, double SIMFWHM=pofd_coverage::qnan,
+                      double SIGI=0.005, double FILTSCALE=0.0,
+                      double QFACTOR=0.2, bool MATCHED=false,
+                      double FILTFWHM=0.0, double SIGMI=0.0,
+                      double SIGMC=0.006, unsigned int NBEAMBINS=100,
+                      double N0=2.6e3, double ESMOOTH=0.0,
+                      unsigned int OVERSAMPLE=1,
+                      const std::string& POWERSPECFILE="",
+                      unsigned int SPARCITY=1, bool USEBIN=false,
+                      unsigned int NBINS=1000);
   ~simManager();
 
   void setSeed(unsigned long long int seed) { simim->setSeed(seed); }

@@ -171,8 +171,8 @@ class numberCountsDouble {
   
   /*! \brief Get number of source responses, array version*/
   void getR(unsigned int n1, const double* f1, 
-	    unsigned int n2, const double* f2, 
-	    const doublebeamHist& bm, double* const R) const;
+            unsigned int n2, const double* f2, 
+            const doublebeamHist& bm, double* const R) const;
 
   /*! \brief Generate a source flux from model */
   dblpair genSource(double udev, double gdev) const;

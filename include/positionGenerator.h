@@ -38,7 +38,7 @@ class powerSpectrum {
  public:
   powerSpectrum(const std::string&); //!< Constructor from file
   powerSpectrum(const std::vector<double>& k, 
-		const std::vector<double>& p_k); //!< Constructor from vecs
+                const std::vector<double>& p_k); //!< Constructor from vecs
   ~powerSpectrum();
 
   double getPk(double) const; //!< Get P_k for specified k
@@ -78,7 +78,7 @@ class positionGeneratorClustered {
 
  public:
   positionGeneratorClustered(unsigned int, unsigned int, double,
-			     const std::string&);
+                             const std::string&);
   ~positionGeneratorClustered();
 
   void generate(ran&); //!< generate from power spectrum

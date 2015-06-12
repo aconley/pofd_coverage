@@ -13,7 +13,7 @@
 // Helper function for RFlux setup
 // Returns dflux
 double initRFluxInternal(unsigned int n, double minflux, double maxflux,
-			 double* const rflux, double& minflux_realized) {
+                         double* const rflux, double& minflux_realized) {
   // Assume n >= 1 (checked by initRFlux)
   double inm1 = 1.0 / static_cast<double>(n - 1);
   double dflux = (maxflux - minflux) * inm1;
@@ -61,7 +61,7 @@ PDFactoryDouble::PDFactoryDouble(unsigned int nedge) {
   \param[in] nedge Size of edge integrals
  */
 PDFactoryDouble::PDFactoryDouble(const std::string& wisfile,
-				 unsigned int nedge) {
+                                 unsigned int nedge) {
   init(nedge);
   addWisdom(wisfile);
 }
@@ -149,21 +149,21 @@ void PDFactoryDouble::summarizeTime(unsigned int nindent) const {
   std::string prestring(nindent,' ');
     
   std::cout << "R time: " << prestring 
-	    << 1.0*RTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*RTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "p0 time: " << prestring 
-	    << 1.0*p0Time/CLOCKS_PER_SEC << std::endl;
+            << 1.0*p0Time/CLOCKS_PER_SEC << std::endl;
   std::cout << "fft time: " << prestring 
-	    << 1.0*fftTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*fftTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "pos time: " << prestring 
-	    << 1.0*posTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*posTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "copy time: " << prestring 
-	    << 1.0*copyTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*copyTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "norm time: " << prestring 
-	    << 1.0*normTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*normTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "mean time: " << prestring 
-	    << 1.0*meanTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*meanTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "log time: " << prestring 
-	    << 1.0*logTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*logTime/CLOCKS_PER_SEC << std::endl;
 }
 #endif
 
@@ -189,7 +189,7 @@ void PDFactoryDouble::allocateRvars() {
   if (rvars_allocated) return;
   if (currsize == 0)
     throw pofdExcept("PDFactoryDouble","allocate_rvars",
-		     "Invalid (0) currsize",1);
+                     "Invalid (0) currsize",1);
   RFlux1 = (double*) fftw_malloc(sizeof(double) * currsize);
   RFlux2 = (double*) fftw_malloc(sizeof(double) * currsize);
   rsum = (double*) fftw_malloc(sizeof(double) * currsize);
@@ -290,8 +290,8 @@ bool PDFactoryDouble::addWisdom(const std::string& filename) {
   if minflux is negative.  
 */
 void PDFactoryDouble::initRFlux(unsigned int n, double minflux1, 
-				double maxflux1, double minflux2,
-				double maxflux2) {
+                                double maxflux1, double minflux2,
+                                double maxflux2) {
   // Make sure there is room
   resize(n);
 
@@ -328,10 +328,10 @@ void PDFactoryDouble::initRFlux(unsigned int n, double minflux1,
   dflux1, dflux2 is also set, are are RFlux1, RFlux2 and the edge vars
 */
 void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1, 
-			    double minflux2, double maxflux2, 
-			    const numberCountsDouble& model,
-			    const doublebeamHist& bm, bool setEdge,
-			    bool muldflux) {
+                            double minflux2, double maxflux2, 
+                            const numberCountsDouble& model,
+                            const doublebeamHist& bm, bool setEdge,
+                            bool muldflux) {
   
   // This version is much more complex than the 1D case because of the
   // edge bits
@@ -362,7 +362,7 @@ void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1,
 
     if (nedge == 0) 
       throw pofdExcept("PDFactoryDouble", "initR",
-		       "Invalid (0) value of nedge with setEdge set", 1);
+                       "Invalid (0) value of nedge with setEdge set", 1);
 
     //Edge bits
     //Minimum values in integral; maximum are dflux1, dflux2
@@ -376,31 +376,31 @@ void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1,
     //Make sure edge variables successfully allocated
     if (REdgeFlux1 == nullptr)
       throw pofdExcept("PDFactoryDouble", "initR",
-		       "R edge flux 1 was not allocated", 2);
+                       "R edge flux 1 was not allocated", 2);
     if (REdgeFlux2 == nullptr)
       throw pofdExcept("PDFactoryDouble", "initR",
-		       "R edge flux 2 was not allocated", 3);
+                       "R edge flux 2 was not allocated", 3);
     if (REdgeWork == nullptr)
       throw pofdExcept("PDFactoryDouble", "initR",
-		       "R edge work was not allocated", 4);
+                       "R edge work was not allocated", 4);
 
     if (use_edge_log_x) {
       dinterpfluxedge1 = -log(PDFactoryDouble::lowEdgeRMult) * inedgem1;
       for (unsigned int i = 0; i < nedge; ++i)
-	REdgeFlux1[i] = minedge1*exp(static_cast<double>(i)*dinterpfluxedge1);
+        REdgeFlux1[i] = minedge1*exp(static_cast<double>(i)*dinterpfluxedge1);
     } else {
       dinterpfluxedge1 = (dflux1-minedge1)*inedgem1;
       for (unsigned int i = 0; i < nedge; ++i)
-	REdgeFlux1[i] = minedge1 + static_cast<double>(i)*dinterpfluxedge1;
+        REdgeFlux1[i] = minedge1 + static_cast<double>(i)*dinterpfluxedge1;
     }
     if (use_edge_log_y) {
       dinterpfluxedge2 = -log(PDFactoryDouble::lowEdgeRMult)*inedgem1;
       for (unsigned int i = 0; i < nedge; ++i)
-	REdgeFlux2[i] = minedge2*exp(static_cast<double>(i)*dinterpfluxedge2);
+        REdgeFlux2[i] = minedge2*exp(static_cast<double>(i)*dinterpfluxedge2);
     } else {
       dinterpfluxedge2 = (dflux2-minedge2)*inedgem1;
       for (unsigned int i = 0; i < nedge; ++i)
-	REdgeFlux2[i] = minedge2 + static_cast<double>(i)*dinterpfluxedge2;
+        REdgeFlux2[i] = minedge2 + static_cast<double>(i)*dinterpfluxedge2;
     }
     iRxnorm  = dinterpfluxedge1 / (dflux1 - minedge1);
     iRynorm  = dinterpfluxedge2 / (dflux2 - minedge2);
@@ -420,34 +420,34 @@ void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1,
     //Do y integral first, store in REdgeWork[0,*]
     if (use_edge_log_y) {
       for (unsigned int i = 0; i < nedge; ++i) {
-	rptr = REdgeWork + i*nedge; //row pointer
-	scriptr = 0.5*(REdgeFlux2[0] * rptr[0] + 
-		       REdgeFlux2[nedge-1] * rptr[nedge-1]);
-	for (unsigned int j = 1; j < nedge-1; ++j)
-	  scriptr += REdgeFlux2[j] * rptr[j];
-	REdgeWork[i] = scriptr;
+        rptr = REdgeWork + i*nedge; //row pointer
+        scriptr = 0.5*(REdgeFlux2[0] * rptr[0] + 
+                       REdgeFlux2[nedge-1] * rptr[nedge-1]);
+        for (unsigned int j = 1; j < nedge-1; ++j)
+          scriptr += REdgeFlux2[j] * rptr[j];
+        REdgeWork[i] = scriptr;
       }
     } else {
       for (unsigned int i = 0; i < nedge; ++i) {
-	rptr = REdgeWork + i*nedge; 
-	scriptr = 0.5*(rptr[0] + rptr[nedge-1]);
-	for (unsigned int j = 1; j < nedge-1; ++j)
-	  scriptr += rptr[j];
-	REdgeWork[i] = scriptr;
+        rptr = REdgeWork + i*nedge; 
+        scriptr = 0.5*(rptr[0] + rptr[nedge-1]);
+        for (unsigned int j = 1; j < nedge-1; ++j)
+          scriptr += rptr[j];
+        REdgeWork[i] = scriptr;
       }
     }
     //Now X integral, put in integral step size and area
     // of bin, store in R[0,0]
     if (use_edge_log_x) {
       scriptr = 0.5*(REdgeFlux1[0] * REdgeWork[0]+
-		     REdgeFlux1[nedge-1] * REdgeWork[nedge-1]);
+                     REdgeFlux1[nedge-1] * REdgeWork[nedge-1]);
       for (unsigned int i = 1; i < nedge-1; ++i)
-	scriptr += REdgeFlux1[i] * REdgeWork[i];
+        scriptr += REdgeFlux1[i] * REdgeWork[i];
       rvals[0] = scriptr * iR00norm;
     } else {
       scriptr = 0.5*(REdgeWork[0] + REdgeWork[nedge-1]);
       for (unsigned int i = 1; i < nedge-1; ++i)
-	scriptr += REdgeWork[i];
+        scriptr += REdgeWork[i];
       rvals[0] = scriptr * iR00norm;
     }
     
@@ -464,14 +464,14 @@ void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1,
       RTime += std::clock() - starttime;
 #endif
       if (use_edge_log_x) {
-	scriptr = 0.5*(REdgeFlux1[0]*REdgeWork[0]+
-		       REdgeFlux1[nedge-1]*REdgeWork[nedge-1]);
-	for (unsigned int i = 1; i < nedge-1; ++i)
-	  scriptr += REdgeFlux1[i]*REdgeWork[i];
+        scriptr = 0.5*(REdgeFlux1[0]*REdgeWork[0]+
+                       REdgeFlux1[nedge-1]*REdgeWork[nedge-1]);
+        for (unsigned int i = 1; i < nedge-1; ++i)
+          scriptr += REdgeFlux1[i]*REdgeWork[i];
       } else {
-	scriptr = 0.5*(REdgeWork[0]+REdgeWork[nedge-1]);
-	for (unsigned int i = 1; i < nedge-1; ++i)
-	  scriptr += REdgeWork[i];
+        scriptr = 0.5*(REdgeWork[0]+REdgeWork[nedge-1]);
+        for (unsigned int i = 1; i < nedge-1; ++i)
+          scriptr += REdgeWork[i];
       }
       rvals[j] = scriptr*iRxnorm;
     }
@@ -488,14 +488,14 @@ void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1,
       RTime += std::clock() - starttime;
 #endif
       if (use_edge_log_y) {
-	scriptr = 0.5*(REdgeFlux2[0]*REdgeWork[0]+
-		       REdgeFlux2[nedge-1]*REdgeWork[nedge-1]);
-	for (unsigned int j = 1; j < nedge-1; ++j)
-	  scriptr += REdgeFlux2[j]*REdgeWork[j];
+        scriptr = 0.5*(REdgeFlux2[0]*REdgeWork[0]+
+                       REdgeFlux2[nedge-1]*REdgeWork[nedge-1]);
+        for (unsigned int j = 1; j < nedge-1; ++j)
+          scriptr += REdgeFlux2[j]*REdgeWork[j];
       } else {
-	scriptr = 0.5*(REdgeWork[0]+REdgeWork[nedge-1]);
-	for (unsigned int j = 1; j < nedge-1; ++j)
-	  scriptr += REdgeWork[j];
+        scriptr = 0.5*(REdgeWork[0]+REdgeWork[nedge-1]);
+        for (unsigned int j = 1; j < nedge-1; ++j)
+          scriptr += REdgeWork[j];
       }
       rvals[i*n] = scriptr*iRynorm;
     }
@@ -520,7 +520,7 @@ void PDFactoryDouble::initR(unsigned int n, double minflux1, double maxflux1,
 */
 std::pair<dblpair, dblpair> 
 PDFactoryDouble::getMinMaxR(const numberCountsDouble& model, 
-			    const doublebeamHist& bm) const {
+                            const doublebeamHist& bm) const {
   const double safetyfac = 1.01;
 
   double minflux1, maxflux1, minflux2, maxflux2;
@@ -558,7 +558,7 @@ PDFactoryDouble::getMinMaxR(const numberCountsDouble& model,
   }
 
   return std::make_pair(std::make_pair(minflux1, maxflux1),
-			std::make_pair(minflux2, maxflux2));
+                        std::make_pair(minflux2, maxflux2));
 }
 
 /*!
@@ -574,9 +574,9 @@ PDFactoryDouble::getMinMaxR(const numberCountsDouble& model,
 */
 std::pair<dblpair, dblpair>
   PDFactoryDouble::getRMoments(unsigned int n, const numberCountsDouble& model, 
-			       const doublebeamHist& bm, 
-			       std::pair<dblpair, dblpair>& minmaxR,
-			       bool setEdge) {
+                               const doublebeamHist& bm, 
+                               std::pair<dblpair, dblpair>& minmaxR,
+                               bool setEdge) {
 
   // Recall that the formulae for the mean and central 2nd moment
   // along each axis (not including instrumental noise) are
@@ -587,13 +587,13 @@ std::pair<dblpair, dblpair>
 
   if (n == 0)
     throw pofdExcept("PDFactoryDouble", "getRMoments",
-		     "Invalid n (== 0)", 1);
+                     "Invalid n (== 0)", 1);
 
   // Now fill in, set up R, Rflux, etc. in all their glory.
   // This will also resize as needed.
   initR(n, minmaxR.first.first, minmaxR.first.second,
-	minmaxR.second.first, minmaxR.second.second,
-	model, bm, setEdge, false);
+        minmaxR.second.first, minmaxR.second.second,
+        model, bm, setEdge, false);
 
   // And... trap rule the integrals.
   // Always move along j since array access is
@@ -706,7 +706,7 @@ std::pair<dblpair, dblpair>
   var2 *= dfact;
 
   return std::make_pair(std::make_pair(mean1, var1),
-			std::make_pair(mean2, var2));
+                        std::make_pair(mean2, var2));
 }
   
 /*!
@@ -792,9 +792,9 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
     double targval = peakfrac * maxval;
     for (int i = n - 1; i >= 0; --i)
       if (rsum[i] <= targval) {
-	splitidx1 = static_cast<unsigned int>(i);
-	splitval1 = rsum[i];
-	break;
+        splitidx1 = static_cast<unsigned int>(i);
+        splitval1 = rsum[i];
+        break;
       }
   }
 
@@ -845,26 +845,26 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
     if (fwrap_plus < cs2) {
       std::stringstream errstr;
       errstr << "Top wrapping problem dim 1; wrapping point at "
-	     << fwrap_plus << " which is only " << fwrap_plus / curr_sigma1
-	     << " sigma away from expected (0) mean with sigma "
-	     << curr_sigma1 << " at n0: " << n0;
+             << fwrap_plus << " which is only " << fwrap_plus / curr_sigma1
+             << " sigma away from expected (0) mean with sigma "
+             << curr_sigma1 << " at n0: " << n0;
       throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 1);
     }
     if (fwrap_minus < cs2) {
       std::stringstream errstr;
       errstr << "Bottom wrapping problem dim 1; wrapping point at "
-	     << -fwrap_minus << " which is only " << fwrap_minus / curr_sigma1
-	     << " sigma away from expected (0) mean, with sigma "
-	     << curr_sigma1 << " at n0: " << n0;
+             << -fwrap_minus << " which is only " << fwrap_minus / curr_sigma1
+             << " sigma away from expected (0) mean, with sigma "
+             << curr_sigma1 << " at n0: " << n0;
       throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 2);
     } 
     // Min/max ratio test
     if (splitval1 / maxval > minmaxratio) {
       std::stringstream errstr;
       errstr << "Dim 1 wrapping problem with wrapping fluxes: "
-	     << fwrap_plus << " and " << -fwrap_minus << " with min/max ratio: "
-	     << splitval1 / maxval << " and sigma: " << curr_sigma1
-	     << " with n0: " << n0;
+             << fwrap_plus << " and " << -fwrap_minus << " with min/max ratio: "
+             << splitval1 / maxval << " and sigma: " << curr_sigma1
+             << " with n0: " << n0;
       throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 3);
     }
   }
@@ -895,9 +895,9 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
     double targval = peakfrac * maxval;
     for (int i = n - 1; i >= 0; --i)
       if (rsum[i] <= targval) {
-	splitidx2 = static_cast<unsigned int>(i);
-	splitval2 = rsum[i];
-	break;
+        splitidx2 = static_cast<unsigned int>(i);
+        splitval2 = rsum[i];
+        break;
       }
   }
 
@@ -936,26 +936,26 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
     if (fwrap_plus < cs2) {
       std::stringstream errstr;
       errstr << "Top wrapping problem dim 2; wrapping point at "
-	     << fwrap_plus << " which is only " << fwrap_plus / curr_sigma2
-	     << " sigma away from expected (0) mean with sigma "
-	     << curr_sigma2 << " at n0: " << n0;
+             << fwrap_plus << " which is only " << fwrap_plus / curr_sigma2
+             << " sigma away from expected (0) mean with sigma "
+             << curr_sigma2 << " at n0: " << n0;
       throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 4);
     }
     if (fwrap_minus < cs2) {
       std::stringstream errstr;
       errstr << "Bottom wrapping problem dim 2; wrapping point at "
-	     << -fwrap_minus << " which is only " << fwrap_minus / curr_sigma2
-	     << " sigma away from expected (0) mean, with sigma "
-	     << curr_sigma2 << " at n0: " << n0;
+             << -fwrap_minus << " which is only " << fwrap_minus / curr_sigma2
+             << " sigma away from expected (0) mean, with sigma "
+             << curr_sigma2 << " at n0: " << n0;
       throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 5);
     } 
     // Min/max ratio test
     if (splitval2 / maxval > minmaxratio) {
       std::stringstream errstr;
       errstr << "Dim 2 wrapping problem with wrapping fluxes: "
-	     << fwrap_plus << " and " << -fwrap_minus << " with min/max ratio: "
-	     << splitval2 / maxval << " and sigma: " << curr_sigma2
-	     << " with n0: " << n0;
+             << fwrap_plus << " and " << -fwrap_minus << " with min/max ratio: "
+             << splitval2 / maxval << " and sigma: " << curr_sigma2
+             << " with n0: " << n0;
       throw pofdExcept("PDFactoryDouble", "unwrapPD", errstr.str(), 6);
     }
   }
@@ -1048,32 +1048,32 @@ void PDFactoryDouble::unwrapPD(double n0, unsigned int n, PDDouble& pd) const {
   \param[in] setEdge  Use integral of mean values at the edges
 */
 void PDFactoryDouble::initPD(unsigned int n, 
-			     double inst_sigma1, double inst_sigma2, 
-			     double maxflux1, double maxflux2, 
-			     double maxn0, const numberCountsDouble& model,
-			     const doublebeamHist& bm, bool setEdge) {
+                             double inst_sigma1, double inst_sigma2, 
+                             double maxflux1, double maxflux2, 
+                             double maxn0, const numberCountsDouble& model,
+                             const doublebeamHist& bm, bool setEdge) {
 
   if (n == 0)
     throw pofdExcept("PDFactoryDouble", "initPD",
-		     "Invalid (non-positive) n",1);  
+                     "Invalid (non-positive) n",1);  
 
   if (inst_sigma1 < 0.0)
     throw pofdExcept("PDFactoryDouble", "initPD",
-		     "Invalid (negative) inst_sigma1",2);
+                     "Invalid (negative) inst_sigma1",2);
   if (inst_sigma2 < 0.0)
     throw pofdExcept("PDFactoryDouble", "initPD",
-		     "Invalid (negative) inst_sigma2",3);
+                     "Invalid (negative) inst_sigma2",3);
   if (maxflux1 <= 0.0)
     throw pofdExcept("PDFactoryDouble", "initPD",
-		     "Invalid (non-positive) maxflux1",4);
+                     "Invalid (non-positive) maxflux1",4);
   if (maxflux2 <= 0.0)
     throw pofdExcept("PDFactoryDouble", "initPD",
-		     "Invalid (non-positive) maxflux2",5);
+                     "Invalid (non-positive) maxflux2",5);
   if (!model.isValid())
     throw pofdExcept("PDFactoryDouble", "initPD", "model not valid", 6);  
   if (maxn0 <= 0.0)
     throw pofdExcept("PDFactoryDouble", "initPD", 
-		     "Invalid (non-positive) n0", 7);
+                     "Invalid (non-positive) n0", 7);
 
   //Must allocate space before we plan -- including the R variables
   resize(n); 
@@ -1097,25 +1097,25 @@ void PDFactoryDouble::initPD(unsigned int n,
   if (!plans_valid) {
     if (plan != nullptr) fftw_destroy_plan(plan);
     plan = fftw_plan_dft_r2c_2d(intn, intn, rvals, rtrans,
-				fftw_plan_style);
+                                fftw_plan_style);
     if (plan == nullptr) {
       std::stringstream str;
       str << "Plan creation failed for forward transform of size: " << intn
-	  << " by " << intn;
+          << " by " << intn;
       if (has_wisdom) str << std::endl << "Your wisdom file may not have"
-			  << " that size";
+                          << " that size";
       throw pofdExcept("PDFactoryDouble", "initPD", str.str(), 14);
     }
 
     if (plan_inv != nullptr) fftw_destroy_plan(plan_inv);
     plan_inv = fftw_plan_dft_c2r_2d(intn, intn, pval, pofd,
-				    fftw_plan_style);
+                                    fftw_plan_style);
     if (plan_inv == nullptr) {
       std::stringstream str;
       str << "Plan creation failed for inverse transform of size: " << intn
-	  << " by " << intn;
+          << " by " << intn;
       if (has_wisdom) str << std::endl << "Your wisdom file may not have"
-			  << " that size";
+                          << " that size";
       throw pofdExcept("PDFactoryDouble", "initPD", str.str(), 15);
     }
     plans_valid = true;
@@ -1127,7 +1127,7 @@ void PDFactoryDouble::initPD(unsigned int n,
   if (maxn0 < base_n0) {
     std::stringstream errstr;
     errstr << "maxn0 (" << maxn0 << ") must be greater than model base N0 ("
-	   << base_n0 << ")";
+           << base_n0 << ")";
     throw pofdExcept("PDFactoryDouble", "initPD", errstr.str(), 8);
   }
 
@@ -1159,7 +1159,7 @@ void PDFactoryDouble::initPD(unsigned int n,
 
   //Get final R for base model, multiplying by dflux1 * dflux2.  
   initR(n, minfluxR_1, maxfluxR_1, minfluxR_2, maxfluxR_2, 
-	model, bm, setEdge, true);
+        model, bm, setEdge, true);
   
   //Decide if we will shift, and if so by how much
   // The idea is to shift the mean to zero -- but we only
@@ -1173,16 +1173,16 @@ void PDFactoryDouble::initPD(unsigned int n,
   if (verbose) {
     std::cout << " For max_n0: " << maxn0 << std::endl;
     std::cout << "  Initial mean estimate band1: " << mn1 << " band2: "
-	      << mn2 << std::endl;
+              << mn2 << std::endl;
     std::cout << "  Initial stdev estimate band1: " << sg1 << " band2: "
-	      << sg2 << std::endl;
+              << sg2 << std::endl;
     if (doshift1)
       std::cout << "  Additional shift applied in band 1: " 
-		<< shift1 << std::endl;
+                << shift1 << std::endl;
     else std::cout << " Not applying additional shift in band 1" << std::endl;
     if (doshift2)
       std::cout << "  Additional shift applied in band 2: " 
-		<< shift2 << std::endl;
+                << shift2 << std::endl;
     else std::cout << "  Not applying additional shift in band 2" << std::endl;
   }
 
@@ -1223,12 +1223,12 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog) {
 
   if (! initialized )
     throw pofdExcept("PDFactoryDouble","getPD",
-		     "Must call initPD first",1);
+                     "Must call initPD first",1);
   if (n0 > max_n0) {
     std::stringstream errstr("");
     errstr << "N_0 " << n0
-	   << " larger than maximum prepared value " << max_n0
-	   << std::endl;
+           << " larger than maximum prepared value " << max_n0
+           << std::endl;
     errstr << "initPD should have been called with at least " << n0;
     throw pofdExcept("PDFactoryDouble","getPD",errstr.str(),2);
   }
@@ -1291,7 +1291,7 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog) {
       didx2 = static_cast<double>(idx2);
       w2 = iflux2 * didx2;
       rval = n0ratio * r_input_rowptr[idx2][0] - r0 
-	- sigprod1 - sigfac2 * w2 * w2;
+        - sigprod1 - sigfac2 * w2 * w2;
       ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1 - curr_shift2 * w2;
       expfac = exp(rval);
       row_current_out[idx2][0] = expfac*cos(ival);
@@ -1309,7 +1309,7 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog) {
       didx2 = static_cast<double>(idx2);
       w2 = iflux2 * didx2;
       rval = n0ratio * r_input_rowptr[idx2][0] - 
-	r0 - sigprod1 - sigfac2 * w2 * w2;
+        r0 - sigprod1 - sigfac2 * w2 * w2;
       ival = n0ratio * r_input_rowptr[idx2][1] - meanprod1 - curr_shift2 * w2;
       expfac = exp(rval);
       row_current_out[idx2][0] = expfac*cos(ival);
@@ -1361,25 +1361,25 @@ void PDFactoryDouble::getPD(double n0, PDDouble& pd, bool setLog) {
 void PDFactoryDouble::writeRToFile(const std::string& filename) const {
   if (!rinitialized)
     throw pofdExcept("PDFactoryDouble", "writeRToFile",
-		     "Must initialize R first", 1);
+                     "Must initialize R first", 1);
 
   std::ofstream ofs(filename.c_str());
   if (!ofs)
     throw pofdExcept("PDFactoryDouble", "writeRToFile",
-		     "Couldn't open output file", 2);
+                     "Couldn't open output file", 2);
 
   ofs << currsize << std::endl;
   if (rdflux) {
     double ifluxfac = 1.0 / (dflux1 * dflux2);
     for (unsigned int i = 0; i < currsize; ++i)
       for (unsigned int j = 0; j < currsize; ++j)
-	ofs << RFlux1[i] << " " << RFlux2[j] << " " << 
-	  rvals[i * currsize + j] * ifluxfac << std::endl;
+        ofs << RFlux1[i] << " " << RFlux2[j] << " " << 
+          rvals[i * currsize + j] * ifluxfac << std::endl;
   } else {
     for (unsigned int i = 0; i < currsize; ++i)
       for (unsigned int j = 0; j < currsize; ++j)
-	ofs << RFlux1[i] << " " << RFlux2[j] << " " << 
-	  rvals[i * currsize + j] << std::endl;
+        ofs << RFlux1[i] << " " << RFlux2[j] << " " << 
+          rvals[i * currsize + j] << std::endl;
   }
   ofs.close();
 }
@@ -1394,16 +1394,16 @@ void PDFactoryDouble::writeRToFile(const std::string& filename) const {
 void PDFactoryDouble::writeRToHDF5(const std::string& filename) const {
   if (!rinitialized)
     throw pofdExcept("PDFactoryDouble", "writeRToHDF5",
-		     "Must call initPD or initR first", 1);
+                     "Must call initPD or initR first", 1);
 
   hid_t file_id;
   file_id = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
-		      H5P_DEFAULT);
+                      H5P_DEFAULT);
 
   if (H5Iget_ref(file_id) < 0) {
     H5Fclose(file_id);
     throw pofdExcept("PDFactoryDouble", "writeToHDF5",
-		     "Failed to open HDF5 file to write", 2);
+                     "Failed to open HDF5 file to write", 2);
   }
 
   // Write it as one dataset -- Rflux1, Rflux2, R. 
@@ -1414,15 +1414,15 @@ void PDFactoryDouble::writeRToHDF5(const std::string& filename) const {
   adims = 1;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   att_id = H5Acreate2(file_id, "dflux1", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux1);
   H5Aclose(att_id);
   att_id = H5Acreate2(file_id, "dflux2", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux2);
   H5Aclose(att_id);
   att_id = H5Acreate2(file_id, "N0", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &base_n0);
   H5Aclose(att_id);
   H5Sclose(mems_id);
@@ -1431,14 +1431,14 @@ void PDFactoryDouble::writeRToHDF5(const std::string& filename) const {
   adims = currsize;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(file_id, "RFlux1", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	   H5P_DEFAULT, RFlux1);
+           H5P_DEFAULT, RFlux1);
   H5Dclose(dat_id);
   dat_id = H5Dcreate2(file_id, "RFlux2", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	   H5P_DEFAULT, RFlux2);
+           H5P_DEFAULT, RFlux2);
   H5Dclose(dat_id);
   H5Sclose(mems_id);
 
@@ -1446,7 +1446,7 @@ void PDFactoryDouble::writeRToHDF5(const std::string& filename) const {
   hsize_t dims_steps[2] = {currsize, currsize};
   mems_id = H5Screate_simple(2, dims_steps, nullptr);
   dat_id = H5Dcreate2(file_id, "R", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (rdflux) {
     double* tmp = new double[currsize * currsize];
     double idflux = 1.0 / (dflux1 * dflux2);

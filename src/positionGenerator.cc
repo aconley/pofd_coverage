@@ -52,7 +52,7 @@ powerSpectrum::powerSpectrum(const std::string& filename) {
   \param[in] pk P(k)
 */
 powerSpectrum::powerSpectrum(const std::vector<double>& k,
-			     const std::vector<double>& pk) {
+                             const std::vector<double>& pk) {
   init(k, pk);
 }
 
@@ -69,23 +69,23 @@ powerSpectrum::~powerSpectrum() {
   \param[in] pk P(k)
 */
 void powerSpectrum::init(const std::vector<double>& k,
-			 const std::vector<double>& pk) {
+                         const std::vector<double>& pk) {
   nk = k.size();
   if (nk == 0)
     throw pofdExcept("powerSpectrum", "powerSpectrum",
-		     "No elements in k", 1);
+                     "No elements in k", 1);
   if (nk != pk.size())
     throw pofdExcept("powerSpectrum", "powerSpectrum",
-		     "P(k) not same length as k", 2);
+                     "P(k) not same length as k", 2);
   if (nk < 3)
     throw pofdExcept("powerSpectrum", "powerSpectrum",
-		     "Need at least 3 elements in k, P(k)", 3);
+                     "Need at least 3 elements in k, P(k)", 3);
 
   logk = new double[nk];
   mink = k[0]; // We assume k is sorted
   maxk = k[nk-1];
   if (mink <= 0.0) throw pofdExcept("powerSpectrum", "powerSpectrum",
-				    "Invalid (non-positive) k", 4);
+                                    "Invalid (non-positive) k", 4);
 
   for (unsigned int i = 0; i < nk; ++i)
     logk[i] = log(k[i]);
@@ -94,13 +94,13 @@ void powerSpectrum::init(const std::vector<double>& k,
   for (unsigned int i = 0; i < nk; ++i)
     if (k[i] <= 0.0)
       throw pofdExcept("powerSpectrum", "powerSpectrum",
-		       "Invalid (non-positive) P(k)", 5);
+                       "Invalid (non-positive) P(k)", 5);
   for (unsigned int i = 0; i < nk; ++i)
     logpk[i] = log(pk[i]);
 
   acc = gsl_interp_accel_alloc();
   spline_logpk = gsl_spline_alloc(gsl_interp_cspline,
-				  static_cast<size_t>(nk));
+                                  static_cast<size_t>(nk));
   gsl_spline_init(spline_logpk, logk, logpk, static_cast<size_t>(nk));
 }
 
@@ -121,7 +121,7 @@ double powerSpectrum::getLogPk(double k) const {
 void powerSpectrum::writeToHDF5Handle(hid_t obj_id) const {
   if (H5Iget_ref(obj_id) < 0)
     throw pofdExcept("powerSpectrum", "writeToHDF5Handle",
-		     "Given non-open obj_id to write to", 1);
+                     "Given non-open obj_id to write to", 1);
 
   hsize_t adims;
   hid_t mems_id, att_id, dat_id;
@@ -131,11 +131,11 @@ void powerSpectrum::writeToHDF5Handle(hid_t obj_id) const {
   mems_id = H5Screate_simple(1, &adims, nullptr);
 
   att_id = H5Acreate2(obj_id, "Mink", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &mink);
   H5Aclose(att_id);  
   att_id = H5Acreate2(obj_id, "Maxk", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &maxk);
   H5Aclose(att_id);  
   H5Sclose(mems_id);
@@ -145,19 +145,19 @@ void powerSpectrum::writeToHDF5Handle(hid_t obj_id) const {
   adims = nk;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(obj_id, "k", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   for (unsigned int i = 0; i < nk; ++i)
     tmp[i] = exp(logk[i]);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, tmp);
+           H5P_DEFAULT, tmp);
   H5Dclose(dat_id);
 
   dat_id = H5Dcreate2(obj_id, "Pk", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   for (unsigned int i = 0; i < nk; ++i)
     tmp[i] = exp(logpk[i]);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-	   H5P_DEFAULT, tmp);
+           H5P_DEFAULT, tmp);
   H5Dclose(dat_id);
   H5Sclose(mems_id);
   delete[] tmp;
@@ -167,23 +167,23 @@ void powerSpectrum::writeToHDF5Handle(hid_t obj_id) const {
 /////////////////// positionGeneratorClustered ///////////////////
 positionGeneratorClustered::
 positionGeneratorClustered(unsigned int NX, unsigned int NY, 
-			   double PIXSIZE, const std::string& powerfile) :
+                           double PIXSIZE, const std::string& powerfile) :
   nx(NX), ny(NY), pixsize(PIXSIZE), powspec(powerfile), probarr(nullptr),
   probarr_trans(nullptr) {
 
   if (nx == 0)
     throw pofdExcept("positionGeneratorClustered", 
-		     "positionGeneratorClustered", 
-		     "invalid (0) x dimension", 1);
+                     "positionGeneratorClustered", 
+                     "invalid (0) x dimension", 1);
   if (ny == 0)
     throw pofdExcept("positionGeneratorClustered", 
-		     "positionGeneratorClustered", 
-		     "invalid (0) y dimension", 1);
+                     "positionGeneratorClustered", 
+                     "invalid (0) y dimension", 1);
 
   if (pixsize <= 0.0)
     throw pofdExcept("positionGeneratorClustered", 
-		     "positionGeneratorClustered",
-		     "Invalid (non-positive) pixel size", 1);
+                     "positionGeneratorClustered",
+                     "Invalid (non-positive) pixel size", 1);
 
   // Now, generate the scaling factor
   // First we generate the k values, and store them in scl
@@ -251,22 +251,22 @@ void positionGeneratorClustered::generate(ran& rangen) {
     unsigned intx = static_cast<int>(nx);
     unsigned inty = static_cast<int>(ny);
     plan = fftw_plan_dft_r2c_2d(intx, inty, probarr, probarr_trans,
-				FFTW_ESTIMATE);
+                                FFTW_ESTIMATE);
     if (plan == nullptr) {
       std::stringstream str;
       str << "Plan creation failed for forward transform of size: " << 
-	  intx << " by " << inty;
+          intx << " by " << inty;
       throw pofdExcept("positionGeneratorClustered", "generate",
-		       str.str(), 1);
+                       str.str(), 1);
     }
     plan_inv = fftw_plan_dft_c2r_2d(intx, inty, probarr_trans, probarr,
-				    FFTW_ESTIMATE);
+                                    FFTW_ESTIMATE);
     if (plan_inv == nullptr) {
       std::stringstream str;
       str << "Inverse plan creation failed for forward transform of size: " << 
-	  intx << " by " << inty;
+          intx << " by " << inty;
       throw pofdExcept("positionGeneratorClustered", "generate",
-		       str.str(), 2);
+                       str.str(), 2);
     }
   }
 
@@ -366,7 +366,7 @@ double positionGeneratorClustered::interpolate(double x, double y) const {
 */
 std::pair<unsigned int, unsigned int> 
 positionGeneratorClustered::getPosition(ran& rangen, 
-					unsigned int oversamp) const {
+                                        unsigned int oversamp) const {
   double x, y, zval;
   double onx = static_cast<double>(oversamp * nx);
   double ony = static_cast<double>(oversamp * ny);
@@ -379,7 +379,7 @@ positionGeneratorClustered::getPosition(ran& rangen,
   } while (zval > interpolate(x * idoversamp, y * idoversamp));
 
   return std::make_pair(static_cast<unsigned int>(x),
-			static_cast<unsigned int>(y));
+                        static_cast<unsigned int>(y));
 }
  
 /*!
@@ -390,7 +390,7 @@ positionGeneratorClustered::writeProbToFits(const std::string& outfile) const {
 
   if (probarr == nullptr)
     throw pofdExcept("positionGeneratorClustered", "writeProbToFits",
-		     "probarr not prepared", 1);
+                     "probarr not prepared", 1);
 
   int status = 0;
   fitsfile *fp;
@@ -412,42 +412,42 @@ positionGeneratorClustered::writeProbToFits(const std::string& outfile) const {
   // Astrometry
   double tmpval;
   fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE1"),
-		 const_cast<char*>("RA---TAN"),
-		 const_cast<char*>("WCS: Projection type axis 1"), &status);
+                 const_cast<char*>("RA---TAN"),
+                 const_cast<char*>("WCS: Projection type axis 1"), &status);
   fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE2"),
-		 const_cast<char*>("DEC--TAN"),
-		 const_cast<char*>("WCS: Projection type axis 2"), &status);
+                 const_cast<char*>("DEC--TAN"),
+                 const_cast<char*>("WCS: Projection type axis 2"), &status);
   tmpval = nx / 2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX1"), &tmpval, 
-		 const_cast<char*>("Ref pix of axis 1"), &status);
+                 const_cast<char*>("Ref pix of axis 1"), &status);
   tmpval = ny / 2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX2"), &tmpval, 
-		 const_cast<char*>("Ref pix of axis 2"), &status);
+                 const_cast<char*>("Ref pix of axis 2"), &status);
   tmpval = 90.0; //Arbitrary
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
-		 const_cast<char*>("val at ref pix axis 1"), &status);
+                 const_cast<char*>("val at ref pix axis 1"), &status);
   tmpval = 10.0; //Arbitrary
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL2"), &tmpval, 
-		 const_cast<char*>("val at ref pix axis 2"), &status);
+                 const_cast<char*>("val at ref pix axis 2"), &status);
   tmpval = - pixsize / 3600.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_1"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 1,1"), &status);
+                 const_cast<char*>("Pixel scale axis 1,1"), &status);
   tmpval = 0.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_2"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 1,2"), &status);
+                 const_cast<char*>("Pixel scale axis 1,2"), &status);
   tmpval = 0.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_1"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 2,1"), &status);
+                 const_cast<char*>("Pixel scale axis 2,1"), &status);
   tmpval = pixsize / 3600.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_2"), &tmpval, 
-		 const_cast<char*>("Pixel scale axis 2,2"), &status);
+                 const_cast<char*>("Pixel scale axis 2,2"), &status);
   tmpval = 2000.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("EPOCH"), &tmpval, 
-		 const_cast<char*>("WCS: Epoch of celestial pointing"), 
-		 &status);
+                 const_cast<char*>("WCS: Epoch of celestial pointing"), 
+                 &status);
   fits_write_key(fp, TDOUBLE, const_cast<char*>("EQUINOX"), &tmpval, 
-		 const_cast<char*>("WCS: Equinox of celestial pointing"), 
-		 &status);
+                 const_cast<char*>("WCS: Equinox of celestial pointing"), 
+                 &status);
 
   //Do data writing.  We have to make a transposed copy of the
   // data to do this, which is irritating as hell
@@ -478,7 +478,7 @@ positionGeneratorClustered::writeProbToFits(const std::string& outfile) const {
 void positionGeneratorClustered::writeToHDF5Handle(hid_t obj_id) const {
   if (H5Iget_ref(obj_id) < 0)
     throw pofdExcept("positionGeneratorClustered", "writeToHDF5Handle",
-		     "Given non-open obj_id to write to", 1);
+                     "Given non-open obj_id to write to", 1);
 
   // Single item attributes
   hsize_t adims;
@@ -488,15 +488,15 @@ void positionGeneratorClustered::writeToHDF5Handle(hid_t obj_id) const {
   mems_id = H5Screate_simple(1, &adims, nullptr);
 
   att_id = H5Acreate2(obj_id, "nx", H5T_NATIVE_UINT,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &nx);
   H5Aclose(att_id);  
   att_id = H5Acreate2(obj_id, "ny", H5T_NATIVE_UINT,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_UINT, &ny);
   H5Aclose(att_id);  
   att_id = H5Acreate2(obj_id, "pixsize", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &pixsize);
   H5Aclose(att_id);
   H5Sclose(mems_id);

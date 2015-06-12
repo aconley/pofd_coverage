@@ -47,7 +47,7 @@ int makeCatSingle(int argc, char **argv) {
   int option_index = 0;
   optind = 1; //Reset parse
   while ( ( c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index ) ) != -1 ) 
+                            &option_index ) ) != -1 ) 
     switch(c) {
     case 'S' :
       have_user_seed = true;
@@ -61,7 +61,7 @@ int makeCatSingle(int argc, char **argv) {
   if (optind >= argc-2 ) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   modelfile  = std::string(argv[optind]);
@@ -87,7 +87,7 @@ int makeCatSingle(int argc, char **argv) {
     numberCounts model(modelfile);
     if (!model.isValid())
       throw pofdExcept("pofd_coverage_makeCat", "makeCatSingle",
-		       "Trying to realize model with invalid parameters", 1);
+                       "Trying to realize model with invalid parameters", 1);
 
     //Get the fluxes
     float *flux;
@@ -96,7 +96,7 @@ int makeCatSingle(int argc, char **argv) {
       flux[i] = model.genSource(rangen.doub());
 
     if (verbose) std::cout << "Writing catalog to " << outputfile 
-			   << std::endl;
+                           << std::endl;
 
     //Do the write
     int status = 0;
@@ -117,7 +117,7 @@ int makeCatSingle(int argc, char **argv) {
     char *tform[] = {"1E"};
     char *tunit[] = {"Jy"};
     fits_create_tbl(fp, BINARY_TBL, nrows, tfields, ttype, tform,
-		    tunit, extname, &status);
+                    tunit, extname, &status);
     if (status) {
       fits_report_error(stderr,status);
       delete[] flux;
@@ -171,7 +171,7 @@ int makeCatDouble(int argc, char **argv) {
   int option_index = 0;
   optind = 1; //Reset parse
   while ( ( c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index ) ) != -1 ) 
+                            &option_index ) ) != -1 ) 
     switch(c) {
     case 'S' :
       have_user_seed = true;
@@ -185,7 +185,7 @@ int makeCatDouble(int argc, char **argv) {
   if (optind >= argc-2 ) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   modelfile  = std::string(argv[optind]);
@@ -211,7 +211,7 @@ int makeCatDouble(int argc, char **argv) {
     numberCountsDouble model(modelfile);
     if (!model.isValid())
       throw pofdExcept("pofd_coverage_makeCat", "makeCatDouble",
-		       "Trying to realize model with invalid parameters", 1);
+                       "Trying to realize model with invalid parameters", 1);
 
     //Get the fluxes
     float *flux1;
@@ -226,7 +226,7 @@ int makeCatDouble(int argc, char **argv) {
     }
 
     if (verbose) std::cout << "Writing catalog to " << outputfile 
-			   << std::endl;
+                           << std::endl;
 
     //Do the write
     int status = 0;
@@ -247,7 +247,7 @@ int makeCatDouble(int argc, char **argv) {
     char *tform[] = {"1E","1E"};
     char *tunit[] = {"Jy","Jy"};
     fits_create_tbl(fp, BINARY_TBL, nrows, tfields, ttype, tform,
-		    tunit, extname, &status);
+                    tunit, extname, &status);
     if (status) {
       fits_report_error(stderr,status);
       return status;
@@ -299,61 +299,61 @@ int main( int argc, char** argv ) {
   int c;
   int option_index = 0;
   while ( ( c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index ) ) != -1 ) 
+                            &option_index ) ) != -1 ) 
     switch(c) {
     case 'h' :
       std::cout << "NAME" << std::endl;
       std::cout << "\tpofd_coverage_makeCat -- make simulated catalog for"
-		<< " a spline type model." << std::endl;
+                << " a spline type model." << std::endl;
       std::cout << std::endl;
       std::cout << "SYNOPSIS" << std::endl;
       std::cout << "\t  pofd_coverage_makeCat [options] modelfile n0 "
-		<< "outputfile" << std::endl;
+                << "outputfile" << std::endl;
       std::cout << "DESCRIPTION" << std::endl;
       std::cout << "\tCreates a simulated catalog for a given model, and writes"
-		<< " them" << std::endl;
+                << " them" << std::endl;
       std::cout << "\tto outfile.  The number counts model in 1D is a spline"
-		<< std::endl;
+                << std::endl;
       std::cout << "\ta model specified by modelfile, and the number of"
-		<< std::endl;
+                << std::endl;
       std::cout << "\tsources to generate is n0." << std::endl;
       std::cout << std::endl;
       std::cout << "\tIn the 2D case the model is the 1D model in band 1 times"
-		<< " a" << std::endl;
+                << " a" << std::endl;
       std::cout << "\tLog-Normal distribution in flux2/flux1.  The mu and sigma"
-		<< " Log-Normal" << std::endl;
+                << " Log-Normal" << std::endl;
       std::cout << "\tmodel parameters are stored as splines as a function of"
-		<< " the" << std::endl;
+                << " the" << std::endl;
       std::cout << "\tflux in the first band." << std::endl;
       std::cout << std::endl;
       std::cout << "\tmodelfile should be a text file.  In the 1D case it"
-		<< " should" << std::endl;
+                << " should" << std::endl;
       std::cout << "\tconsist of nknots lines of the form: " 
-		<< std::endl << std::endl;
+                << std::endl << std::endl;
       std::cout << "\t\tflux_density n" << std::endl << std::endl;
       std::cout << "\twhere flux_density gives the positions of the knots"
-		<< " in Jy" << std::endl;
+                << " in Jy" << std::endl;
       std::cout << "\tand n is the log10 differential number counts in"
-		<< " deg^-2 Jy^-1" << std::endl;
+                << " deg^-2 Jy^-1" << std::endl;
       std::cout << "\tat the corresponding flux density.  Additional entries" 
-		<< " on each"<< std::endl;
+                << " on each"<< std::endl;
       std::cout << "\tline are ignored, and # denotes a comment line."
-		<< std::endl;
+                << std::endl;
       std::cout << std::endl;
       std::cout << "\tIn the 2D case the file should start with a line giving"
-		<< " the" << std::endl;
+                << " the" << std::endl;
       std::cout << "\tnumber of knots in the band 1 model, the number of"
-		<< " knots in" << std::endl;
+                << " knots in" << std::endl;
       std::cout << "\tthe sigma spline, and then the number in the mu spline."
-		<< " This" << std::endl;
+                << " This" << std::endl;
       std::cout << "\tshould be followed by nknots + nspline + nmu lines"
-		<< std::endl;
+                << std::endl;
       std::cout << "\tof the same form as the 1D model, with the first nknots"
-		<< std::endl;
+                << std::endl;
       std::cout << "\tspecifying the band 1 model as in the 1D case, and the"
-		<< std::endl;
+                << std::endl;
       std::cout << "\tfollowing lines giving the knot positions and values"
-		<< " for" << std::endl;
+                << " for" << std::endl;
       std::cout << "\tof the sigma and mu splines." << std::endl;
       std::cout << std::endl;
       std::cout << "OPTIONS" << std::endl;
@@ -363,10 +363,10 @@ int main( int argc, char** argv ) {
       std::cout << "\t\tPrint this message and exit." << std::endl;
       std::cout << "\t--S, --seed SEED" << std::endl;
       std::cout << "\t\tUse this seed for the random number generator." 
-		<< std::endl;
+                << std::endl;
       std::cout << "\t-v, --verbose" << std::endl;
       std::cout << "\t\tPrint informational messages while running"
-		<< std::endl;
+                << std::endl;
       std::cout << "\t-V, --version" << std::endl;
       std::cout << "\t\tOutput version number and exit" << std::endl;
       return 0;
@@ -376,7 +376,7 @@ int main( int argc, char** argv ) {
       break;
     case 'V' :
       std::cout << "pofd_coverage version number: " << pofd_coverage::version 
-		<< std::endl;
+                << std::endl;
       return 0;
       break;
     }

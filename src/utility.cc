@@ -39,7 +39,7 @@ utility::outfiletype utility::getOutputFileType(const std::string& str) {
   Knop.
 */
 void utility::stringwords(const std::string &ins,
-			  std::vector<std::string> &words) {
+                          std::vector<std::string> &words) {
   std::string s,tmp;
   unsigned int i,p;
   int first,last;
@@ -76,7 +76,7 @@ void utility::stringwords(const std::string &ins,
   encountered.
  */
 unsigned int utility::binary_search_lt(double value, double* data, 
-				       unsigned int ndata) {
+                                       unsigned int ndata) {
   unsigned int l, u; //Lower and upper bounds of current box
   unsigned int m; //Current element
 
@@ -107,7 +107,7 @@ unsigned int utility::binary_search_lt(double value, double* data,
   encountered.
  */
 unsigned int utility::binary_search_lt(double value, 
-				       const std::vector<double>& data) {
+                                       const std::vector<double>& data) {
   unsigned int l, u; //Lower and upper bounds of current box
   unsigned int m; //Current element
 
@@ -134,7 +134,7 @@ unsigned int utility::binary_search_lt(double value,
 }
 
 unsigned int utility::binary_search_lte(double value, double* data,
-					unsigned int ndata) {
+                                        unsigned int ndata) {
   unsigned int idx = binary_search_gt(value,data,ndata);
   if (idx == 0) return ndata; else return idx-1;
 }
@@ -145,7 +145,7 @@ unsigned int utility::binary_search_lte(double value, double* data,
   encountered.
  */
 unsigned int utility::binary_search_gt(double value, double* data, 
-				       unsigned int ndata) {
+                                       unsigned int ndata) {
   unsigned int l, u; //Lower and upper bounds of current box
   unsigned int m; //Current element
 
@@ -207,7 +207,7 @@ unsigned int utility::binary_search_gt(double value,std::vector<double> data){
   encountered.
  */
 int utility::binary_search_rev(double value, double* data, 
-			       unsigned int ndata) {
+                               unsigned int ndata) {
   unsigned int l, u; //Lower and upper bounds of current box
   unsigned int m; //Current element
 
@@ -249,15 +249,15 @@ unsigned int utility::log2( unsigned int val ) {
     register unsigned int r = 0;
     for (int i = 4; i >= 0; i--) {
       if (val & b[i]) {
-	val >>= S[i];
-	r |= S[i];
+        val >>= S[i];
+        r |= S[i];
       } 
     }
     return r;
   } else {
     //A power of 2
     const unsigned int b[] = {0xAAAAAAAA, 0xCCCCCCCC, 0xF0F0F0F0, 
-			      0xFF00FF00, 0xFFFF0000};
+                              0xFF00FF00, 0xFFFF0000};
     unsigned int r = (val & b[0]) != 0;
     for (int i = 4; i > 0; i--)
       r |= ((val & b[i]) != 0) << i;
@@ -272,19 +272,19 @@ double utility::logfactorial(double value) {
   const unsigned int nterms = 14;
   double vp1, temp, y, series;
   const double coeffs[nterms] = {57.1562356658629235,
-				 -59.5979603554754915,
-				 14.1360979747417471,
-				 -0.491913816097620199,
-				 0.339946499848118887e-4,
-				 0.465236289270485756e-4,
-				 -0.983744753048795646e-4,
-				 0.158088703224912494e-3,
-				 -0.210264441724104883e-3,
-				 0.217439618115212643e-3,
-				 -0.164318106536763890e-3,
-				 0.84412239838527433e-4,
-				 -0.261908384015814087e-4,
-				 0.368991826595316234e-5};
+                                 -59.5979603554754915,
+                                 14.1360979747417471,
+                                 -0.491913816097620199,
+                                 0.339946499848118887e-4,
+                                 0.465236289270485756e-4,
+                                 -0.983744753048795646e-4,
+                                 0.158088703224912494e-3,
+                                 -0.210264441724104883e-3,
+                                 0.217439618115212643e-3,
+                                 -0.164318106536763890e-3,
+                                 0.84412239838527433e-4,
+                                 -0.261908384015814087e-4,
+                                 0.368991826595316234e-5};
   vp1 = value+1.0;
   temp = vp1 + 5.2421875;
   temp = (vp1+0.5)*log(temp)-temp;

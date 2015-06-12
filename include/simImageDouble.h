@@ -93,18 +93,18 @@ class simImageDouble {
 
   /*! \brief Downsample arrays to final resolution */
   void downSample(unsigned int, unsigned int, double* const,
-		  unsigned int, unsigned int, double* const);
+                  unsigned int, unsigned int, double* const);
 
   double getFinalNoiseHelper(unsigned int ntrials, double* const data,
-			     double sigi, double fwhm, double esmooth,
-			     unsigned int ngauss_add,
-			     const double* const gauss_add,
-			     const fourierFilter* const filt) const;
+                             double sigi, double fwhm, double esmooth,
+                             unsigned int ngauss_add,
+                             const double* const gauss_add,
+                             const fourierFilter* const filt) const;
 
   //Convolution stuff
   void convolveInner(unsigned int, const double* const,
-		     unsigned int, unsigned int, double* const,
-		     double* const) const; //!< Inner convolution function
+                     unsigned int, unsigned int, double* const,
+                     double* const) const; //!< Inner convolution function
 
   /*! \brief Do convolution with beams */
   void convolveWithBeam();
@@ -120,10 +120,10 @@ class simImageDouble {
  public:
 
   simImageDouble(unsigned int N1, unsigned int N2, double PIXSIZE,
-		 double FWHM1, double FWHM2, double SIGI1,
-		 double SIGI2, double ESMOOTH1=0.0, double ESMOOTH2=0.0,
-		 unsigned int OVERSAMPLE=1, unsigned int NBINS=1000,
-		 const std::string& powerspec="");
+                 double FWHM1, double FWHM2, double SIGI1,
+                 double SIGI2, double ESMOOTH1=0.0, double ESMOOTH2=0.0,
+                 unsigned int OVERSAMPLE=1, unsigned int NBINS=1000,
+                 const std::string& powerspec="");
   ~simImageDouble(); //!< Destructor
 
   /*! \brief Set random number generator seed */
@@ -131,9 +131,9 @@ class simImageDouble {
 
   /*! Generate realization of model */
   void realize(const numberCountsDouble& model, double n0, bool meansub=false,
-	       const fourierFilter* const filt1=nullptr,
-	       const fourierFilter* const filt2=nullptr,
-	       bool bin=false, unsigned int sparsebin=1);
+               const fourierFilter* const filt1=nullptr,
+               const fourierFilter* const filt2=nullptr,
+               bool bin=false, unsigned int sparsebin=1);
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 
@@ -164,8 +164,8 @@ class simImageDouble {
 
   /*! \brief Returns noise level estimate after smoothing or filtering*/
   dblpair getFinalNoise(unsigned int ntrials=3,
-			const fourierFilter* const filt1=nullptr,
-			const fourierFilter* const filt2=nullptr) const;
+                        const fourierFilter* const filt1=nullptr,
+                        const fourierFilter* const filt2=nullptr) const;
 
   dblpair meanSubtract(); //!< Subtract off means
   dblpair getMean() const; //!< Get mean in each band
@@ -173,7 +173,7 @@ class simImageDouble {
   void getMeanAndVar(double&, double&, double&, double&) const;
   /*! \brief Get minimum and maximum of image in each band */
   void getMinMax(double& min1, double& max1, double& min2,
-		 double& max2) const; //!< Get minima and maxima in both bands
+                 double& max2) const; //!< Get minima and maxima in both bands
 
   /*! \brief Returns sum of beams (i.e., area in pixels) */
   dblpair getBeamSum() const;

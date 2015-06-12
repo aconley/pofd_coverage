@@ -48,7 +48,7 @@ void PD::shrink() {
     if (newcap > 0) {
       double* tmp = (double*) fftw_malloc( sizeof(double)*newcap );
       for (unsigned int i = 0; i < newcap; ++i)
-	tmp[i] = pd_[i];
+        tmp[i] = pd_[i];
       if (pd_ != nullptr) fftw_free(pd_);
       pd_ = tmp;
     } else {
@@ -115,7 +115,7 @@ double PD::getIntegral() const {
 void PD::normalize() {
   if (n == 0)
     throw pofdExcept("PD","normalize",
-		     "No information present to normalize",1);
+                     "No information present to normalize",1);
   double tot = getIntegral();
   unsigned int sz = n;
   if (logflat) {
@@ -165,7 +165,7 @@ void PD::edgeFix(bool donorm) {
 
   if (logflat)
     throw pofdExcept("PD","edgeFix",
-		     "Not supported for logged PDs",1);
+                     "Not supported for logged PDs",1);
 
   //Get mean and vars
   double mn, var;
@@ -173,7 +173,7 @@ void PD::edgeFix(bool donorm) {
   if ( std::isnan( mn ) || std::isinf( mn ) ||
        std::isnan( var ) || std::isinf( var ) )
     throw pofdExcept("PD","edgeFix",
-		     "Problem with means/vars",2);
+                     "Problem with means/vars",2);
   
   double istdev = 1.0/sqrt(var);
 
@@ -240,7 +240,7 @@ void PD::getMean(double& mean, bool donorm) const {
   \param[in] donorm Do not assume that P(D) is normalized.
  */
 void PD::getMeanAndVar(double& mean, double& var,
-		       bool donorm) const {
+                       bool donorm) const {
   if (n == 0) {
     mean = std::numeric_limits<double>::quiet_NaN();
     var = std::numeric_limits<double>::quiet_NaN();
@@ -301,7 +301,7 @@ PD& PD::operator=(const PD& other) {
 }
 
 void PD::fill(unsigned int N, double MINFLUX, double DFLUX,
-	      const double* const PD, bool LOG) {
+              const double* const PD, bool LOG) {
   logflat = LOG;
   resize(N);
   minflux = MINFLUX;
@@ -355,14 +355,14 @@ void PD::writeToFile(const std::string& outputfile) const {
     status = writeToFits(outputfile);
     if (status != 0)
       throw pofdExcept("PD", "writeToFile", 
-		       "Failure to write FITS file", 1);
+                       "Failure to write FITS file", 1);
     break;
   case utility::TXT:
     ofs.open(outputfile.c_str());
     if (!ofs) {
       ofs.close();
       throw pofdExcept("PD", "writeToFile", 
-		       "Failure to open text file to write", 2);
+                       "Failure to open text file to write", 2);
     }
     writeToStream(ofs);
     ofs.close();
@@ -387,7 +387,7 @@ int PD::writeToFits(const std::string& outputfile) const {
   if (status) {
     fits_report_error(stderr,status);
     throw pofdExcept("PD", "writeToFits",
-		     "Error creating FITS output file", 1);
+                     "Error creating FITS output file", 1);
   }
 
   long axissize[1];
@@ -398,20 +398,20 @@ int PD::writeToFits(const std::string& outputfile) const {
   float crpix = 1;
   double tmpval;
   fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE1"),
-		 const_cast<char*>("FLUX"),
-		 const_cast<char*>("Type of Data axis 1"), &status);
+                 const_cast<char*>("FLUX"),
+                 const_cast<char*>("Type of Data axis 1"), &status);
   fits_write_key(fp, TFLOAT, const_cast<char*>("CRPIX1"), &crpix, 
-		 const_cast<char*>("Ref pix of axis 1"), &status);
+                 const_cast<char*>("Ref pix of axis 1"), &status);
   tmpval = minflux;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &tmpval, 
-		 const_cast<char*>("val at ref pix"), &status);
+                 const_cast<char*>("val at ref pix"), &status);
   tmpval = dflux;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CDELT1"), &tmpval,
-		 const_cast<char*>("delta along axis 1"), &status);
+                 const_cast<char*>("delta along axis 1"), &status);
 
   int lg = static_cast<int>(logflat);
   fits_write_key(fp, TLOGICAL, const_cast<char*>("LOG"), &lg,
-		 const_cast<char*>("Is log P(D) stored?"), &status);
+                 const_cast<char*>("Is log P(D) stored?"), &status);
 
   //Do data writing.  
   long fpixel[1] = { 1 };
@@ -432,11 +432,11 @@ int PD::writeToFits(const std::string& outputfile) const {
 void PD::writeToHDF5(const std::string& outputfile) const {
   hid_t file_id;
   file_id = H5Fcreate(outputfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
-		      H5P_DEFAULT);
+                      H5P_DEFAULT);
   if (H5Iget_ref(file_id) < 0) {
     H5Fclose(file_id);
     throw pofdExcept("PD", "writeToHDF5",
-		     "Failed to open HDF5 file to write", 1);
+                     "Failed to open HDF5 file to write", 1);
   }
 
   hsize_t adims;
@@ -447,16 +447,16 @@ void PD::writeToHDF5(const std::string& outputfile) const {
   adims = 1;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   att_id = H5Acreate2(file_id, "isLog", H5T_NATIVE_HBOOL,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   bl = static_cast<hbool_t>(logflat);
   H5Awrite(att_id, H5T_NATIVE_HBOOL, &bl);
   H5Aclose(att_id);
   att_id = H5Acreate2(file_id, "dflux", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux);
   H5Aclose(att_id);
   att_id = H5Acreate2(file_id, "minflux", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &minflux);
   H5Aclose(att_id);
   H5Sclose(mems_id);
@@ -468,16 +468,16 @@ void PD::writeToHDF5(const std::string& outputfile) const {
   adims = n;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(file_id, "Flux", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	   H5P_DEFAULT, flux);
+           H5P_DEFAULT, flux);
   H5Dclose(dat_id);
   delete[] flux;
 
   dat_id = H5Dcreate2(file_id, "PD", H5T_NATIVE_DOUBLE, mems_id,
-		      H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	   H5P_DEFAULT, pd_);
+           H5P_DEFAULT, pd_);
   H5Dclose(dat_id);
   H5Sclose(mems_id);
 
@@ -494,7 +494,7 @@ double PD::getLogLike(const simImage& data, unsigned int sparcity) const {
                                     "pd not filled before likelihood calc", 1);
   unsigned int ndata = data.getN1() * data.getN2();
   if (ndata == 0) throw pofdExcept("PD", "getLogLike",
-				   "No data present", 2);
+                                   "No data present", 2);
   if (data.isBinned()) return getLogLikeBinned(data, sparcity);
   else return getLogLikeUnbinned(data, sparcity);
 }
@@ -503,10 +503,10 @@ double PD::getLogLikeBinned(const simImage& data, unsigned int sparcity) const {
 
   if (!data.isBinned())
     throw pofdExcept("PD", "getLogLikeBinned",
-		     "Data is not binned", 1);
+                     "Data is not binned", 1);
   if ((sparcity > 1) && (sparcity != data.binSparcity()))
     throw pofdExcept("PD", "getLogLikeBinned",
-		     "Sparcity of binning doesn't match request", 2);
+                     "Sparcity of binning doesn't match request", 2);
       
   //Quantities for edge test
   double maxflux = minflux + static_cast<double>(n - 1) * dflux;
@@ -532,14 +532,14 @@ double PD::getLogLikeBinned(const simImage& data, unsigned int sparcity) const {
       //Get effective index
       if (cflux < minflux) loglike += static_cast<double>(ninbin) * pd_[0];
       else if (cflux > maxfluxval) 
-	loglike += static_cast<double>(ninbin)  *pd_[n-1];
+        loglike += static_cast<double>(ninbin)  *pd_[n-1];
       else {
         //Not off edge
-	delt = (cflux - minflux) * idflux;
-	idx = static_cast<int>(delt);
-	t   = delt - static_cast<double>(idx);
-	loglike += ((1.0 - t) * pd_[idx] + t * pd_[idx+1]) *
-	  static_cast<double>(ninbin);
+        delt = (cflux - minflux) * idflux;
+        idx = static_cast<int>(delt);
+        t   = delt - static_cast<double>(idx);
+        loglike += ((1.0 - t) * pd_[idx] + t * pd_[idx+1]) *
+          static_cast<double>(ninbin);
       }
     }
   } else {
@@ -554,13 +554,13 @@ double PD::getLogLikeBinned(const simImage& data, unsigned int sparcity) const {
       delt = (cflux - minflux) * idflux;
       idx = static_cast<int>(delt);
       if (cflux < minflux) 
-	loglike += static_cast<double>(ninbin)*log2(pd_[0]);
+        loglike += static_cast<double>(ninbin)*log2(pd_[0]);
       else if (cflux > maxfluxval) 
-	loglike += static_cast<double>(ninbin)*log2(pd_[n-1]);
+        loglike += static_cast<double>(ninbin)*log2(pd_[n-1]);
       else {
-	t   = delt - static_cast<double>(idx);
-	loglike += ((1.0 - t) * log2(pd_[idx]) + t * log2(pd_[idx+1])) *
-	  static_cast<double>(ninbin);
+        t   = delt - static_cast<double>(idx);
+        loglike += ((1.0 - t) * log2(pd_[idx]) + t * log2(pd_[idx+1])) *
+          static_cast<double>(ninbin);
       }
     }
   }
@@ -569,13 +569,13 @@ double PD::getLogLikeBinned(const simImage& data, unsigned int sparcity) const {
 }
 
 double PD::getLogLikeUnbinned(const simImage& data, 
-			      unsigned int sparcity) const {
+                              unsigned int sparcity) const {
 
   unsigned int ndata = data.getN1() * data.getN2();
 
   if (sparcity > ndata)
     throw pofdExcept("PD", "getLogLikeUnbinned",
-		     "sparcity is larger than data size", 1);
+                     "sparcity is larger than data size", 1);
 
   //Quantities for edge test
   double maxflux = minflux + static_cast<double>(n-1)*dflux;
@@ -600,10 +600,10 @@ double PD::getLogLikeUnbinned(const simImage& data,
       else if (cflux >= maxfluxval) loglike += pd_[n-1];
       else {
         //Not off edge
-	delt = (cflux - minflux) * idflux;
-	idx = static_cast<int>(delt);
-	t   = delt - static_cast<double>(idx);
-	loglike += (1.0 - t) * pd_[idx] + t * pd_[idx+1];
+        delt = (cflux - minflux) * idflux;
+        idx = static_cast<int>(delt);
+        t   = delt - static_cast<double>(idx);
+        loglike += (1.0 - t) * pd_[idx] + t * pd_[idx+1];
       }
     }
   } else {
@@ -616,10 +616,10 @@ double PD::getLogLikeUnbinned(const simImage& data,
       if (cflux <= minflux) loglike += log2(pd_[0]);
       else if (cflux >= maxfluxval) loglike += log2(pd_[n-1]);
       else {
-	delt = (cflux - minflux) * idflux;
-	idx = static_cast<int>(delt);
-	t   = delt - static_cast<double>(idx);
-	loglike += (1.0 - t) * log2(pd_[idx]) + t * log2(pd_[idx+1]);
+        delt = (cflux - minflux) * idflux;
+        idx = static_cast<int>(delt);
+        t   = delt - static_cast<double>(idx);
+        loglike += (1.0 - t) * log2(pd_[idx]) + t * log2(pd_[idx+1]);
       }
     }
   }

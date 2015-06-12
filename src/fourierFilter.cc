@@ -20,7 +20,7 @@ double NaN = std::numeric_limits<double>::quiet_NaN();
   This version of the constructor sets up only matched filtering
 */
 fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
-			     double sigc, bool quickfft, bool fixedsize):
+                             double sigc, bool quickfft, bool fixedsize):
   initialized(false), doHipass(false), doMatched(true),
   allowResize(!fixedsize), nx(0), ny(0), pixscale(pixsize), filtscale(NaN),
   qfactor(NaN),  fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(0),
@@ -29,19 +29,19 @@ fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
   // Check inputs
   if (fwhm <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) FWHM", 3);
+                     "Invalid (non-positive) FWHM", 3);
   if (pixsize <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) pixsize", 4);
+                     "Invalid (non-positive) pixsize", 4);
   if (fwhm / pixsize < 2.0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Insufficiently sampled FWHM", 5);
+                     "Insufficiently sampled FWHM", 5);
   if (sigi <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) sigi", 6);
+                     "Invalid (non-positive) sigi", 6);
   if (sigc <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) sigc", 7);
+                     "Invalid (non-positive) sigc", 7);
 
 
   // Set plan style.  We don't support WISDOM here because our image
@@ -62,7 +62,7 @@ fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
   This version of the constructor sets up only hipass filtering
 */
 fourierFilter::fourierFilter(double pixsize, double fscale, double q,
-			     bool quickfft, bool fixedsize):
+                             bool quickfft, bool fixedsize):
   initialized(false), doHipass(true), doMatched(false), allowResize(!fixedsize),
   nx(0), ny(0), pixscale(pixsize), filtscale(fscale), qfactor(q),
   fwhm(NaN), sig_inst(NaN), sig_conf(NaN), nyhalf(0),
@@ -71,13 +71,13 @@ fourierFilter::fourierFilter(double pixsize, double fscale, double q,
   // Check inputs
   if (filtscale <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) filtscale", 3);
+                     "Invalid (non-positive) filtscale", 3);
   if (pixsize <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) pixsize", 4);
+                     "Invalid (non-positive) pixsize", 4);
   if (q < 0.0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) q", 5);
+                     "Invalid (non-positive) q", 5);
 
 
   // Set plan style.  We don't support WISDOM here because our image
@@ -102,8 +102,8 @@ fourierFilter::fourierFilter(double pixsize, double fscale, double q,
   This version of the constructor sets up both hipass and matched filtering
 */
 fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
-			     double sigc, double fscale, double q,
-			     bool quickfft, bool fixedsize):
+                             double sigc, double fscale, double q,
+                             bool quickfft, bool fixedsize):
   initialized(false), doHipass(true), doMatched(true), allowResize(!fixedsize),
   nx(0), ny(0), pixscale(pixsize), filtscale(fscale), qfactor(q), 
   fwhm(FWHM), sig_inst(sigi), sig_conf(sigc), nyhalf(0),
@@ -112,25 +112,25 @@ fourierFilter::fourierFilter(double pixsize, double FWHM, double sigi,
   // Check inputs
   if (fwhm <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) FWHM", 3);
+                     "Invalid (non-positive) FWHM", 3);
   if (pixsize <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) pixsize", 4);
+                     "Invalid (non-positive) pixsize", 4);
   if (fwhm / pixsize < 2.0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Insufficiently sampled FWHM", 5);
+                     "Insufficiently sampled FWHM", 5);
   if (sigi <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) sigi", 6);
+                     "Invalid (non-positive) sigi", 6);
   if (sigc <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) sigc", 7);
+                     "Invalid (non-positive) sigc", 7);
   if (filtscale <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) filtscale", 8);
+                     "Invalid (non-positive) filtscale", 8);
   if (pixsize <= 0)
     throw pofdExcept("fourierFilter", "fourierFilter", 
-		     "Invalid (non-positive) pixsize", 9);
+                     "Invalid (non-positive) pixsize", 9);
 
   // Set plan style.  We don't support WISDOM here because our image
   //  sizes are unlikely to be regular enough to be prepared.
@@ -189,7 +189,7 @@ void fourierFilter::setup_beam(double* const bm) const {
   style of planning except FFTW_ESTIMATE
 */
 void fourierFilter::setup_plans(double* const rl,
-				fftw_complex* const im) const {
+                                fftw_complex* const im) const {
 
   unsigned intx = static_cast<int>(nx);
   unsigned inty = static_cast<int>(ny);
@@ -290,7 +290,7 @@ void fourierFilter::setup_matched() const {
 
   if (maxval <= 0.0)
     throw pofdExcept("fourierFilter", "setup",
-		     "Invalid recovered maximum value", 3);
+                     "Invalid recovered maximum value", 3);
 
   double scalefac = 1.0 / maxval;
   for (unsigned int i = 0; i < nx * nyhalf; ++i) {
@@ -346,7 +346,7 @@ bool fourierFilter::setup(unsigned int NX, unsigned int NY) const {
   if ((NX != nx) || (NY != ny)) {
     if ((!allowResize) && (nx != 0))
       throw pofdExcept("fourierFilter", "filter",
-		       "Can only resize the first time this is called", 1);
+                       "Can only resize the first time this is called", 1);
     // Have to resize; clean up and mark as uninitialized.
     if (filt_fft != nullptr) { fftw_free(filt_fft); filt_fft = nullptr; }
     if (map_fft != nullptr) { fftw_free(map_fft); map_fft = nullptr; }
@@ -412,14 +412,14 @@ double fourierFilter::meanSub(double* const data) const {
   with the same n1, n2 every time to avoid setup overheads.
 */
 void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
-			   double* const data) const {
+                           double* const data) const {
   const double nsig = 5.0; //Number of sigma out we go out in highpass Gaussian
 
   double reldiff = fabs(pixsize - pixscale) / pixscale;
   if (reldiff > 1e-4) {
     std::stringstream errstr;
     errstr << "Pixel size (" << pixsize << ") doesn't match what this filter"
-	   << " was set up with (" << pixscale << ")";
+           << " was set up with (" << pixscale << ")";
     throw pofdExcept("fourierFilter", "filter", errstr.str(), 1);
   }
 
@@ -493,41 +493,41 @@ void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
       set1dist = sqrt(set1dist2);
       sigfac = -0.5 / (qfactor * qfactor * set1dist2); // -1/2*sigma^2
       for (unsigned int i = 0; i < nx; ++i) {
-	if (i <= nx / 2) iwrap = i; else iwrap = nx - i;
-	kx2 = static_cast<double>(iwrap * iwrap);
-	if (kx2 > set1dist2) continue; // Filter is always 1 for this i
-	// If that didn't already continue, we have to check j by j
-	rowidx = i * nyhalf;
-	for (unsigned int j = 0; j < nyhalf; ++j) {
-	  dist2 = kx2 + static_cast<double>(j * j); // Distance2 from 0
-	  if (dist2 > set1dist2) {} //Filter is 1
-	  else if (dist2 <= set0dist2) { // Filter is 0
-	    map_fft[rowidx + j][0] = 0.0;
-	    map_fft[rowidx + j][1] = 0.0;
-	  } else {
-	    // On the Gaussian.  This is the messiest case
-	    reldist = set1dist - sqrt(dist2); // distance from edge of 1 region
-	    expmult = exp(sigfac * reldist * reldist);
-	    map_fft[rowidx + j][0] *= expmult;
-	    map_fft[rowidx + j][1] *= expmult;
-	  }
-	}
+        if (i <= nx / 2) iwrap = i; else iwrap = nx - i;
+        kx2 = static_cast<double>(iwrap * iwrap);
+        if (kx2 > set1dist2) continue; // Filter is always 1 for this i
+        // If that didn't already continue, we have to check j by j
+        rowidx = i * nyhalf;
+        for (unsigned int j = 0; j < nyhalf; ++j) {
+          dist2 = kx2 + static_cast<double>(j * j); // Distance2 from 0
+          if (dist2 > set1dist2) {} //Filter is 1
+          else if (dist2 <= set0dist2) { // Filter is 0
+            map_fft[rowidx + j][0] = 0.0;
+            map_fft[rowidx + j][1] = 0.0;
+          } else {
+            // On the Gaussian.  This is the messiest case
+            reldist = set1dist - sqrt(dist2); // distance from edge of 1 region
+            expmult = exp(sigfac * reldist * reldist);
+            map_fft[rowidx + j][0] *= expmult;
+            map_fft[rowidx + j][1] *= expmult;
+          }
+        }
       }
     } else {
       // No gaussian apodization
       // 1 outside this radius^2, 0 inside
       for (unsigned int i = 0; i < nx; ++i) {
-	if (i <= nx / 2) iwrap = i; else iwrap = nx - i;
-	kx2 = static_cast<double>(iwrap * iwrap);
-	if (kx2 > set1dist2) continue;
-	rowidx = i * nyhalf;
-	for (unsigned int j = 0; j < nyhalf; ++j) {
-	  dist2 = kx2 + static_cast<double>(j * j); // Distance from 0
-	  if (dist2 <= set1dist2) { // Filter is 0
-	    map_fft[rowidx + j][0] = 0.0;
-	    map_fft[rowidx + j][1] = 0.0;
-	  }
-	}
+        if (i <= nx / 2) iwrap = i; else iwrap = nx - i;
+        kx2 = static_cast<double>(iwrap * iwrap);
+        if (kx2 > set1dist2) continue;
+        rowidx = i * nyhalf;
+        for (unsigned int j = 0; j < nyhalf; ++j) {
+          dist2 = kx2 + static_cast<double>(j * j); // Distance from 0
+          if (dist2 <= set1dist2) { // Filter is 0
+            map_fft[rowidx + j][0] = 0.0;
+            map_fft[rowidx + j][1] = 0.0;
+          }
+        }
       }
     }
     // Since FFTW does unscaled transforms, we need to fix the scaling. 
@@ -536,8 +536,8 @@ void fourierFilter::filter(unsigned int n1, unsigned int n2, double pixsize,
     if (!doMatched) {
       double scalfac = 1.0 / nxny;
       for (unsigned int i = 1; i < nx * nyhalf; ++i) {
-	map_fft[i][0] *= scalfac;
-	map_fft[i][1] *= scalfac;
+        map_fft[i][0] *= scalfac;
+        map_fft[i][1] *= scalfac;
       }
     }
   }

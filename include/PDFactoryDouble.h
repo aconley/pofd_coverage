@@ -96,18 +96,18 @@ class PDFactoryDouble {
 
   /*! \brief Sets RFlux1, Rflux2, with wrapping */
   void initRFlux(unsigned int n, double minflux1, double maxflux1,
-		 double minflux2, double maxflux2);
+                 double minflux2, double maxflux2);
 
   /*! \brief Figure out min/max flux densities where R is non-zero */
   std::pair<dblpair, dblpair> getMinMaxR(const numberCountsDouble&,
-					 const doublebeamHist&) const;
+                                         const doublebeamHist&) const;
 
   //*! \brief Compute means and variances from R */
   std::pair<dblpair, dblpair> getRMoments(unsigned int n, 
-					  const numberCountsDouble&,
-					  const doublebeamHist&,
-					  std::pair<dblpair, dblpair>&,
-					  bool setEdge=true);
+                                          const numberCountsDouble&,
+                                          const doublebeamHist&,
+                                          std::pair<dblpair, dblpair>&,
+                                          bool setEdge=true);
 
   /*! \brief Moves P(D) over to output variable inside getPD */
   void unwrapPD(double n0, unsigned int n, PDDouble& pd) const;
@@ -137,14 +137,14 @@ class PDFactoryDouble {
 
   /*! \brief Initializes R */
   void initR(unsigned int n, double minflux1, double maxflux1, 
-	     double minflux2, double maxflux2, const numberCountsDouble& model,
-	     const doublebeamHist& bm, bool setEdge=true, bool muldflux=false);
+             double minflux2, double maxflux2, const numberCountsDouble& model,
+             const doublebeamHist& bm, bool setEdge=true, bool muldflux=false);
 
   /*! \brief Initializes P(D) by computing R and forward transforming it*/
   void initPD(unsigned int n, double inst_sigma1, double inst_sigma2, 
-	      double maxflux1, double maxflux2, double maxn0,
-	      const numberCountsDouble& model, const doublebeamHist& bm,
-	      bool setEdge=true);
+              double maxflux1, double maxflux2, double maxn0,
+              const numberCountsDouble& model, const doublebeamHist& bm,
+              bool setEdge=true);
 
   /*! \brief Gets P(D) with specified noise levels */
   void getPD(double, PDDouble&, bool setLog=true);

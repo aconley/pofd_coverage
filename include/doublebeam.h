@@ -24,12 +24,12 @@ class doublebeam {
   
   /*!\brief Inner beam generator, no filtering*/
   void getRawBeam(unsigned int band, unsigned int n1, unsigned int n2, 
-		  double pixsize, double* const bm) const;
+                  double pixsize, double* const bm) const;
 
   /*!\brief Inner beam generator, no filtering, with oversampling*/
   void getRawBeam(unsigned int band, unsigned int n1, unsigned int n2, 
-		  double pixsize, unsigned int oversamp, 
-		  double* const bm) const;
+                  double pixsize, unsigned int oversamp, 
+                  double* const bm) const;
 
  public :
   doublebeam(double FWHM1=10.0, double FWHM2=15.0); //!< Constructor with FWHM
@@ -47,32 +47,32 @@ class doublebeam {
 
   /*! \brief Get factorized beam*/
   void getBeamFac(unsigned int band, unsigned int n, 
-		  double pixsize, double* const fac) const;
+                  double pixsize, double* const fac) const;
 
   /*!\brief Get 2D beam, square*/
   void getBeam(unsigned int band, unsigned int n, double pixsize, 
-	       double* const, const fourierFilter* const=nullptr) const;
+               double* const, const fourierFilter* const=nullptr) const;
   /*!\brief Get 2D beam, arb size*/
   void getBeam(unsigned int band, unsigned int n1, unsigned int n2, 
-	       double pixsize, double* const, 
-	       const fourierFilter* const=nullptr) const;
+               double pixsize, double* const, 
+               const fourierFilter* const=nullptr) const;
 
   /*!\brief Get 2D beam with oversampling, square*/
   void getBeam(unsigned int band, unsigned int n, double pixsize, 
-	       unsigned int oversamp, double* const, 
-	       const fourierFilter* const=nullptr) const;
+               unsigned int oversamp, double* const, 
+               const fourierFilter* const=nullptr) const;
 
   /*!\brief Get 2D beam with oversampling, arb size*/
   void getBeam(unsigned int band, unsigned int n1, unsigned int n2, 
-	       double pixsize, unsigned int oversamp, double* const, 
-	       const fourierFilter* const=nullptr) const;
+               double pixsize, unsigned int oversamp, double* const, 
+               const fourierFilter* const=nullptr) const;
 
   /*!\brief Write the beams to a FITS file*/
   void writeToFits(const std::string& outfile, double pixsize, 
-		   double nfwhm=3.5, unsigned int oversamp=1,
-		   const fourierFilter* const filt1=nullptr, 
-		   const fourierFilter* const filt2=nullptr,
-		   bool inverse=false) const;
+                   double nfwhm=3.5, unsigned int oversamp=1,
+                   const fourierFilter* const filt1=nullptr, 
+                   const fourierFilter* const filt2=nullptr,
+                   bool inverse=false) const;
 };
 
 /*!
@@ -159,17 +159,17 @@ class doublebeamHist {
 
   /*!\brief Fill from beam, number of FWHM version*/
   void fill(const doublebeam& bm, double nfwhm, double pixsize,
-	    bool inv=false, unsigned int oversamp=1, 
-	    const fourierFilter* const filt1=nullptr, 
-	    const fourierFilter* const filt2=nullptr, 
-	    double num_fwhm_keep=0);
+            bool inv=false, unsigned int oversamp=1, 
+            const fourierFilter* const filt1=nullptr, 
+            const fourierFilter* const filt2=nullptr, 
+            double num_fwhm_keep=0);
 
   /*!\brief Fill from beam, arb size version*/
   void fill(const doublebeam& bm, unsigned int n1, unsigned int n2, 
-	    double pixsize, bool inv=false, unsigned int oversamp=1, 
-	    const fourierFilter* const filt1=nullptr, 
-	    const fourierFilter* const filt2=nullptr, 
-	    double num_fwhm_keep=0);
+            double pixsize, bool inv=false, unsigned int oversamp=1, 
+            const fourierFilter* const filt1=nullptr, 
+            const fourierFilter* const filt2=nullptr, 
+            double num_fwhm_keep=0);
 
   /*! \brief Write out as FITS file*/
   void writeToFits(const std::string&) const;

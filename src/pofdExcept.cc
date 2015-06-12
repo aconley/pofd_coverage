@@ -13,8 +13,8 @@
   \param[in] inerr Error number
 */
 void pofdExcept::init(const std::string& inclass,
-		      const std::string& inmethod,
-		      const std::string& inerrstr,int inerr) {
+                      const std::string& inmethod,
+                      const std::string& inerrstr,int inerr) {
   errclass=inclass;
   errmethod=inmethod;
   errstr=inerrstr;
@@ -47,8 +47,8 @@ pofdExcept::pofdExcept(const std::string errstr,int err) {
   Error with error string, class and method generating exception
 */
 pofdExcept::pofdExcept(const std::string errclass,
-				 const std::string errmethod,
-				 const std::string errstr) {
+                                 const std::string errmethod,
+                                 const std::string errstr) {
   init(errclass,errmethod,errstr,0);
   classset = methodset = strset = true;
 }
@@ -57,8 +57,8 @@ pofdExcept::pofdExcept(const std::string errclass,
   Full error specification: error std::string, number, class, and method.
  */
 pofdExcept::pofdExcept(const std::string errclass,
-				 const std::string errmethod,
-				 const std::string errstr,int err) {
+                                 const std::string errmethod,
+                                 const std::string errstr,int err) {
   init(errclass,errmethod,errstr,err);
   classset = methodset = strset = errset = true;
 }

@@ -31,12 +31,12 @@ void doublebeam::setFWHM(double FWHM1, double FWHM2) {
 
 dblpair doublebeam::getEffectiveArea() const {
   return std::make_pair(pofd_coverage::pi/rhosq1,
-			pofd_coverage::pi/rhosq2);
+                        pofd_coverage::pi/rhosq2);
 }
 
 dblpair doublebeam::getEffectiveAreaSq() const {
   return std::make_pair(0.5 * pofd_coverage::pi/rhosq1,
-			0.5 * pofd_coverage::pi/rhosq2);
+                        0.5 * pofd_coverage::pi/rhosq2);
 }
 
 /*!
@@ -49,7 +49,7 @@ dblpair doublebeam::getEffectiveAreaSq() const {
   The doublebeam is center normalized.
 */
 void doublebeam::getBeamFac(unsigned int band, unsigned int n, double pixsize,
-			    double* const fac) const {
+                            double* const fac) const {
 
   //Input checks
   if (n == 0) {
@@ -110,8 +110,8 @@ void doublebeam::getBeamFac(unsigned int band, unsigned int n, double pixsize,
   center of the beam is at n1/2, n2/2 (integer arithmetic).
 */
 void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
-			    unsigned int n2, double pixsize,
-			    double* const bm) const {
+                            unsigned int n2, double pixsize,
+                            double* const bm) const {
 
   //Input checks
   if (n1 == 0) {
@@ -206,8 +206,8 @@ void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
   Filtering is not supported
 */
 void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
-			    unsigned int n2, double pixsize,
-			    unsigned int oversamp, double* const bm) const {
+                            unsigned int n2, double pixsize,
+                            unsigned int oversamp, double* const bm) const {
 
   //Quick return
   if (oversamp == 1) {
@@ -299,10 +299,10 @@ void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
     for (unsigned int i_p = minip; i_p < maxip; ++i_p) {
       val = fac1[i_p];
       for (unsigned int j = 0; j < n2; ++j) {
-	minjp = j * oversamp;
-	maxjp = minjp + oversamp;
-	for (unsigned int j_p = minjp; j_p < maxjp; ++j_p)
-	  rowptr[j] += val * fac2[j_p];
+        minjp = j * oversamp;
+        maxjp = minjp + oversamp;
+        for (unsigned int j_p = minjp; j_p < maxjp; ++j_p)
+          rowptr[j] += val * fac2[j_p];
       }
     }
   }
@@ -323,8 +323,8 @@ void doublebeam::getRawBeam(unsigned int band, unsigned int n1,
   The center of the beam is at n/2, n/2 (integer arithmetic).
 */
 void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
-			 double* const bm,
-			 const fourierFilter* const filter) const {
+                         double* const bm,
+                         const fourierFilter* const filter) const {
 
   // pre-filtered beam
   getRawBeam(band, n, n, pixsize, bm);
@@ -346,8 +346,8 @@ void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
   The center of the beam is at n1/2, n2/2 (integer arithmetic).
 */
 void doublebeam::getBeam(unsigned int band, unsigned int n1,
-			 unsigned int n2, double pixsize, double* const bm,
-			 const fourierFilter* const filter) const {
+                         unsigned int n2, double pixsize, double* const bm,
+                         const fourierFilter* const filter) const {
 
   // pre-filtered beam
   getRawBeam(band, n1, n2, pixsize, bm);
@@ -371,8 +371,8 @@ void doublebeam::getBeam(unsigned int band, unsigned int n1,
   The center of the beam is at n/2, n/2 (integer arithmetic).
 */
 void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
-			 unsigned int oversamp, double* const bm,
-			 const fourierFilter* const filter) const {
+                         unsigned int oversamp, double* const bm,
+                         const fourierFilter* const filter) const {
 
   // Pre-filtered beam
   getRawBeam(band, n, n, pixsize, oversamp, bm);
@@ -396,9 +396,9 @@ void doublebeam::getBeam(unsigned int band, unsigned int n, double pixsize,
   The center of the beam is at n1/2, n2/2 (integer arithmetic).
 */
 void doublebeam::getBeam(unsigned int band, unsigned int n1,
-			 unsigned int n2, double pixsize,
-			 unsigned int oversamp, double* const bm,
-			 const fourierFilter* const filter) const {
+                         unsigned int n2, double pixsize,
+                         unsigned int oversamp, double* const bm,
+                         const fourierFilter* const filter) const {
 
   // Pre-filtered beam
   getRawBeam(band, n1, n2, pixsize, oversamp, bm);
@@ -424,24 +424,24 @@ void doublebeam::getBeam(unsigned int band, unsigned int n1,
   There is no way to only filter one of the bands.
 */
 void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
-			     double nfwhm, unsigned int oversamp,
-			     const fourierFilter* const filt1,
-			     const fourierFilter* const filt2,
-			     bool inverse) const {
+                             double nfwhm, unsigned int oversamp,
+                             const fourierFilter* const filt1,
+                             const fourierFilter* const filt2,
+                             bool inverse) const {
   if (nfwhm <= 0.0)
     throw pofdExcept("doublebeam", "writeToFits",
-		     "Invalid (non-positive) nfwhm", 1);
+                     "Invalid (non-positive) nfwhm", 1);
   if (pixsize <= 0.0)
     throw pofdExcept("doublebeam", "writeToFits",
-		     "Invalid (non-positive) pixel size", 3);
+                     "Invalid (non-positive) pixel size", 3);
   if (oversamp % 2 == 0)
     throw pofdExcept("doublebeam", "writeToFits",
-		     "Invalid (non-odd) oversampling", 4);
+                     "Invalid (non-odd) oversampling", 4);
 
   // Figure out how many pixels we are going to use
   double fwhm = fwhm1 > fwhm2 ? fwhm1 : fwhm2;
   unsigned int npix = static_cast<unsigned int>(nfwhm * fwhm / pixsize +
-						0.9999999999);
+                                                0.9999999999);
   npix = 2 * npix + 1;
 
   // Write
@@ -470,73 +470,73 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
   bool ubl;
   double dtmp;
   fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &inverse,
-		 const_cast<char*>("Inverse beam?"), &status);
+                 const_cast<char*>("Inverse beam?"), &status);
   dtmp = fwhm1;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp,
-		 const_cast<char*>("FWHM band 1 [arcsec]"), &status);
+                 const_cast<char*>("FWHM band 1 [arcsec]"), &status);
   dtmp = pixsize;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp,
-		 const_cast<char*>("Pixel scale [arcsec]"), &status);
+                 const_cast<char*>("Pixel scale [arcsec]"), &status);
   dtmp = nfwhm;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
-		 const_cast<char*>("Number of FWHM out"), &status);
+                 const_cast<char*>("Number of FWHM out"), &status);
   if (f1 != nullptr) {
     ubl = true;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
-		   const_cast<char*>("Beam filtered?"), &status);
+                   const_cast<char*>("Beam filtered?"), &status);
     ubl = f1->isHipass();
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIPASS"), &ubl,
-		   const_cast<char*>("Hipass filtered?"), &status);
+                   const_cast<char*>("Hipass filtered?"), &status);
     if (ubl) {
       dtmp = f1->getFiltScale();
       if (dtmp > 0)
-	fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
-		       const_cast<char*>("Hipass filtering scale [arcsec]"),
-		       &status);
+        fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
+                       const_cast<char*>("Hipass filtering scale [arcsec]"),
+                       &status);
       dtmp = f1->getQFactor();
       if (dtmp > 0)
-	fits_write_key(fp, TDOUBLE, const_cast<char*>("QFACTOR"), &dtmp,
-		       const_cast<char*>("Hipass filtering apodization"),
-		       &status);
+        fits_write_key(fp, TDOUBLE, const_cast<char*>("QFACTOR"), &dtmp,
+                       const_cast<char*>("Hipass filtering apodization"),
+                       &status);
     }
     ubl = f1->isMatched();
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MATCHED"), &ubl,
-		   const_cast<char*>("Match filtered?"), &status);
+                   const_cast<char*>("Match filtered?"), &status);
     if (ubl) {
       dtmp = f1->getFWHM();
       if (dtmp > 0)
-	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATFWHM"), &dtmp,
-		       const_cast<char*>("Matched filtering fwhm [arcsec]"),
-		       &status);
+        fits_write_key(fp, TDOUBLE, const_cast<char*>("MATFWHM"), &dtmp,
+                       const_cast<char*>("Matched filtering fwhm [arcsec]"),
+                       &status);
       dtmp = f1->getSigInst();
       if (dtmp > 0)
-	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGI"), &dtmp,
-		       const_cast<char*>("Matched filtering sig_i [Jy]"),
-		       &status);
+        fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGI"), &dtmp,
+                       const_cast<char*>("Matched filtering sig_i [Jy]"),
+                       &status);
       dtmp = f1->getSigConf();
       if (dtmp > 0)
-	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGC"), &dtmp,
-		       const_cast<char*>("Matched filtering sig_c [Jy]"),
-		       &status);
+        fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGC"), &dtmp,
+                       const_cast<char*>("Matched filtering sig_c [Jy]"),
+                       &status);
     }
   } else {
     ubl = false;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
-		   const_cast<char*>("Filtered?"), &status);
+                   const_cast<char*>("Filtered?"), &status);
   }
 
   if (oversamp > 1) {
     unsigned int utmp;
     utmp = oversamp;
     fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
-		   const_cast<char*>("Oversampling"), &status);
+                   const_cast<char*>("Oversampling"), &status);
   }
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
-		 const_cast<char*>(pofd_coverage::version),
-		 const_cast<char*>("pofd_coverage version"),
-		 &status);
+                 const_cast<char*>(pofd_coverage::version),
+                 const_cast<char*>("pofd_coverage version"),
+                 &status);
   fits_write_history(fp, const_cast<char*>("Beam from pofd_coverage"),
-		     &status);
+                     &status);
   fits_write_date(fp, &status);
 
   // Get
@@ -551,7 +551,7 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
   for (unsigned int j = 0; j < npix; ++j) {
     if (inverse)
       for (unsigned int i = 0; i < npix; ++i)
-	tmpdata[i] = 1.0 / bmtmp[i * npix + j];
+        tmpdata[i] = 1.0 / bmtmp[i * npix + j];
     else
       for (unsigned int i = 0; i < npix; ++i) tmpdata[i] = bmtmp[i * npix + j];
     fpixel[1] = static_cast<long>(j + 1);
@@ -561,80 +561,80 @@ void doublebeam::writeToFits(const std::string& outputfile, double pixsize,
   // Band 2 beam
   fits_create_img(fp, DOUBLE_IMG, 2, axissize, &status);
   fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &inverse,
-		 const_cast<char*>("Inverse beam?"), &status);
+                 const_cast<char*>("Inverse beam?"), &status);
   dtmp = fwhm2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp,
-		 const_cast<char*>("FWHM band 2 [arcsec]"), &status);
+                 const_cast<char*>("FWHM band 2 [arcsec]"), &status);
   dtmp = pixsize;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp,
-		 const_cast<char*>("Pixel scale [arcsec]"), &status);
+                 const_cast<char*>("Pixel scale [arcsec]"), &status);
   dtmp = nfwhm;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
-		 const_cast<char*>("Number of FWHM out"), &status);
+                 const_cast<char*>("Number of FWHM out"), &status);
 
   if (f2 != nullptr) {
     ubl = true;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
-		   const_cast<char*>("Filtered?"), &status);
+                   const_cast<char*>("Filtered?"), &status);
     ubl = f2->isHipass();
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIPASS"), &ubl,
-		   const_cast<char*>("Hipass filtered?"), &status);
+                   const_cast<char*>("Hipass filtered?"), &status);
     if (ubl) {
       dtmp = f2->getFiltScale();
       if (dtmp > 0)
-	fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
-		       const_cast<char*>("Hipass filtering scale [arcsec]"),
-		       &status);
+        fits_write_key(fp, TDOUBLE, const_cast<char*>("FILTSCL"), &dtmp,
+                       const_cast<char*>("Hipass filtering scale [arcsec]"),
+                       &status);
       dtmp = f2->getQFactor();
       if (dtmp > 0)
-	fits_write_key(fp, TDOUBLE, const_cast<char*>("QFACTOR"), &dtmp,
-		       const_cast<char*>("Hipass filtering apodization"),
-		       &status);
+        fits_write_key(fp, TDOUBLE, const_cast<char*>("QFACTOR"), &dtmp,
+                       const_cast<char*>("Hipass filtering apodization"),
+                       &status);
     }
     ubl = f2->isMatched();
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MATCHED"), &ubl,
-		   const_cast<char*>("Band 1 match filtered?"), &status);
+                   const_cast<char*>("Band 1 match filtered?"), &status);
     if (ubl) {
       dtmp = f2->getFWHM();
       if (dtmp > 0)
-	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATFWHM"), &dtmp,
-		       const_cast<char*>("Matched filtering fwhm [arcsec]"),
-		       &status);
+        fits_write_key(fp, TDOUBLE, const_cast<char*>("MATFWHM"), &dtmp,
+                       const_cast<char*>("Matched filtering fwhm [arcsec]"),
+                       &status);
       dtmp = f2->getSigInst();
       if (dtmp > 0)
-	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGI"), &dtmp,
-		       const_cast<char*>("Matched filtering1 sig_i [Jy]"),
-		       &status);
+        fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGI"), &dtmp,
+                       const_cast<char*>("Matched filtering1 sig_i [Jy]"),
+                       &status);
       dtmp = f2->getSigConf();
       if (dtmp > 0)
-	fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGC"), &dtmp,
-		       const_cast<char*>("Matched filtering sig_c [Jy]"),
-		       &status);
+        fits_write_key(fp, TDOUBLE, const_cast<char*>("MATSIGC"), &dtmp,
+                       const_cast<char*>("Matched filtering sig_c [Jy]"),
+                       &status);
     }
   } else {
     ubl = false;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("FILT"), &ubl,
-		   const_cast<char*>("Filtered?"), &status);
+                   const_cast<char*>("Filtered?"), &status);
   }
 
   if (oversamp > 1) {
     unsigned int utmp;
     utmp = oversamp;
     fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
-		   const_cast<char*>("Oversampling"), &status);
+                   const_cast<char*>("Oversampling"), &status);
   }
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
-		 const_cast<char*>(pofd_coverage::version),
-		 const_cast<char*>("pofd_coverage version"),
-		 &status);
+                 const_cast<char*>(pofd_coverage::version),
+                 const_cast<char*>("pofd_coverage version"),
+                 &status);
   fits_write_history(fp,const_cast<char*>("Beam from pofd_coverage"),
-		     &status);
+                     &status);
   fits_write_date(fp, &status);
   getBeam(2, npix, pixsize, oversamp, bmtmp, f2); // Also filters
   for ( unsigned int j = 0; j < npix; ++j ) {
     if (inverse)
       for (unsigned int i = 0; i < npix; ++i)
-	tmpdata[i] = 1.0 / bmtmp[i * npix + j];
+        tmpdata[i] = 1.0 / bmtmp[i * npix + j];
     else
       for (unsigned int i = 0; i < npix; ++i) tmpdata[i] = bmtmp[i * npix + j];
     fpixel[1] = static_cast<long>(j + 1);
@@ -664,7 +664,7 @@ doublebeamHist::doublebeamHist(unsigned int NBINS):
 
   if (NBINS == 0)
     throw pofdExcept("doublebeamHist", "doublebeamHist",
-		     "Invalid (non-positive) NBINS", 1);
+                     "Invalid (non-positive) NBINS", 1);
   nbins = NBINS;
   for (unsigned int i = 0; i < 4; ++i) n[i] = 0;
   for (unsigned int i = 0; i < 4; ++i) wt[i] = nullptr;
@@ -672,7 +672,7 @@ doublebeamHist::doublebeamHist(unsigned int NBINS):
   for (unsigned int i = 0; i < 4; ++i) bm2[i] = nullptr;
 
   dblpair NaNpr = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-				 std::numeric_limits<double>::quiet_NaN());
+                                 std::numeric_limits<double>::quiet_NaN());
   for (unsigned int i = 0; i < 4; ++i) minmax1[i] = NaNpr;
   for (unsigned int i = 0; i < 4; ++i) minmax2[i] = NaNpr;
 
@@ -704,14 +704,14 @@ doublebeamHist::~doublebeamHist() {
   There is no way to filter only one of the bands.
 */
 void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
-			  bool inv, unsigned int oversampling,
-			  const fourierFilter* const filt1,
-			  const fourierFilter* const filt2,
-			  double num_fwhm_keep) {
+                          bool inv, unsigned int oversampling,
+                          const fourierFilter* const filt1,
+                          const fourierFilter* const filt2,
+                          double num_fwhm_keep) {
   // Get how many pixels we will go out
   unsigned int npix =
     static_cast<unsigned int>(num_fwhm * bm.getMaxFWHM() / pixsz +
-			      0.9999999999);
+                              0.9999999999);
   npix = 2 * npix + 1;
   fill(bm, npix, npix, pixsz, inv, oversampling, filt1, filt2, num_fwhm_keep);
 }
@@ -727,17 +727,17 @@ void doublebeamHist::fill(const doublebeam& bm, double num_fwhm, double pixsz,
   \param[in] filt2 Fourier space filter to apply in band 2
   \param[in] num_fwhm_keep How many FWHM to keep in the histogram
               after filtering.  If 0 (the default), keeps everything.
-	      If this is applied, the part that is kept is symmetric
+              If this is applied, the part that is kept is symmetric
 
   If filt1 is set but not filt2, then filt1 is applied to both bands.
   There is no way to filter only one of the bands.
 */
 void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
-			  unsigned int n2, double pixsz,
-			  bool inv, unsigned int oversampling,
-			  const fourierFilter* const filt1,
-			  const fourierFilter* const filt2,
-			  double num_fwhm_keep) {
+                          unsigned int n2, double pixsz,
+                          bool inv, unsigned int oversampling,
+                          const fourierFilter* const filt1,
+                          const fourierFilter* const filt2,
+                          double num_fwhm_keep) {
 
   //Always ignore beam values below this
   // Use a lower value than in the 1D version because either beam can
@@ -753,7 +753,7 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
   for (unsigned int i = 0; i < 4; ++i)
     if (bm2[i] != nullptr) { delete[] bm2[i]; bm2[i] = nullptr; }
   dblpair nanpr = std::make_pair(std::numeric_limits<double>::quiet_NaN(),
-			       std::numeric_limits<double>::quiet_NaN());
+                               std::numeric_limits<double>::quiet_NaN());
   for (unsigned int i = 0; i < 4; ++i) minmax1[i] = nanpr;
   for (unsigned int i = 0; i < 4; ++i) minmax2[i] = nanpr;
 
@@ -890,22 +890,22 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
       fval2 = fabs(val2);
       // Ignore anything within [-minval, minval]
       if ((fval1 <= minval) || (fval2 <= minval)) {
-	comparr[i * n2 + j] = 4; //Invalid value -- will be skipped
+        comparr[i * n2 + j] = 4; //Invalid value -- will be skipped
       } else {
-	// Determine the sign component
-	if (val1 > 0) {
-	  if (val2 > 0) comp = 0; else comp = 1;
-	} else {
-	  if (val2 > 0) comp = 2; else comp = 3;
-	}
-	ninbm[comp] += 1;
-	comparr[i * n2 + j] = comp;
+        // Determine the sign component
+        if (val1 > 0) {
+          if (val2 > 0) comp = 0; else comp = 1;
+        } else {
+          if (val2 > 0) comp = 2; else comp = 3;
+        }
+        ninbm[comp] += 1;
+        comparr[i * n2 + j] = comp;
 
-	// Min/max bit
-	if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
-	if (fval1 > maxbinval1[comp]) maxbinval1[comp] = fval1;
-	if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
-	if (fval2 > maxbinval2[comp]) maxbinval2[comp] = fval2;
+        // Min/max bit
+        if (fval1 < minbinval1[comp]) minbinval1[comp] = fval1;
+        if (fval1 > maxbinval1[comp]) maxbinval1[comp] = fval1;
+        if (fval2 < minbinval2[comp]) minbinval2[comp] = fval2;
+        if (fval2 > maxbinval2[comp]) maxbinval2[comp] = fval2;
       }
     }
   }
@@ -961,38 +961,38 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
       istp2 = ihiststep2[compidx];
 
       for (unsigned int i = minidx1; i < maxidx1; ++i) {
-	rowptr1 = bmtmp1 + i * n2;
-	rowptr2 = bmtmp2 + i * n2;
-	for (unsigned int j = minidx2; j < maxidx2; ++j) {
-	  // Skip if not in this component
-	  //  Also skips too-close-to-zeros
-	  if (comparr[i * n2 + j] != compidx) continue;
-	  fval1 = fabs(rowptr1[j]);
-	  fval2 = fabs(rowptr2[j]);
-	  idx1 = static_cast<unsigned int>((log2(fval1) - min1) * istp1);
-	  idx2 = static_cast<unsigned int>((log2(fval2) - min2) * istp2);
-	  if (idx1 >= nbins || idx2 >= nbins) {
-	    std::stringstream errstr;
-	    errstr << "Encountered indexing error with computed index: "
-		   << idx1 << " " << idx2 << " with array size " << nbins
-		   << " from log2(fval1): " << log2(fval1)
-		   << " and log2(fval2): " << log2(fval2)
-		   << " with log2(min) values: " << min1 << " and " << min2
-		   << " in component: " << compidx
-		   << " and raw beam index " << i << " " << j;
-	    throw pofdExcept("doublebeamHist", "fill", errstr.str(), 1);
-	  }
-	  totidx = idx1 * nbins + idx2;
-	  tmpwt[totidx] += 1;
-	  tmphist1[totidx] += fval1;
-	  tmphist2[totidx] += fval2;
-	}
+        rowptr1 = bmtmp1 + i * n2;
+        rowptr2 = bmtmp2 + i * n2;
+        for (unsigned int j = minidx2; j < maxidx2; ++j) {
+          // Skip if not in this component
+          //  Also skips too-close-to-zeros
+          if (comparr[i * n2 + j] != compidx) continue;
+          fval1 = fabs(rowptr1[j]);
+          fval2 = fabs(rowptr2[j]);
+          idx1 = static_cast<unsigned int>((log2(fval1) - min1) * istp1);
+          idx2 = static_cast<unsigned int>((log2(fval2) - min2) * istp2);
+          if (idx1 >= nbins || idx2 >= nbins) {
+            std::stringstream errstr;
+            errstr << "Encountered indexing error with computed index: "
+                   << idx1 << " " << idx2 << " with array size " << nbins
+                   << " from log2(fval1): " << log2(fval1)
+                   << " and log2(fval2): " << log2(fval2)
+                   << " with log2(min) values: " << min1 << " and " << min2
+                   << " in component: " << compidx
+                   << " and raw beam index " << i << " " << j;
+            throw pofdExcept("doublebeamHist", "fill", errstr.str(), 1);
+          }
+          totidx = idx1 * nbins + idx2;
+          tmpwt[totidx] += 1;
+          tmphist1[totidx] += fval1;
+          tmphist2[totidx] += fval2;
+        }
       }
 
       // Count the number of histogram bins.
       unsigned int n_nonzero = 0;
       for (unsigned int i = 0; i < nbins2; ++i)
-	if (tmpwt[i] > 0) ++n_nonzero; // Guaranteed to be > 0
+        if (tmpwt[i] > 0) ++n_nonzero; // Guaranteed to be > 0
 
       // Now we copy the bins to the final array.  Not necessary to zero
       wtptr = new unsigned int[n_nonzero];
@@ -1000,21 +1000,21 @@ void doublebeamHist::fill(const doublebeam& bm, unsigned int n1,
       bm2ptr = new double[n_nonzero];
       unsigned int binidx = 0;
       for (unsigned int i = 0; i < nbins2; ++i) {
-	utmp = tmpwt[i];
-	if (utmp > 0) {
-	  wtptr[binidx] = utmp;
-	  wtval = 1.0 / static_cast<double>(utmp);
-	  bm1ptr[binidx] = tmphist1[i] * wtval;
-	  bm2ptr[binidx] = tmphist2[i] * wtval;
-	  ++binidx;
-	}
+        utmp = tmpwt[i];
+        if (utmp > 0) {
+          wtptr[binidx] = utmp;
+          wtval = 1.0 / static_cast<double>(utmp);
+          bm1ptr[binidx] = tmphist1[i] * wtval;
+          bm2ptr[binidx] = tmphist2[i] * wtval;
+          ++binidx;
+        }
       }
 
       if (inverse) {
-	for (unsigned int i = 0; i < n_nonzero; ++i)
-	  bm1ptr[i] = 1.0 / bm1ptr[i];
-	for (unsigned int i = 0; i < n_nonzero; ++i)
-	  bm2ptr[i] = 1.0 / bm2ptr[i];
+        for (unsigned int i = 0; i < n_nonzero; ++i)
+          bm1ptr[i] = 1.0 / bm1ptr[i];
+        for (unsigned int i = 0; i < n_nonzero; ++i)
+          bm2ptr[i] = 1.0 / bm2ptr[i];
       }
 
       n[compidx] = n_nonzero;
@@ -1068,108 +1068,108 @@ void doublebeamHist::writeToFits(const std::string& outputfile) const {
   double dtmp;
   itmp = inverse;
   fits_write_key(fp, TLOGICAL, const_cast<char*>("INVERSE"), &itmp,
-		 const_cast<char*>("Inverse beam?"), &status);
+                 const_cast<char*>("Inverse beam?"), &status);
   dtmp = fwhm1;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM1"), &dtmp,
-		 const_cast<char*>("FWHM1 [arcsec]"), &status);
+                 const_cast<char*>("FWHM1 [arcsec]"), &status);
   dtmp = fwhm2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM2"), &dtmp,
-		 const_cast<char*>("FWHM1 [arcsec]"), &status);
+                 const_cast<char*>("FWHM1 [arcsec]"), &status);
   dtmp = pixsize;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("PIXSIZE"), &dtmp,
-		 const_cast<char*>("Pixel scale [arcsec]"), &status);
+                 const_cast<char*>("Pixel scale [arcsec]"), &status);
   dtmp = nfwhm;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHM"), &dtmp,
-		 const_cast<char*>("Number of FWHM out"), &status);
+                 const_cast<char*>("Number of FWHM out"), &status);
   dtmp = nfwhmkeep;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("NFWHMKP"), &dtmp,
-		 const_cast<char*>("Number of FWHM kept"), &status);
+                 const_cast<char*>("Number of FWHM kept"), &status);
 
   if (isHipass.first) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT1"), &itmp,
-		   const_cast<char*>("Is beam1 hipass filtered?"), &status);
+                   const_cast<char*>("Is beam1 hipass filtered?"), &status);
     dtmp = filtscale.first;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL1"), &dtmp,
-		   const_cast<char*>("Filtering scale1 [arcsec]"), &status);
+                   const_cast<char*>("Filtering scale1 [arcsec]"), &status);
     dtmp = qfactor.first;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ1"), &dtmp,
-		   const_cast<char*>("Filtering apodization1"), &status);
+                   const_cast<char*>("Filtering apodization1"), &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT1"), &itmp,
-		   const_cast<char*>("Is beam1 hipass filtered?"), &status);
+                   const_cast<char*>("Is beam1 hipass filtered?"), &status);
   }
   if (isHipass.second) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT2"), &itmp,
-		   const_cast<char*>("Is beam2 hipass filtered?"), &status);
+                   const_cast<char*>("Is beam2 hipass filtered?"), &status);
     dtmp = filtscale.second;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL2"), &dtmp,
-		   const_cast<char*>("Filtering scale2 [arcsec]"), &status);
+                   const_cast<char*>("Filtering scale2 [arcsec]"), &status);
     dtmp = qfactor.second;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ2"), &dtmp,
-		   const_cast<char*>("Filtering apodization2"), &status);
+                   const_cast<char*>("Filtering apodization2"), &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT2"), &itmp,
-		   const_cast<char*>("Is beam2 hipass filtered?"), &status);
+                   const_cast<char*>("Is beam2 hipass filtered?"), &status);
   }
   if (isMatched.first) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT1"), &itmp,
-		   const_cast<char*>("Is beam1 match filtered?"), &status);
+                   const_cast<char*>("Is beam1 match filtered?"), &status);
     dtmp = matched_fwhm.first;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITFWHM"), &dtmp,
-		   const_cast<char*>("Matched filtering1 FWHM [arcsec]"),
-		   &status);
+                   const_cast<char*>("Matched filtering1 FWHM [arcsec]"),
+                   &status);
     dtmp = matched_sigi.first;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGI1"), &dtmp,
-		   const_cast<char*>("Matched filtering1 sigi"), &status);
+                   const_cast<char*>("Matched filtering1 sigi"), &status);
     dtmp = matched_sigc.first;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGC1"), &dtmp,
-		   const_cast<char*>("Matched filtering1 sigc"), &status);
+                   const_cast<char*>("Matched filtering1 sigc"), &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT1"), &itmp,
-		   const_cast<char*>("Is beam1 match filtered?"), &status);
+                   const_cast<char*>("Is beam1 match filtered?"), &status);
   }
   if (isMatched.second) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT2"), &itmp,
-		   const_cast<char*>("Is beam2 match filtered?"), &status);
+                   const_cast<char*>("Is beam2 match filtered?"), &status);
     dtmp = matched_fwhm.second;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITFWHM"), &dtmp,
-		   const_cast<char*>("Matched filtering2 FWHM [arcsec]"),
-		   &status);
+                   const_cast<char*>("Matched filtering2 FWHM [arcsec]"),
+                   &status);
     dtmp = matched_sigi.second;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGI2"), &dtmp,
-		   const_cast<char*>("Matched filtering2 sigi"), &status);
+                   const_cast<char*>("Matched filtering2 sigi"), &status);
     dtmp = matched_sigc.second;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGC2"), &dtmp,
-		   const_cast<char*>("Matched filtering2 sigc"), &status);
+                   const_cast<char*>("Matched filtering2 sigc"), &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT2"), &itmp,
-		   const_cast<char*>("Is beam2 match filtered?"), &status);
+                   const_cast<char*>("Is beam2 match filtered?"), &status);
   }
 
   if (oversamp > 1) {
     utmp = oversamp;
     fits_write_key(fp, TUINT, const_cast<char*>("OVERSAMP"), &utmp,
-		   const_cast<char*>("Oversampling"), &status);
+                   const_cast<char*>("Oversampling"), &status);
   }
 
   utmp = nbins;
   fits_write_key(fp, TUINT, const_cast<char*>("NBINS"), &utmp,
-		 const_cast<char*>("Number of bins"), &status);
+                 const_cast<char*>("Number of bins"), &status);
 
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
-		 const_cast<char*>(pofd_coverage::version),
-		 const_cast<char*>("pofd_coverage version"),
-		 &status);
+                 const_cast<char*>(pofd_coverage::version),
+                 const_cast<char*>("pofd_coverage version"),
+                 &status);
   fits_write_history(fp, const_cast<char*>("Beam from pofd_coverage"),
-		     &status);
+                     &status);
   fits_write_date(fp, &status);
 
 
@@ -1181,15 +1181,15 @@ void doublebeamHist::writeToFits(const std::string& outputfile) const {
   for (unsigned int idx=0; idx < 4; ++idx)
     if (n[idx] > 0) {
       fits_create_tbl(fp, BINARY_TBL, 0, 3, ttype, tform, nullptr, label[idx],
-		      &status );
+                      &status );
       fits_insert_rows(fp, 0, n[idx], &status);
       for (unsigned int i = 0; i < n[idx]; ++i) {
-	itmp = static_cast<int>(wt[idx][i]);
-	fits_write_col(fp, TINT, 1, i+1, 1, 1, &itmp, &status);
-	dtmp= bm1[idx][i];
-	fits_write_col(fp, TDOUBLE, 2, i+1, 1, 1, &dtmp, &status);
-	dtmp= bm2[idx][i];
-	fits_write_col(fp, TDOUBLE, 3, i+1, 1, 1, &dtmp, &status);
+        itmp = static_cast<int>(wt[idx][i]);
+        fits_write_col(fp, TINT, 1, i+1, 1, 1, &itmp, &status);
+        dtmp= bm1[idx][i];
+        fits_write_col(fp, TDOUBLE, 2, i+1, 1, 1, &dtmp, &status);
+        dtmp= bm2[idx][i];
+        fits_write_col(fp, TDOUBLE, 3, i+1, 1, 1, &dtmp, &status);
       }
     }
 

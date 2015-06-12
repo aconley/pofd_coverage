@@ -76,29 +76,29 @@ class simImage {
 
   /*! \brief Downsample array */
   void downSample(unsigned int, unsigned int, double* const,
-		  unsigned int, unsigned int, double* const);
+                  unsigned int, unsigned int, double* const);
 
   /*! \brief Does model have valid params */
   bool isValid() const;
 
   void convolveInner(unsigned int, const double* const,
-		     unsigned int, unsigned int, double* const,
-		     double* const) const; //!< Inner convolution function
+                     unsigned int, unsigned int, double* const,
+                     double* const) const; //!< Inner convolution function
 
   /*! \brief Do convolution with beams in place*/
   void convolveWithBeamInPlace(unsigned int, unsigned int, double* const);
   /*! \brief Do convolution with beams, also possibly downsampling */
   void convolveWithBeam(unsigned int, unsigned int, double* const,
-			unsigned int, unsigned int, double* const);
+                        unsigned int, unsigned int, double* const);
   /*! \brief Do convolution with extra smoothing bit */
   void convolveWithAdd();
 
  public:
   /*!\brief Constructor */
   simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
-	   double FWHM, double SIGI, double ESMOOTH=0.0,
-	   unsigned int OVERSAMPLE=1, unsigned int NBINS=1000,
-	   const std::string& powerfile="");
+           double FWHM, double SIGI, double ESMOOTH=0.0,
+           unsigned int OVERSAMPLE=1, unsigned int NBINS=1000,
+           const std::string& powerfile="");
   ~simImage(); //!< Destructor
 
   /*! \brief Set random number generator seed */
@@ -106,8 +106,8 @@ class simImage {
 
   /*! \brief Generate realization of model */
   void realize(const numberCounts& model, double n0,
-	       bool meansub=false, const fourierFilter* const filt=nullptr,
-	       bool bin=false, unsigned int sparsebin=1);
+               bool meansub=false, const fourierFilter* const filt=nullptr,
+               bool bin=false, unsigned int sparsebin=1);
 
   bool isClustered() const { return use_clustered_pos; } //!< Are we using clustered positions?
 
@@ -135,7 +135,7 @@ class simImage {
   /*! \brief Returns noise level estimate for image after smoothing or
     filtering */
   double getFinalNoise(unsigned int ntrials=3,
-		       const fourierFilter* const filt=nullptr) const;
+                       const fourierFilter* const filt=nullptr) const;
 
   double meanSubtract(); //!< Subtract mean from image
   void getMinMax(double& min, double& max) const; //!< Get minima and maxima of data

@@ -62,7 +62,7 @@ int getRSingle(int argc, char** argv) {
   int option_index = 0;
   optind = 1; //!< Reset parse
   while ((c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index)) != -1) 
+                            &option_index)) != -1) 
     switch(c) {
     case 'F':
       filterscale = atof(optarg);
@@ -111,12 +111,12 @@ int getRSingle(int argc, char** argv) {
 
   if (nflux == 0) {
     std::cout << "Error -- number of fluxes requested is zero."
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (nbins == 0) {
     std::cout << "Invalid (non-positive) number of beam histogram bins"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (fwhm <= 0.0) {
@@ -125,7 +125,7 @@ int getRSingle(int argc, char** argv) {
   }
   if (nfwhm <= 0) {
     std::cout << "Invalid (non-positive) number of beam FWHMs"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (oversamp % 2 == 0) {
@@ -150,18 +150,18 @@ int getRSingle(int argc, char** argv) {
   }
   if (qfactor < 0.0) {
     std::cout << "Invalid (negative) high-pass filter q factor" 
-	      << qfactor << std::endl;
+              << qfactor << std::endl;
     return 1;
   }
   if (matched) {
     if (sigi <= 0.0) {
       std::cout << "Invalid (non-positive) sigi for matched filter"
-		<< std::endl;
+                << std::endl;
       return 1;
     }
     if (sigc <= 0.0) {
       std::cout << "Invalid (non-positive) sigc for matched filter"
-		<< std::endl;
+                << std::endl;
       return 1;
     }
   }
@@ -177,10 +177,10 @@ int getRSingle(int argc, char** argv) {
     fourierFilter *filt = nullptr;
     if (filterscale > 0) {
       if (matched) {
-	filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
-				 filterscale, qfactor, true, true);
+        filt = new fourierFilter(pixsize, fwhm, sigi, sigc,
+                                 filterscale, qfactor, true, true);
       } else
-	filt = new fourierFilter(pixsize, filterscale, qfactor, true, true);
+        filt = new fourierFilter(pixsize, filterscale, qfactor, true, true);
     } else if (matched)
       filt = new fourierFilter(pixsize, fwhm, sigi, sigc, true, true);
 
@@ -197,20 +197,20 @@ int getRSingle(int argc, char** argv) {
       printf("   Beam area:          %0.3e\n", bm.getEffectiveArea());
       printf("   Pixel size:         %0.2f\n", pixsize);
       printf("   Flux per area:      %0.2f\n",
-	     model.getBaseFluxPerArea());
+             model.getBaseFluxPerArea());
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
       printf("   N0:                 %0.4e\n", n0);
       if (filterscale > 0.0) {
-	printf("   filter scale:       %0.1f\n", filterscale);
-	printf("   filter q:           %0.2f\n", qfactor);
+        printf("   filter scale:       %0.1f\n", filterscale);
+        printf("   filter q:           %0.2f\n", qfactor);
       }
       if (matched) {
-	printf("   matched fwhm:       %0.1f\n", fwhm);
-	printf("   matched sigi:       %0.4f\n", sigi);
-	printf("   matched sigc:       %0.4f\n", sigc);
+        printf("   matched fwhm:       %0.1f\n", fwhm);
+        printf("   matched sigi:       %0.4f\n", sigi);
+        printf("   matched sigc:       %0.4f\n", sigc);
       }
       if (oversamp != 1)
-	printf("   oversamp:           %u\n", oversamp);
+        printf("   oversamp:           %u\n", oversamp);
     }
 
     // Get R
@@ -228,7 +228,7 @@ int getRSingle(int argc, char** argv) {
     double n0fac = n0 / model.getBaseN0();
     if (n0fac != 1)
       for (unsigned int i = 0; i < nflux; ++i)
-	R[i] *= n0fac;
+        R[i] *= n0fac;
 
     // Write.
     utility::outfiletype oft = utility::getOutputFileType(outfile);
@@ -236,11 +236,11 @@ int getRSingle(int argc, char** argv) {
       if (verbose) std::cout << "Writing as HDF5" << std::endl;
       hid_t file_id;
       file_id = H5Fcreate(outfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
-			  H5P_DEFAULT);
+                          H5P_DEFAULT);
       if (H5Iget_ref(file_id) < 0) {
-	H5Fclose(file_id);
-	throw pofdExcept("pofd_coverge_getR", "pofd_coverage_getR",
-			 "Failed to open HDF5 file to write", 1);
+        H5Fclose(file_id);
+        throw pofdExcept("pofd_coverge_getR", "pofd_coverage_getR",
+                         "Failed to open HDF5 file to write", 1);
       }
       hsize_t adims;
       hid_t mems_id, att_id, dat_id;
@@ -249,11 +249,11 @@ int getRSingle(int argc, char** argv) {
       adims = 1;
       mems_id = H5Screate_simple(1, &adims, nullptr);
       att_id = H5Acreate2(file_id, "dflux", H5T_NATIVE_DOUBLE,
-			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                          mems_id, H5P_DEFAULT, H5P_DEFAULT);
       H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux);
       H5Aclose(att_id);
       att_id = H5Acreate2(file_id, "N0", H5T_NATIVE_DOUBLE,
-			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                          mems_id, H5P_DEFAULT, H5P_DEFAULT);
       H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0);
       H5Aclose(att_id);
       H5Sclose(mems_id);
@@ -262,15 +262,15 @@ int getRSingle(int argc, char** argv) {
       adims = nflux;
       mems_id = H5Screate_simple(1, &adims, nullptr);
       dat_id = H5Dcreate2(file_id, "RFlux", H5T_NATIVE_DOUBLE,
-			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                          mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	       H5P_DEFAULT, flux);
+               H5P_DEFAULT, flux);
       H5Dclose(dat_id);
 
       dat_id = H5Dcreate2(file_id, "R", H5T_NATIVE_DOUBLE, mems_id,
-			  H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	       H5P_DEFAULT, R);
+               H5P_DEFAULT, R);
       H5Dclose(dat_id);
       H5Sclose(mems_id);
 
@@ -280,12 +280,12 @@ int getRSingle(int argc, char** argv) {
       FILE *fp;
       fp = fopen(outfile.c_str(), "w");
       if (!fp) {
-	std::cerr << "Failed to open output file" << std::endl;
-	return 128;
+        std::cerr << "Failed to open output file" << std::endl;
+        return 128;
       }
       fprintf(fp, "#%-11s   %-12s\n", "Flux", "R");
       for (unsigned int i = 0; i < nflux; ++i) 
-	fprintf(fp, "%12.6e   %15.9e\n", flux[i], R[i]);
+        fprintf(fp, "%12.6e   %15.9e\n", flux[i], R[i]);
       fclose(fp);
     } else if (oft == utility::FITS) {
       std::cerr << "Output to FITS is not supported." << std::endl;
@@ -337,7 +337,7 @@ int getRDouble(int argc, char** argv) {
   int option_index = 0;
   optind = 1; //!< Reset parse
   while ((c = getopt_long(argc,argv,optstring,long_options,
-			    &option_index)) != -1) 
+                            &option_index)) != -1) 
     switch(c) {
     case 'F':
       filterscale = atof(optarg);
@@ -393,17 +393,17 @@ int getRDouble(int argc, char** argv) {
 
   if (nflux1 == 0) {
     std::cout << "Error -- number of fluxes requested is zero in dim 1."
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (nflux2 == 0) {
     std::cout << "Error -- number of fluxes requested is zero in dim 2."
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (nbins == 0) {
     std::cout << "Invalid (non-positive) number of beam histogram bins"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (fwhm1 <= 0.0) {
@@ -416,7 +416,7 @@ int getRDouble(int argc, char** argv) {
   }
   if (nfwhm <= 0) {
     std::cout << "Invalid (non-positive) number of beam FWHMs"
-	      << std::endl;
+              << std::endl;
     return 1;
   }
   if (oversamp % 2 == 0) {
@@ -447,23 +447,23 @@ int getRDouble(int argc, char** argv) {
   }
   if (qfactor < 0.0) {
     std::cout << "Invalid (negative) high-pass filter q factor" 
-	      << qfactor << std::endl;
+              << qfactor << std::endl;
     return 1;
   }
   if (matched) {
     if (sigi1 <= 0.0) {
       std::cout << "Invalid (non-positive) sigi1 for matched filter"
-		<< std::endl;
+                << std::endl;
       return 1;
     }
     if (sigi2 <= 0.0) {
       std::cout << "Invalid (non-positive) sigi2 for matched filter"
-		<< std::endl;
+                << std::endl;
       return 1;
     }
     if (sigc <= 0.0) {
       std::cout << "Invalid (non-positive) sigc for matched filter"
-		<< std::endl;
+                << std::endl;
       return 1;
     }
   }
@@ -480,12 +480,12 @@ int getRDouble(int argc, char** argv) {
     fourierFilter *filt1 = nullptr, *filt2 = nullptr;
     if (filterscale > 0) {
       if (matched) {
-	filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
-				  filterscale, qfactor, true, true);
-	filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
-				  filterscale, qfactor, true, true);
+        filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc,
+                                  filterscale, qfactor, true, true);
+        filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc,
+                                  filterscale, qfactor, true, true);
       } else
-	filt1 = new fourierFilter(pixsize, filterscale, 0.1, true);
+        filt1 = new fourierFilter(pixsize, filterscale, 0.1, true);
     } else if (matched) {
       filt1 = new fourierFilter(pixsize, fwhm1, sigi1, sigc, true);
       filt2 = new fourierFilter(pixsize, fwhm2, sigi2, sigc, true);
@@ -510,24 +510,24 @@ int getRDouble(int argc, char** argv) {
       printf("   Beam area2:         %0.3e\n", dpr.second);
       printf("   Pixel size:         %0.2f\n", pixsize);
       printf("   Flux per area1:     %0.2f\n",
-	     model.getBaseFluxPerArea1());
+             model.getBaseFluxPerArea1());
       printf("   Flux per area2:     %0.2f\n",
-	     model.getBaseFluxPerArea2());
+             model.getBaseFluxPerArea2());
       printf("   Base N0:            %0.4e\n", model.getBaseN0());
       printf("   N0:                 %0.4e\n", n0);
       if (filterscale > 0.0) {
-	printf("   filter scale:       %0.1f\n", filterscale);
-	printf("   filter q:           %0.2f\n", qfactor);
+        printf("   filter scale:       %0.1f\n", filterscale);
+        printf("   filter q:           %0.2f\n", qfactor);
       }
       if (matched) {
-	printf("   matched fwhm1:      %0.1f\n", fwhm1);
-	printf("   matched fwhm2:      %0.1f\n", fwhm2);
-	printf("   matched sigi1:      %0.4f\n", sigi1);
-	printf("   matched sigi2:      %0.4f\n", sigi2);
-	printf("   matched sigc:       %0.4f\n", sigc);
+        printf("   matched fwhm1:      %0.1f\n", fwhm1);
+        printf("   matched fwhm2:      %0.1f\n", fwhm2);
+        printf("   matched sigi1:      %0.4f\n", sigi1);
+        printf("   matched sigi2:      %0.4f\n", sigi2);
+        printf("   matched sigc:       %0.4f\n", sigc);
       }
       if (oversamp != 1)
-	printf("   oversamp:           %u\n", oversamp);
+        printf("   oversamp:           %u\n", oversamp);
     }
 
     // Set up fluxes
@@ -557,7 +557,7 @@ int getRDouble(int argc, char** argv) {
     double n0fac = n0 / model.getBaseN0();
     if (fabs(n0fac - 1.0) > 1e-5)
       for (unsigned int i = 0; i < nflux1 * nflux2; ++i)
-	R[i] *= n0fac;
+        R[i] *= n0fac;
 
     // Write
     utility::outfiletype oft = utility::getOutputFileType(outfile);
@@ -565,11 +565,11 @@ int getRDouble(int argc, char** argv) {
       if (verbose) std::cout << "Writing as HDF5" << std::endl;
       hid_t file_id;
       file_id = H5Fcreate(outfile.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
-			  H5P_DEFAULT);
+                          H5P_DEFAULT);
       if (H5Iget_ref(file_id) < 0) {
-	H5Fclose(file_id);
-	throw pofdExcept("pofd_coverge_getR", "pofd_coverage_getR",
-			 "Failed to open HDF5 file to write", 1);
+        H5Fclose(file_id);
+        throw pofdExcept("pofd_coverge_getR", "pofd_coverage_getR",
+                         "Failed to open HDF5 file to write", 1);
       }
       hsize_t adims;
       hid_t mems_id, att_id, dat_id;
@@ -578,15 +578,15 @@ int getRDouble(int argc, char** argv) {
       adims = 1;
       mems_id = H5Screate_simple(1, &adims, nullptr);
       att_id = H5Acreate2(file_id, "dflux1", H5T_NATIVE_DOUBLE,
-			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                          mems_id, H5P_DEFAULT, H5P_DEFAULT);
       H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux1);
       H5Aclose(att_id);
       att_id = H5Acreate2(file_id, "dflux2", H5T_NATIVE_DOUBLE,
-			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                          mems_id, H5P_DEFAULT, H5P_DEFAULT);
       H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux2);
       H5Aclose(att_id);
       att_id = H5Acreate2(file_id, "N0", H5T_NATIVE_DOUBLE,
-			  mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                          mems_id, H5P_DEFAULT, H5P_DEFAULT);
       H5Awrite(att_id, H5T_NATIVE_DOUBLE, &n0);
       H5Aclose(att_id);
       H5Sclose(mems_id);
@@ -595,17 +595,17 @@ int getRDouble(int argc, char** argv) {
       adims = nflux1;
       mems_id = H5Screate_simple(1, &adims, nullptr);
       dat_id = H5Dcreate2(file_id, "RFlux1", H5T_NATIVE_DOUBLE,
-			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                          mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	       H5P_DEFAULT, flux1);
+               H5P_DEFAULT, flux1);
       H5Dclose(dat_id);
       H5Sclose(mems_id);
       adims = nflux2;
       mems_id = H5Screate_simple(1, &adims, nullptr);
       dat_id = H5Dcreate2(file_id, "RFlux2", H5T_NATIVE_DOUBLE,
-			  mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                          mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	       H5P_DEFAULT, flux2);
+               H5P_DEFAULT, flux2);
       H5Dclose(dat_id);
       H5Sclose(mems_id);
 
@@ -613,9 +613,9 @@ int getRDouble(int argc, char** argv) {
       hsize_t dims_steps[2] = {nflux1, nflux2};
       mems_id = H5Screate_simple(2, dims_steps, nullptr);
       dat_id = H5Dcreate2(file_id, "R", H5T_NATIVE_DOUBLE, mems_id,
-			  H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	       H5P_DEFAULT, R);			  
+               H5P_DEFAULT, R);                   
       H5Dclose(dat_id);
       H5Sclose(mems_id);
 
@@ -625,16 +625,16 @@ int getRDouble(int argc, char** argv) {
       FILE *fp;
       fp = fopen(outfile.c_str(), "w");
       if (!fp) {
-	std::cerr << "Failed to open output file" << std::endl;
-	return 128;
+        std::cerr << "Failed to open output file" << std::endl;
+        return 128;
       }
       fprintf(fp,"#%4u %4u\n", nflux1, nflux2);
       fprintf(fp,"#minflux1: %12.6e dflux1: %12.6e\n", 0., dflux1);
       fprintf(fp,"#minflux2: %12.6e dflux2: %12.6e\n", 0., dflux2);
       for (unsigned int i = 0; i < nflux1; ++i) {
-	for (unsigned int j = 0; j < nflux2 - 1; ++j)
-	  fprintf(fp,"%13.7e ",R[nflux2 * i + j]);
-	fprintf(fp,"%13.7e\n",R[nflux2 * i + nflux2 - 1]);
+        for (unsigned int j = 0; j < nflux2 - 1; ++j)
+          fprintf(fp,"%13.7e ",R[nflux2 * i + j]);
+        fprintf(fp,"%13.7e\n",R[nflux2 * i + nflux2 - 1]);
       }
       fclose(fp);
     } else if (oft == utility::FITS) {
@@ -675,96 +675,96 @@ int main(int argc, char** argv) {
   int c;
   int option_index = 0;
   while ((c = getopt_long(argc,argv,optstring,long_options,
-			  &option_index)) != -1) 
+                          &option_index)) != -1) 
     switch(c) {
     case 'h' :
       std::cout << "NAME" << std::endl;
       std::cout << "\tpofd_coverage_getR -- get R for a number counts model."
-		<< "  Both" << std::endl;
+                << "  Both" << std::endl;
       std::cout << "\tone-dimensional and two-dimensional models are supported."
-		<< std::endl;
+                << std::endl;
       std::cout << std::endl;
       std::cout << "SYNOPSIS" << std::endl;
       std::cout << "\tEither" << std::endl;
       std::cout << std::endl;
       std::cout << "\t pofd_coverage_getR [options] modelfile n0 fwhm pixsize"
-		<< " minflux maxflux" << std::endl;
+                << " minflux maxflux" << std::endl;
       std::cout << "\t\tnflux outfile" << std::endl;
       std::cout << std::endl;
       std::cout << "\tfor the 1D case or" << std::endl;
       std::cout << std::endl;
       std::cout << "\t pofd_coverage_getR -d [options] modelfile n0 fwhm1 fwhm2 "
-		<< "pixsize" << std::endl;
+                << "pixsize" << std::endl;
       std::cout << "\t\tminflux1 maxflux1 nflux1 minflux2 maxflux2 nflux2"
-		<< " outfile" << std::endl;
+                << " outfile" << std::endl;
       std::cout << std::endl;
       std::cout << "\tfor the 2D case." << std::endl;
       std::cout << std::endl;
       std::cout << "DESCRIPTION" << std::endl;
       std::cout << "\tEvaluates R for the model in initfile using the P(D)"
-		<< " formalism and" << std::endl;
+                << " formalism and" << std::endl;
       std::cout << "\twrites it to outfile.  The 1D model is a log-space "
-		<< "spline" << std::endl;
+                << "spline" << std::endl;
       std::cout << "\tmodel for the number counts, and the 2D model is the 1D" 
-		<< " spline" << std::endl;
+                << " spline" << std::endl;
       std::cout << "\tmodel times a log-normal color function for the second"
-		<< " band," << std::endl;
+                << " band," << std::endl;
       std::cout << "\twith the log-space variance and mean color stored as"
-		<< " splines" << std::endl;
+                << " splines" << std::endl;
       std::cout << "\tin the flux of the first band." << std::endl;
       std::cout << std::endl;
       std::cout << "\tmodelfile is a text file specifying the model; the exact"
-		<< " details" << std::endl;
+                << " details" << std::endl;
       std::cout << "\t(given below) depend on whether the 1D or 2D case is"
-		<< " being used." << std::endl;
+                << " being used." << std::endl;
       std::cout << std::endl;
       std::cout << "\tFor the 1D case, modelfile is a text file giving the "
-		<< "positions" << std::endl;
+                << "positions" << std::endl;
       std::cout << "\tof the spline knots and their values in the format"
-		<< " knotflux value." << std::endl;
+                << " knotflux value." << std::endl;
       std::cout << "\tAdditional elements on each line are ignored."
-		<< std::endl;
+                << std::endl;
       std::cout << "\tFor the 2D case, modelfile is a text file giving the "
-		<< "positions" << std::endl;
+                << "positions" << std::endl;
       std::cout << "\tof the knot points and their values, followed by the "
-		<< "sigma" << std::endl;
+                << "sigma" << std::endl;
       std::cout << "\tknot positions and their values, then likewise for the "
-		<< "colour" << std::endl;
+                << "colour" << std::endl;
       std::cout << "\toffset.  The format is three numbers on the first line, "
-		<< "giving" << std::endl;
+                << "giving" << std::endl;
       std::cout << "\tthe number of number count knots, sigma knots, and "
-		<< "offset knots," << std::endl;
+                << "offset knots," << std::endl;
       std::cout << "\tfollowed by a number of lines again with the format"
-		<< std::endl;
+                << std::endl;
       std::cout << "\tknotpos value.  The sigmas and offsets are in log space."
-		<< std::endl;
+                << std::endl;
       std::cout << std::endl;
       std::cout << "\tn0 is the number of sources per square degree.  If set"
-		<< " to" << std::endl;
+                << " to" << std::endl;
       std::cout << "\tzero, then the value from the input model is used "
-		<< "directly." << std::endl;
+                << "directly." << std::endl;
       std::cout << "\tOtherwise, the model is scaled to match this value."
-		<< std::endl;
+                << std::endl;
       std::cout << std::endl;
       std::cout << "\tfwhm is the beam FWHM (in arcsec) in the 1D case, and"
-		<< std::endl;
+                << std::endl;
       std::cout << "\tfwhm1, fwhm2 are the FWHM values for each band in the 2D"
-		<< "case." << std::endl;
+                << "case." << std::endl;
       std::cout << "\tpixscale is the pixel scale (in arcsec)." << std::endl;
       std::cout << std::endl;
       std::cout << "\tminflux, maxflux give the minimum and maximum"
-		<< " flux density" << std::endl;
+                << " flux density" << std::endl;
       std::cout << "\tto evaluate R for in the 1D case.  For the 2D case this" 
-		<< std::endl;
+                << std::endl;
       std::cout << "\tis extended to the minimum and maximum in each band."
-		<< " nflux" << std::endl;
+                << " nflux" << std::endl;
       std::cout << "\tis the number of fluxes to generate; in the 2D case along"
-		<< " each" << std::endl;
+                << " each" << std::endl;
       std::cout << "\tdimension." << std::endl;
       std::cout << std::endl;
       std::cout << std::endl;
       std::cout << "\tThe format of the output (text, hdf5) is set by"
-		<< " the" << std::endl;
+                << " the" << std::endl;
       std::cout << "\textension of outfile.  The default is hdf5." << std::endl;
       std::cout << std::endl;
       std::cout << "OPTIONS" << std::endl;
@@ -772,48 +772,48 @@ int main(int argc, char** argv) {
       std::cout << "\t\tUse the 2D model." << std::endl;
       std::cout << "\t-F, --filterscale VALUE" << std::endl;
       std::cout << "\t\tHigh-pass filter scale, in arcsec.  Zero means no"
-		<< " filtering" << std::endl;
+                << " filtering" << std::endl;
       std::cout << "\t\tis applied (def: 0)" << std::endl;
       std::cout << "\t-m, --matched" << std::endl;
       std::cout << "\t\tApply matched filtering to the beam, with a FWHM"
-		<< " matching the" << std::endl;
+                << " matching the" << std::endl;
       std::cout << "\t\tbeam (each band in the 2D case).  Off by default." 
-		<< std::endl;
+                << std::endl;
       std::cout << "\t-n, --nbins VALUE" << std::endl;
       std::cout << "\t\tNumber of beam histogram bins (def: 120)" << std::endl;
       std::cout << "\t-N, --nfwhm VALUE" << std::endl;
       std::cout << "\t\tNumber of FWHM to go out in beam representation. "
-		<< "(def: 40.0)" << std::endl;
+                << "(def: 40.0)" << std::endl;
       std::cout << "\t--nkeep VALUE" << std::endl;
       std::cout << "\t\tNumber of FWHM out to keep after filtering in beam"
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\trepresentation.  The default is to keep all of it."
-		<< std::endl;
+                << std::endl;
       std::cout << "\t-o, --oversamp VALUE" << std::endl;
       std::cout << "\t\tOversampling of pixels used to generate beam. One means"
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\tno oversampling.  Must be odd (def: 1)" << std::endl;
       std::cout << "\t-q, --qfactor VALUE" << std::endl;
       std::cout << "\t\tHigh-pass filter apodization sigma as fraction of"
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\tfiltscale. (def: 0.2)." << std::endl;
       std::cout << "\t--sigc VALUE" << std::endl;
       std::cout << "\t\tConfusion noise for matched filtering, in Jy. (Def:"
-		<< " 0.006)" << std::endl;
+                << " 0.006)" << std::endl;
       std::cout << "\t-V, --version" << std::endl;
       std::cout << "\t\tOutput the version number and exit." << std::endl;
       std::cout << "ONE-DIMENSIONAL OPTIONS" << std::endl;
       std::cout << "\t--sigi VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, in Jy. (Def:"
-		<< " 0.002)" << std::endl;
+                << " 0.002)" << std::endl;
       std::cout << "TWO-DIMENSIONAL OPTIONS" << std::endl;
       std::cout << "\t--sigi1 VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, band 1, in Jy."
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\t(Def: 0.002)" << std::endl;
       std::cout << "\t--sigi2 VALUE" << std::endl;
       std::cout << "\t\tInstrument noise for matched filtering, band 2, in Jy."
-		<< std::endl;
+                << std::endl;
       std::cout << "\t\t(Def: 0.002)" << std::endl;
       std::cout << std::endl;
       return 0;
@@ -823,7 +823,7 @@ int main(int argc, char** argv) {
       break;
     case 'V' :
       std::cout << "pofd_coverage version number: " << pofd_coverage::version
-		<< std::endl;
+                << std::endl;
       return 0;
       break;
     }

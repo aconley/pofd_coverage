@@ -75,21 +75,21 @@ void PDFactory::summarizeTime(unsigned int nindent) const {
   prestring = "  ";
     
   std::cout << "R time: " << prestring 
-	    << 1.0*RTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*RTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "p0 time: " << prestring 
-	    << 1.0*p0Time/CLOCKS_PER_SEC << std::endl;
+            << 1.0*p0Time/CLOCKS_PER_SEC << std::endl;
   std::cout << "fft time: " << prestring 
-	    << 1.0*fftTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*fftTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "pos time: " << prestring 
-	    << 1.0*posTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*posTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "copy time: " << prestring 
-	    << 1.0*copyTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*copyTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "norm time: " << prestring 
-	    << 1.0*normTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*normTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "mean time: " << prestring 
-	    << 1.0*meanTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*meanTime/CLOCKS_PER_SEC << std::endl;
   std::cout << "log time: " << prestring 
-	    << 1.0*logTime/CLOCKS_PER_SEC << std::endl;
+            << 1.0*logTime/CLOCKS_PER_SEC << std::endl;
 }
 #endif
 
@@ -120,23 +120,23 @@ bool PDFactory::resize(unsigned int NSIZE) {
   alc = fftw_malloc(sizeof(double) * NSIZE);
   if (alc == nullptr)
     throw pofdExcept("PDFactory", "strict_resize", 
-		     "Failed to alloc RFlux", 1);
+                     "Failed to alloc RFlux", 1);
   RFlux = (double*) alc;
   alc = fftw_malloc(sizeof(double) * NSIZE);
   if (alc == nullptr)
     throw pofdExcept("PDFactory", "strict_resize", 
-		     "Failed to alloc rvals", 2);
+                     "Failed to alloc rvals", 2);
   rvals = (double*) alc;
   alc = fftw_malloc(sizeof(double)*NSIZE);
   if (alc == nullptr)
     throw pofdExcept("PDFactory", "strict_resize", 
-		     "Failed to alloc pofd", 3);
+                     "Failed to alloc pofd", 3);
   pofd = (double*) alc;
   unsigned int fsize = NSIZE / 2 + 1;
   alc = fftw_malloc(sizeof(fftw_complex)*fsize);
   if (alc == nullptr)
     throw pofdExcept("PDFactory", "strict_resize", 
-		     "Failed to alloc pval", 4);
+                     "Failed to alloc pval", 4);
   pval = (fftw_complex*) alc;
   plans_valid = false;
 
@@ -240,8 +240,8 @@ void PDFactory::initRFlux(unsigned int n, double minflux, double maxflux) {
   The computed R is for the base model.
 */
 void PDFactory::initR(unsigned int n, double minflux, double maxflux, 
-		      const numberCounts& model, const beamHist& bm,
-		      bool muldflux) {
+                      const numberCounts& model, const beamHist& bm,
+                      bool muldflux) {
 
   //Fill in Rflux values, set dflux.  Also resizes.
   initRFlux(n, minflux, maxflux);
@@ -329,9 +329,9 @@ void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
     double targval = peakfrac * maxval;
     for (int i = n-1; i >= 0; --i)
       if (pofd[i] <= targval) {
-	splitidx = static_cast<unsigned int>(i);
-	splitval = pofd[i];
-	break;
+        splitidx = static_cast<unsigned int>(i);
+        splitval = pofd[i];
+        break;
       }
   }
   
@@ -385,26 +385,26 @@ void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
     if (fwrap_plus < cs2) {
       std::stringstream errstr;
       errstr << "Top wrapping problem; wrapping point at "
-	     << fwrap_plus << " which is only " << fwrap_plus / curr_sigma
-	     << " sigma away from expected (0) mean with sigma "
-	     << curr_sigma << " at n0: " << n0;
+             << fwrap_plus << " which is only " << fwrap_plus / curr_sigma
+             << " sigma away from expected (0) mean with sigma "
+             << curr_sigma << " at n0: " << n0;
       throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 1);
     }
     if (fwrap_minus < cs2) {
       std::stringstream errstr;
       errstr << "Bottom wrapping problem; wrapping point at "
-	     << -fwrap_minus << " which is only " << fwrap_minus / curr_sigma
-	     << " sigma away from expected (0) mean, with sigma "
-	     << curr_sigma << " at n0: " << n0;
+             << -fwrap_minus << " which is only " << fwrap_minus / curr_sigma
+             << " sigma away from expected (0) mean, with sigma "
+             << curr_sigma << " at n0: " << n0;
       throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 2);
     } 
     // Min/max ratio test
     if (splitval / maxval > minmaxratio) {
       std::stringstream errstr;
       errstr << "Wrapping problem with wrapping fluxes: "
-	     << fwrap_plus << " and " << -fwrap_minus << " with min/max ratio: "
-	     << splitval / maxval << " and sigma: " << curr_sigma
-	     << " with n0: " << n0;
+             << fwrap_plus << " and " << -fwrap_minus << " with min/max ratio: "
+             << splitval / maxval << " and sigma: " << curr_sigma
+             << " with n0: " << n0;
       throw pofdExcept("PDFactory", "unwrapPD", errstr.str(), 3);
     }
   }
@@ -466,7 +466,7 @@ void PDFactory::unwrapPD(double n0, unsigned int n, PD& pd) const {
   \returns Estimate of min/max flux densities where R is non-zero
 */
 dblpair PDFactory::getMinMaxR(const numberCounts& model,
-			      const beamHist& bm) const {
+                              const beamHist& bm) const {
 
   double minFRnonzero, maxFRnonzero;
   double maxknot = model.getMaxKnotPosition();
@@ -487,11 +487,11 @@ dblpair PDFactory::getMinMaxR(const numberCounts& model,
   \param[in] range   A pair giving the range to compute R over.  Ideally
                       is the minimum and maximum range over which R is non-zero
   \returns A pair of the mean and variance
-		      
-  Will resize and change Rflux		      
+                      
+  Will resize and change Rflux                
 */
 dblpair PDFactory::getRMoments(unsigned int n, const numberCounts& model, 
-			       const beamHist& bm, dblpair range) {
+                               const beamHist& bm, dblpair range) {
 
   // Recall that the formulae for the mean and central 2nd moment
   // (not including instrumental noise) are
@@ -502,7 +502,7 @@ dblpair PDFactory::getRMoments(unsigned int n, const numberCounts& model,
   initialized = rinitialized = false;  
   if (n == 0)
     throw pofdExcept("PDFactory", "getRMoments",
-		     "n must be positive", 1);
+                     "n must be positive", 1);
 
   //Set R, Rflux, and dflux. 
   initR(n, range.first, range.second, model, bm); 
@@ -547,8 +547,8 @@ dblpair PDFactory::getRMoments(unsigned int n, const numberCounts& model,
   by about the mean flux + 10 sigma.
  */
 void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux, 
-		       double maxn0, const numberCounts& model,
-		       const beamHist& bm) {
+                       double maxn0, const numberCounts& model,
+                       const beamHist& bm) {
 
   if (!model.isValid())
     throw pofdExcept("PDFactory", "initPD", "model not valid", 1);
@@ -560,7 +560,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   if (maxn0 < model.getBaseN0()) {
     std::stringstream errstr;
     errstr << "maxn0 (" << maxn0 << ") must be greater than model base N0 ("
-	   << base_n0 << ")";
+           << base_n0 << ")";
     throw pofdExcept("PDFactory", "initPD", errstr.str(), 3);
   }
 
@@ -591,22 +591,22 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   if (!plans_valid) {
     if (plan != nullptr) fftw_destroy_plan(plan);
     plan = fftw_plan_dft_r2c_1d(intn, rvals, rtrans,
-				fftw_plan_style);
+                                fftw_plan_style);
     if (plan_inv != nullptr) fftw_destroy_plan(plan_inv);
     plan_inv = fftw_plan_dft_c2r_1d(intn, pval, pofd,
-				    fftw_plan_style);
+                                    fftw_plan_style);
     if (plan == nullptr) {
       std::stringstream str;
       str << "Plan creation failed for forward transform of size: " << n;
       if (has_wisdom) str << std::endl << "Your wisdom file may not have"
-			  << " that size";
+                          << " that size";
       throw pofdExcept("PDFactory", "initPD", str.str(), 5);
     }
     if (plan_inv == nullptr) {
       std::stringstream str;
       str << "Plan creation failed for inverse transform of size: " << n;
       if (has_wisdom) str << std::endl << "Your wisdom file may not have"
-			  << " that size";
+                          << " that size";
       throw pofdExcept("PDFactory", "initPD", str.str(), 6);
     }
     plans_valid = true;
@@ -621,7 +621,7 @@ void PDFactory::initPD(unsigned int n, double inst_sigma, double maxflux,
   // a better estimate.  Start by getting the non-zero range of R
   if (!bm.hasPos())
     throw pofdExcept("PDFactory", "initPD", 
-		     "Code assumes positive beam is present", 7);
+                     "Code assumes positive beam is present", 7);
   dblpair rangeR = getMinMaxR(model, bm);
 
   // Estimate the mean model flux and sigma.
@@ -696,12 +696,12 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog) {
 
   if (!initialized)
     throw pofdExcept("PDFactory", "getPD",
-		     "Must call initPD first", 1);
+                     "Must call initPD first", 1);
   if (n0 > max_n0) {
     std::stringstream errstr("");
     errstr << "N_0 " << n0
-	   << " larger than maximum prepared value " << max_n0
-	   << std::endl;
+           << " larger than maximum prepared value " << max_n0
+           << std::endl;
     errstr << "initPD should have been called with at least " << n0;
     throw pofdExcept("PDFactory", "getPD", errstr.str(), 2);
   }
@@ -752,20 +752,20 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog) {
       double w, rval;
       double sigfac = 0.5 * sigma * sigma;
       for (unsigned int idx = 1; idx < ncplx; ++idx) {
-	w = iflux * static_cast<double>(idx);
-	rval = n0ratio * rtrans[idx][0] - r0 - sigfac * w * w;
-	ival = n0ratio * rtrans[idx][1];
-	expfac = exp(rval);
-	pval[idx][0] = expfac * cos(ival);
-	pval[idx][1] = expfac * sin(ival);
+        w = iflux * static_cast<double>(idx);
+        rval = n0ratio * rtrans[idx][0] - r0 - sigfac * w * w;
+        ival = n0ratio * rtrans[idx][1];
+        expfac = exp(rval);
+        pval[idx][0] = expfac * cos(ival);
+        pval[idx][1] = expfac * sin(ival);
       }
     } else {
       // No instrument sigma, simple
       for (unsigned int idx = 1; idx < ncplx; ++idx) {
-	expfac = exp(n0ratio * rtrans[idx][0] - r0);
-	ival = n0ratio * rtrans[idx][1];
-	pval[idx][0] = expfac * cos(ival);
-	pval[idx][1] = expfac * sin(ival);
+        expfac = exp(n0ratio * rtrans[idx][0] - r0);
+        ival = n0ratio * rtrans[idx][1];
+        pval[idx][0] = expfac * cos(ival);
+        pval[idx][1] = expfac * sin(ival);
       }
     }
   }
@@ -812,12 +812,12 @@ void PDFactory::getPD(double n0, PD& pd, bool setLog) {
 void PDFactory::writeRToFile(const std::string& filename) const {
   if (!rinitialized )
     throw pofdExcept("PDFactory", "writeRToFile",
-		     "Must call initPD or initR first", 1);
+                     "Must call initPD or initR first", 1);
 
   std::ofstream ofs(filename.c_str());
   if (!ofs)
     throw pofdExcept("PDFactory", "writeRToFile",
-		     "Couldn't open output file", 2);
+                     "Couldn't open output file", 2);
 
   ofs << currsize << std::endl;
   if (rdflux) {
@@ -842,16 +842,16 @@ void PDFactory::writeRToFile(const std::string& filename) const {
 void PDFactory::writeRToHDF5(const std::string& filename) const {
   if (!rinitialized )
     throw pofdExcept("PDFactory", "writeRToHDF5",
-		     "Must call initPD or initR first", 1);
+                     "Must call initPD or initR first", 1);
 
   hid_t file_id;
   file_id = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
-		      H5P_DEFAULT);
+                      H5P_DEFAULT);
 
   if (H5Iget_ref(file_id) < 0) {
     H5Fclose(file_id);
     throw pofdExcept("PDFactory", "writeToHDF5",
-		     "Failed to open HDF5 file to write", 2);
+                     "Failed to open HDF5 file to write", 2);
   }
 
   // Write it as one dataset -- Rflux, R. 
@@ -862,11 +862,11 @@ void PDFactory::writeRToHDF5(const std::string& filename) const {
   adims = 1;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   att_id = H5Acreate2(file_id, "dflux", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &dflux);
   H5Aclose(att_id);
   att_id = H5Acreate2(file_id, "N0", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(att_id, H5T_NATIVE_DOUBLE, &base_n0);
   H5Aclose(att_id);
   H5Sclose(mems_id);
@@ -875,14 +875,14 @@ void PDFactory::writeRToHDF5(const std::string& filename) const {
   adims = currsize;
   mems_id = H5Screate_simple(1, &adims, nullptr);
   dat_id = H5Dcreate2(file_id, "RFlux", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dat_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, 
-	   H5P_DEFAULT, RFlux);
+           H5P_DEFAULT, RFlux);
   H5Dclose(dat_id);
 
   // R -- which we may need to copy to remove the dflux
   dat_id = H5Dcreate2(file_id, "R", H5T_NATIVE_DOUBLE,
-		      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                      mems_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (rdflux) {
     double* tmp = new double[currsize];
     double idflux = 1.0 / dflux;

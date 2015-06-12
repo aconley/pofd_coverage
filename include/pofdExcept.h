@@ -11,7 +11,7 @@
 class pofdExcept {
 
   void init(const std::string& errclass,const std::string& errmethod,
-	    const std::string& errstr,int err);  //!< Internal initialization
+            const std::string& errstr,int err);  //!< Internal initialization
 
  public:
   bool classset; //!< Is errclass set
@@ -29,9 +29,9 @@ class pofdExcept {
   explicit pofdExcept(const std::string errstr); //!< Just with errstring
   explicit pofdExcept(const std::string errstr,int err); //!< Errstring and number
   explicit pofdExcept(const std::string errclass,const std::string errmethod,
-		      const std::string errstr); //!< Class, method, error string
+                      const std::string errstr); //!< Class, method, error string
   explicit pofdExcept(const std::string errclass,const std::string errmethod,
-		      const std::string errstr,int err); //!< Class, method, error string, and number
+                      const std::string errstr,int err); //!< Class, method, error string, and number
 
   std::string what() const; //!< Explain error
 

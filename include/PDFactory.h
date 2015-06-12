@@ -65,7 +65,7 @@ class PDFactory {
 
   /*! \brief Get mean and variance from R integrals*/
   dblpair getRMoments(unsigned int n, const numberCounts&, const beamHist&,
-		      dblpair range);
+                      dblpair range);
 
   /*! \brief Moves P(D) over to output variable inside getPD */
   void unwrapPD(double n0, unsigned int n, PD& pd) const;
@@ -93,12 +93,12 @@ class PDFactory {
 
   /*! \brief Initializes R*/
   void initR(unsigned int n, double minflux, double maxflux, 
-	     const numberCounts& model, const beamHist& bm,
-	     bool muldflux=false);
+             const numberCounts& model, const beamHist& bm,
+             bool muldflux=false);
 
   /*! \brief Initializes P(D) by computing R */
   void initPD(unsigned int n, double inst_sigma, double maxflux, 
-	      double maxn0, const numberCounts&, const beamHist&);
+              double maxn0, const numberCounts&, const beamHist&);
 
   /*! \brief Gets P(D) of specified transform size */
   void getPD(double, PD&, bool setLog=true);

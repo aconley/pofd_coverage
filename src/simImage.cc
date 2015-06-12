@@ -29,12 +29,12 @@
   \param[in] NBINS Number of bins, if binning is applied.
   \param[in] powerspecfile File containing power spectrum.  If set, the
               source positions are generated using this P(k).  If not set, they
-	      are uniformly distributed across the image.
+              are uniformly distributed across the image.
 */
 simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
-		   double FWHM, double SIGI, double ESMOOTH, 
-		   unsigned int OVERSAMPLE, unsigned int NBINS, 
-		   const std::string& powerspecfile) {
+                   double FWHM, double SIGI, double ESMOOTH, 
+                   unsigned int OVERSAMPLE, unsigned int NBINS, 
+                   const std::string& powerspecfile) {
 
   if (N1 == 0)
     throw pofdExcept("simImage", "simImage", "Invalid (non-positive) N1", 1);
@@ -42,7 +42,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
     throw pofdExcept("simImage", "simImage", "Invalid (non-positive) N2", 2);
   if (PIXSIZE <= 0.0)
     throw pofdExcept("simImage", "simImage", 
-		     "Invalid (non-positive) PIXSIZE", 3);
+                     "Invalid (non-positive) PIXSIZE", 3);
   if (FWHM <= 0.0)
     throw pofdExcept("simImage", "simImage", "Invalid (non-positive) FWHM", 4);
   if (OVERSAMPLE % 2 == 0)
@@ -112,7 +112,7 @@ simImage::simImage(unsigned int N1, unsigned int N2, double PIXSIZE,
   // This is done in un-oversampled space
   if (esmooth > 0) {
     ngauss_add = static_cast<unsigned int>(nfwhm * esmooth / pixsize +
-					   0.99999999);
+                                           0.99999999);
     ngauss_add = 2 * ngauss_add + 1;
     gauss_add = new double[ngauss_add];
     beam ebm(esmooth);
@@ -150,8 +150,8 @@ bool simImage::isValid() const {
   
  */
 void simImage::downSample(unsigned int ni1, unsigned int ni2, 
-			  double* const inarr, unsigned int no1, 
-			  unsigned int no2, double* const outarr) {
+                          double* const inarr, unsigned int no1, 
+                          unsigned int no2, double* const outarr) {
   unsigned int osamp = ni1 / no1;
   if (osamp == 0)
     pofdExcept("simImage", "downSample", "osamp is invalid (0)", 1);
@@ -177,9 +177,9 @@ void simImage::downSample(unsigned int ni1, unsigned int ni2,
 
       sum = 0.0;
       for (unsigned int k = minxidx; k < maxxidx; ++k) {
-	in_rowptr = inarr + k * ni2;
-	for (unsigned int h = minyidx; h < maxyidx; ++h)
-	  sum += in_rowptr[h];
+        in_rowptr = inarr + k * ni2;
+        for (unsigned int h = minyidx; h < maxyidx; ++h)
+          sum += in_rowptr[h];
       }
 
       out_rowptr[j] = sum * corrfac;
@@ -188,9 +188,9 @@ void simImage::downSample(unsigned int ni1, unsigned int ni2,
 }
 
 void simImage::convolveInner(unsigned int n, const double* const arr,
-			     unsigned int ni1, unsigned int ni2,
-			     double* const inarr,
-			     double* const outarr) const {
+                             unsigned int ni1, unsigned int ni2,
+                             double* const inarr,
+                             double* const outarr) const {
   //inarr, outarr must be same size (ni1 by ni2)
   //This makes use of the work array to hold the intermediate product
   //In use, the input array may be data (if we aren't oversampling) or 
@@ -224,19 +224,19 @@ void simImage::convolveInner(unsigned int n, const double* const arr,
       subarrptr = rowptr + j + ni2 - nover2;
       currval = subarrptr[0] * arr[0];
       for (unsigned int k = 1; k < minidx; ++k)
-	currval += subarrptr[k] * arr[k];
+        currval += subarrptr[k] * arr[k];
 
       //unwrapped part
       subarrptr = rowptr + j - nover2;
       for (unsigned int k = minidx; k < maxidx; ++k)
-	currval += subarrptr[k] * arr[k];
+        currval += subarrptr[k] * arr[k];
       work[j * ni1 + i] = currval;
     }
     for (unsigned int j = nover2; j < ni2 - nover2; ++j) {
       subarrptr = rowptr + j - nover2;
       currval = subarrptr[0] * arr[0];
       for (unsigned int k = 1; k < n; ++k)
-	currval += subarrptr[k] * arr[k];
+        currval += subarrptr[k] * arr[k];
       work[j * ni1 + i] = currval;
     }
     minidx = 0;
@@ -247,11 +247,11 @@ void simImage::convolveInner(unsigned int n, const double* const arr,
       subarrptr = rowptr + j - nover2;
       currval = subarrptr[minidx] * arr[minidx];
       for (unsigned int k = minidx + 1; k < maxidx; ++k)
-	currval += subarrptr[k] * arr[k];
+        currval += subarrptr[k] * arr[k];
 
       subarrptr = rowptr - maxidx;
       for (unsigned int k = maxidx; k < n; ++k)
-	currval += subarrptr[k] * arr[k];
+        currval += subarrptr[k] * arr[k];
 
       work[j * ni1 + i] = currval;
     }
@@ -270,17 +270,17 @@ void simImage::convolveInner(unsigned int n, const double* const arr,
       subarrptr = workptr + i + ni1 - nover2;
       currval = subarrptr[0] * arr[0];
       for (unsigned int k = 1; k < minidx; ++k)
-	currval += subarrptr[k] * arr[k];
+        currval += subarrptr[k] * arr[k];
       subarrptr = workptr + i - nover2;
       for (unsigned int k = minidx; k < maxidx; ++k)
-	currval += subarrptr[k] * arr[k];
+        currval += subarrptr[k] * arr[k];
       outarr[i * ni2 + j] = currval;
     }
     for (unsigned int i = nover2; i < ni1 - nover2; ++i) {
       subarrptr = workptr + i - nover2;
       currval = subarrptr[0] * arr[0];
       for (unsigned int k = 1; k < n; ++k)
-	currval += subarrptr[k] * arr[k];
+        currval += subarrptr[k] * arr[k];
       outarr[i * ni2 + j] = currval;
     }
     minidx = 0;
@@ -289,23 +289,23 @@ void simImage::convolveInner(unsigned int n, const double* const arr,
       subarrptr = workptr + i - nover2;
       currval = subarrptr[minidx] * arr[minidx];
       for (unsigned int k = minidx + 1; k < maxidx; ++k)
-	currval += subarrptr[k] * arr[k];
+        currval += subarrptr[k] * arr[k];
       subarrptr = workptr - maxidx;
       for (unsigned int k = maxidx; k < n; ++k)
-	currval += subarrptr[k] * arr[k];
+        currval += subarrptr[k] * arr[k];
       outarr[i * ni2 + j] = currval;
     }
   }
 }
 
 void simImage::convolveWithBeamInPlace(unsigned int n1, unsigned int n2,
-				       double* const inout) {
+                                       double* const inout) {
   convolveInner(ngauss, gauss, n1, n2, inout, inout);
 }
 
 void simImage::convolveWithBeam(unsigned int ni1, unsigned int ni2,
-				double* const input, unsigned int no1,
-				unsigned int no2, double* const output) {
+                                double* const input, unsigned int no1,
+                                unsigned int no2, double* const output) {
   //This is the general version -- it can handle downsampling if needed
   if (ni1 != no1 || ni2 != no2) {
     //From input to work2 via work
@@ -322,7 +322,7 @@ void simImage::convolveWithAdd() {
   //This can only be done to data
   if (!is_full)
     throw pofdExcept("simImage", "convolveWithAdd",
-		     "Trying to convolve empty image", 1);
+                     "Trying to convolve empty image", 1);
 
   //From data to data, no oversampling
   convolveInner(ngauss_add, gauss_add, n1, n2, data, data);
@@ -355,7 +355,7 @@ void simImage::convolveWithAdd() {
   After that it uses the previously computed value if possible.  
 */
 double simImage::getFinalNoise(unsigned int ntrials,
-			       const fourierFilter* const filt) const {
+                               const fourierFilter* const filt) const {
 
   // esmooth normalization factor input
   const double prefac = 4 * std::log(2) / pofd_coverage::pi;
@@ -369,7 +369,7 @@ double simImage::getFinalNoise(unsigned int ntrials,
   }
   if (ntrials == 0)
     throw pofdExcept("simImage", "getFinalNoise",
-		     "Invalid (non-positive) ntrials", 1);
+                     "Invalid (non-positive) ntrials", 1);
 
   // If necessary, do the computation
   if (recompute) {
@@ -379,16 +379,16 @@ double simImage::getFinalNoise(unsigned int ntrials,
       sigi_final = 0.0;
     } else if (filt == nullptr) {
       if (esmooth <= 0.0) {
-	sigi_final_computed = true;
-	sigi_final_ntrials = ntrials;
-	sigi_final = sigi;
+        sigi_final_computed = true;
+        sigi_final_ntrials = ntrials;
+        sigi_final = sigi;
       } else {
-	// Only extra Gaussian smoothing.  Can be done analytically
-	double fwhm2 = fwhm * fwhm;
-	sigi_final_computed = true;
-	sigi_final_ntrials = ntrials;
-	sigi_final = noise_prefac * sigi * pixsize * 
-	  (fwhm2 + esmooth * esmooth) / (esmooth * fwhm2);
+        // Only extra Gaussian smoothing.  Can be done analytically
+        double fwhm2 = fwhm * fwhm;
+        sigi_final_computed = true;
+        sigi_final_ntrials = ntrials;
+        sigi_final = noise_prefac * sigi * pixsize * 
+          (fwhm2 + esmooth * esmooth) / (esmooth * fwhm2);
       }
     } else {
       // Filtering, and maybe smoothing.  
@@ -400,46 +400,46 @@ double simImage::getFinalNoise(unsigned int ntrials,
       // Compute esmooth prefactor if needed
       double normval = 1.0;
       if (esmooth > 0) {
-	double fwhm2 = fwhm * fwhm;
-	double esmooth2 = esmooth * esmooth;
-	normval = prefac * (fwhm2 + esmooth2) * pixsize * pixsize / 
-	  (fwhm2 + esmooth2);
+        double fwhm2 = fwhm * fwhm;
+        double esmooth2 = esmooth * esmooth;
+        normval = prefac * (fwhm2 + esmooth2) * pixsize * pixsize / 
+          (fwhm2 + esmooth2);
       }
 
       double var, var1, var2, mn, dtmp;
       var = 0.0;
       for (unsigned int idx = 0; idx < ntrials; ++idx) {
-	// Fill with random noise
-	for (unsigned int i = 0; i < n1 * n2; ++i)
-	  tmpdata[i] = sigi * rangen.gauss();
+        // Fill with random noise
+        for (unsigned int i = 0; i < n1 * n2; ++i)
+          tmpdata[i] = sigi * rangen.gauss();
 
-	// Apply additional Gaussian smoothing if needed
-	if (esmooth > 0) {
-	  convolveInner(ngauss_add, gauss_add, n1, n2, tmpdata, tmpdata);
-	  // Then renormalize
-	  for (unsigned int i = 0; i < n1 * n2; ++i)
-	    tmpdata[i] *= normval;
-	}
+        // Apply additional Gaussian smoothing if needed
+        if (esmooth > 0) {
+          convolveInner(ngauss_add, gauss_add, n1, n2, tmpdata, tmpdata);
+          // Then renormalize
+          for (unsigned int i = 0; i < n1 * n2; ++i)
+            tmpdata[i] *= normval;
+        }
 
-	// Now filtering
-	filt->filter(n1, n2, pixsize, tmpdata);
+        // Now filtering
+        filt->filter(n1, n2, pixsize, tmpdata);
 
-	// Measure using two pass algorithm
-	mn = tmpdata[0];
-	for (unsigned int i = 1; i < n1 * n2; ++i)
-	  mn += tmpdata[i];
-	mn /= static_cast<double>(n1 * n2);
-	var1 = var2 = 0.0;
-	for (unsigned int i = 0; i < n1 * n2; ++i) {
-	  dtmp = tmpdata[i] - mn;
-	  var1 += dtmp * dtmp;
-	  var2 += dtmp;
-	}
-	var1 -= var2 * var2 / static_cast<double>(n1 * n2);
-	var += var1 / static_cast<double>(n1 * n2 - 1);
+        // Measure using two pass algorithm
+        mn = tmpdata[0];
+        for (unsigned int i = 1; i < n1 * n2; ++i)
+          mn += tmpdata[i];
+        mn /= static_cast<double>(n1 * n2);
+        var1 = var2 = 0.0;
+        for (unsigned int i = 0; i < n1 * n2; ++i) {
+          dtmp = tmpdata[i] - mn;
+          var1 += dtmp * dtmp;
+          var2 += dtmp;
+        }
+        var1 -= var2 * var2 / static_cast<double>(n1 * n2);
+        var += var1 / static_cast<double>(n1 * n2 - 1);
       }
       if (ntrials > 1)
-	var /= static_cast<double>(ntrials);
+        var /= static_cast<double>(ntrials);
 
       fftw_free(tmpdata);
       sigi_final_computed = true;
@@ -469,15 +469,15 @@ double simImage::getArea() const {
                          Does nothing if no binning.
 */
 void simImage::realize(const numberCounts& model, double n0,
-		       bool meansub, const fourierFilter* const filt,
-		       bool bin, unsigned int sparsebin) {
+                       bool meansub, const fourierFilter* const filt,
+                       bool bin, unsigned int sparsebin) {
 
   if (!isValid())
     throw pofdExcept("simImage", "realize",
-		     "Trying to realize image with invalid parameters", 1);
+                     "Trying to realize image with invalid parameters", 1);
   if (!model.isValid())
     throw pofdExcept("simImage", "realize",
-		     "Trying to realize model with invalid parameters", 2);
+                     "Trying to realize model with invalid parameters", 2);
   if (n0 <= 0.0)
     throw pofdExcept("simImage", "realize", "n0 must be positive", 3);
 
@@ -494,21 +494,21 @@ void simImage::realize(const numberCounts& model, double n0,
     if (nsrcs > 0) {
       unsigned int idx1, idx2;
       if (use_clustered_pos) {
-	// Clustered positions
-	std::pair<unsigned int, unsigned int> pos;
-	for (unsigned int i = 0; i < nsrcs; ++i) {
-	  pos = posgen->getPosition(rangen, oversample);
-	  idx1 = pos.first;
-	  idx2 = pos.second;
-	  gen_image[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
-	}
+        // Clustered positions
+        std::pair<unsigned int, unsigned int> pos;
+        for (unsigned int i = 0; i < nsrcs; ++i) {
+          pos = posgen->getPosition(rangen, oversample);
+          idx1 = pos.first;
+          idx2 = pos.second;
+          gen_image[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
+        }
       } else {
-	// Uniform distribution -- easy!
-	for (unsigned int i = 0; i < nsrcs; ++i) {
-	  idx1 = static_cast<unsigned int>(rangen.doub() * ngen1);
-	  idx2 = static_cast<unsigned int>(rangen.doub() * ngen2);
-	  gen_image[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
-	}
+        // Uniform distribution -- easy!
+        for (unsigned int i = 0; i < nsrcs; ++i) {
+          idx1 = static_cast<unsigned int>(rangen.doub() * ngen1);
+          idx2 = static_cast<unsigned int>(rangen.doub() * ngen2);
+          gen_image[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
+        }
       }
 
       // This also moves the data from gen_image to the data array
@@ -523,19 +523,19 @@ void simImage::realize(const numberCounts& model, double n0,
     if (nsrcs > 0) {
       unsigned int idx1, idx2;
       if (use_clustered_pos) {
-	std::pair<unsigned int, unsigned int> pos;
-	for (unsigned int i = 0; i < nsrcs; ++i) {
-	  pos = posgen->getPosition(rangen);
-	  idx1 = pos.first;
-	  idx2 = pos.second;
-	  data[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
-	}
+        std::pair<unsigned int, unsigned int> pos;
+        for (unsigned int i = 0; i < nsrcs; ++i) {
+          pos = posgen->getPosition(rangen);
+          idx1 = pos.first;
+          idx2 = pos.second;
+          data[idx1 * ngen2 + idx2] += model.genSource(rangen.doub());
+        }
       } else {
-	for (unsigned int i = 0; i < nsrcs; ++i) {
-	  idx1 = static_cast<unsigned int>(rangen.doub() * n1);
-	  idx2 = static_cast<unsigned int>(rangen.doub() * n2);
-	  data[idx1 * n2 + idx2] += model.genSource(rangen.doub());
-	}
+        for (unsigned int i = 0; i < nsrcs; ++i) {
+          idx1 = static_cast<unsigned int>(rangen.doub() * n1);
+          idx2 = static_cast<unsigned int>(rangen.doub() * n2);
+          data[idx1 * n2 + idx2] += model.genSource(rangen.doub());
+        }
       }
     }
     convolveWithBeamInPlace(n1, n2, data);
@@ -557,7 +557,7 @@ void simImage::realize(const numberCounts& model, double n0,
   //  that twice
   isHipass = isMatched = false;
   filtscale = qfactor = matched_fwhm = matched_sigi = matched_sigc =
-	std::numeric_limits<double>::quiet_NaN();
+        std::numeric_limits<double>::quiet_NaN();
   if (filt != nullptr) {
     filt->filter(n1, n2, pixsize, data);
     if (filt->isHipass()) {
@@ -582,21 +582,21 @@ void simImage::realize(const numberCounts& model, double n0,
 /*!
   \param[in] sparsebin Only take every this many pixels when binning. 1 means
                         fully sampled (0 is also interpreted to mean the same
-			thing)
+                        thing)
 
   Keeps the original, unbinned image around as well
 */
 void simImage::applyBinning(unsigned int sparsebin) {
   if (!is_full)
     throw pofdExcept("simImage", "applyBinning",
-		     "Trying to bin empty image", 1);
+                     "Trying to bin empty image", 1);
 
   if (nbins == 0) throw pofdExcept("simImage", "applyBinning",
-				   "Trying to bin with no bins", 2);
+                                   "Trying to bin with no bins", 2);
 
   if (sparsebin >= n1 * n2) 
     throw pofdExcept("simImage", "applyBinning",
-		     "Sparse binning factor larger than simulated image", 3);
+                     "Sparse binning factor larger than simulated image", 3);
 
   //Only allocated the first time we bin
   //There is no way to change nbins after initialization
@@ -642,7 +642,7 @@ double simImage::meanSubtract() {
 void simImage::getMinMax(double& min, double& max) const {
   if (! is_full )
     throw pofdExcept("simImage", "getMinMax",
-		     "Trying to getMinMax of empty image", 1);
+                     "Trying to getMinMax of empty image", 1);
 
   min = data[0];
   max = data[0];
@@ -655,7 +655,7 @@ void simImage::getMinMax(double& min, double& max) const {
 double simImage::getMean() const {
   if (!is_full)
     throw pofdExcept("simImage", "getMean",
-		     "Trying to get mean of empty image", 1);
+                     "Trying to get mean of empty image", 1);
   double norm = 1.0/static_cast<double>(n1*n2);
   double mn = data[0];
   for (unsigned int i = 1; i < n1*n2; ++i)
@@ -667,7 +667,7 @@ double simImage::getMean() const {
 void simImage::getMeanAndVar(double& mn, double& var) const {
   if (!is_full)
     throw pofdExcept("simImage", "getMeanAndVar",
-		     "Trying to get mean and var of empty image", 1);
+                     "Trying to get mean and var of empty image", 1);
   //Use corrected two pass algorithm
   double norm = 1.0/static_cast<double>(n1 * n2);
   mn = data[0];
@@ -690,7 +690,7 @@ void simImage::getMeanAndVar(double& mn, double& var) const {
 double simImage::getBeamSum() const {
   if (ngauss == 0)
     throw pofdExcept("simImage", "getBeamSum",
-		     "No beam pixels", 1);
+                     "No beam pixels", 1);
   
   double sum1D = gauss[0];
   for (unsigned int i = 1; i < ngauss; ++i)
@@ -703,7 +703,7 @@ double simImage::getBeamSum() const {
 double simImage::getBeamSumSq() const {
   if (ngauss == 0)
     throw pofdExcept("simImage", "getBeamSumSq",
-		     "No beam pixels", 1);
+                     "No beam pixels", 1);
   
   double tmp = gauss[0];
   double sum1D = tmp*tmp;
@@ -731,7 +731,7 @@ int simImage::writeToFits(const std::string& outputfile) const {
 
   if (!is_full)
     throw pofdExcept("simImage", "writeToFits",
-		     "Trying to write image without realizing", 1);
+                     "Trying to write image without realizing", 1);
 
   //Make the fits file
   int status = 0;
@@ -751,140 +751,140 @@ int simImage::writeToFits(const std::string& outputfile) const {
   
   //Model params
   fits_write_key(fp, TSTRING, const_cast<char*>("MODEL"),
-		 const_cast<char*>("Spline"), 
-		 const_cast<char*>("Model type"),
-		 &status);
+                 const_cast<char*>("Spline"), 
+                 const_cast<char*>("Model type"),
+                 &status);
 
   //Sim params
   int itmp = 0;
   double dtmp = fwhm;
 
   fits_write_key(fp, TDOUBLE, const_cast<char*>("FWHM"), &dtmp, 
-		 const_cast<char*>("Beam fwhm [arcsec]"), 
-		 &status);
+                 const_cast<char*>("Beam fwhm [arcsec]"), 
+                 &status);
   if (esmooth > 0) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
-		   const_cast<char*>("Additional smoothing applied"), 
-		   &status);
+                   const_cast<char*>("Additional smoothing applied"), 
+                   &status);
     dtmp = esmooth;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("ESMOOTH"), &dtmp, 
-		   const_cast<char*>("Extra smoothing fwhm [arcsec]"), 
-		   &status);
+                   const_cast<char*>("Extra smoothing fwhm [arcsec]"), 
+                   &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("ADDSMTH"), &itmp,
-		   const_cast<char*>("Additional smoothing applied"), 
-		   &status);
+                   const_cast<char*>("Additional smoothing applied"), 
+                   &status);
   }
 
   dtmp = sigi;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGI"), &dtmp, 
-		 const_cast<char*>("Raw instrument noise"), 
-		 &status);
+                 const_cast<char*>("Raw instrument noise"), 
+                 &status);
 
   if (sigi_final_computed) {
     dtmp = sigi_final;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("SIGIFNL"), &dtmp, 
-		   const_cast<char*>("Final instrument noise"), 
-		   &status);
+                   const_cast<char*>("Final instrument noise"), 
+                   &status);
   }
 
   if (oversample > 1) {
     unsigned int utmp = oversample;
     fits_write_key(fp, TUINT, const_cast<char*>("OVERSMPL"), &utmp, 
-		    const_cast<char*>("Oversampling factor"), 
-		    &status);
+                    const_cast<char*>("Oversampling factor"), 
+                    &status);
   }
 
   if (use_clustered_pos) itmp = 1; else itmp = 0;
   fits_write_key(fp, TLOGICAL, const_cast<char*>("CLUSTPOS"), &itmp,
-		 const_cast<char*>("Use clustered positions"), &status);
+                 const_cast<char*>("Use clustered positions"), &status);
 
   if (isHipass) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
-		   const_cast<char*>("Is map hipass filtered?"), &status);
+                   const_cast<char*>("Is map hipass filtered?"), &status);
     dtmp = filtscale;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTSCL"), &dtmp,
-		   const_cast<char*>("Filtering scale [arcsec]"), &status);
+                   const_cast<char*>("Filtering scale [arcsec]"), &status);
     dtmp = qfactor;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FLTQ"), &dtmp,
-		   const_cast<char*>("Filtering apodization"), &status);
+                   const_cast<char*>("Filtering apodization"), &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("HIFLT"), &itmp,
-		   const_cast<char*>("Is map hipass filtered?"), &status);
+                   const_cast<char*>("Is map hipass filtered?"), &status);
   }
   if (isMatched) {
     itmp = 1;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
-		   const_cast<char*>("Is map match filtered?"), &status);
+                   const_cast<char*>("Is map match filtered?"), &status);
     dtmp = matched_fwhm;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITFWHM"), &dtmp,
-		   const_cast<char*>("Matched filtering FWHM [arcsec]"), 
-		   &status);
+                   const_cast<char*>("Matched filtering FWHM [arcsec]"), 
+                   &status);
     dtmp = matched_sigi;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGI"), &dtmp,
-		   const_cast<char*>("Matched filtering sigi"), &status);
+                   const_cast<char*>("Matched filtering sigi"), &status);
     dtmp = matched_sigc;
     fits_write_key(fp, TDOUBLE, const_cast<char*>("FITSIGC"), &dtmp,
-		   const_cast<char*>("Matched filtering sigc"), &status);
+                   const_cast<char*>("Matched filtering sigc"), &status);
   } else {
     itmp = 0;
     fits_write_key(fp, TLOGICAL, const_cast<char*>("MTCHFLT"), &itmp,
-		   const_cast<char*>("Is map match filtered?"), &status);
+                   const_cast<char*>("Is map match filtered?"), &status);
   }
 
   fits_write_key(fp, TSTRING, const_cast<char*>("VERSION"),
-		 const_cast<char*>(pofd_coverage::version), 
-		 const_cast<char*>("pofd_coverage version"),
-		 &status);
+                 const_cast<char*>(pofd_coverage::version), 
+                 const_cast<char*>("pofd_coverage version"),
+                 &status);
 
   fits_write_history(fp,const_cast<char*>("Simulated image from pofd_coverage"),
-		     &status);
+                     &status);
   fits_write_date(fp, &status);
 
 
 
   // Astrometry
   fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE1"),
-		 const_cast<char*>("RA---TAN"),
-		 const_cast<char*>("WCS: Projection type axis 1"),&status);
+                 const_cast<char*>("RA---TAN"),
+                 const_cast<char*>("WCS: Projection type axis 1"),&status);
   fits_write_key(fp, TSTRING, const_cast<char*>("CTYPE2"),
-		 const_cast<char*>("DEC--TAN"),
-		 const_cast<char*>("WCS: Projection type axis 2"),&status);
+                 const_cast<char*>("DEC--TAN"),
+                 const_cast<char*>("WCS: Projection type axis 2"),&status);
   dtmp = n1/2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX1"), &dtmp, 
-		 const_cast<char*>("Ref pix of axis 1"), &status);
+                 const_cast<char*>("Ref pix of axis 1"), &status);
   dtmp = n2/2;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRPIX2"), &dtmp, 
-		 const_cast<char*>("Ref pix of axis 2"), &status);
+                 const_cast<char*>("Ref pix of axis 2"), &status);
   dtmp = 90.0; //Arbitrary
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL1"), &dtmp, 
-		 const_cast<char*>("val at ref pix axis 1"), &status);
+                 const_cast<char*>("val at ref pix axis 1"), &status);
   dtmp = 10.0; //Arbitrary
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CRVAL2"), &dtmp, 
-		 const_cast<char*>("val at ref pix axis 2"), &status);
+                 const_cast<char*>("val at ref pix axis 2"), &status);
   dtmp = - pixsize/3600.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_1"), &dtmp, 
-		 const_cast<char*>("Pixel scale axis 1,1"), &status);
+                 const_cast<char*>("Pixel scale axis 1,1"), &status);
   dtmp = 0.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD1_2"), &dtmp, 
-		 const_cast<char*>("Pixel scale axis 1,2"), &status);
+                 const_cast<char*>("Pixel scale axis 1,2"), &status);
   dtmp = 0.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_1"), &dtmp, 
-		 const_cast<char*>("Pixel scale axis 2,1"), &status);
+                 const_cast<char*>("Pixel scale axis 2,1"), &status);
   dtmp = pixsize/3600.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("CD2_2"), &dtmp, 
-		 const_cast<char*>("Pixel scale axis 2,2"), &status);
+                 const_cast<char*>("Pixel scale axis 2,2"), &status);
   dtmp = 2000.0;
   fits_write_key(fp, TDOUBLE, const_cast<char*>("EPOCH"), &dtmp, 
-		 const_cast<char*>("WCS: Epoch of celestial pointing"), 
-		 &status);
+                 const_cast<char*>("WCS: Epoch of celestial pointing"), 
+                 &status);
   fits_write_key(fp, TDOUBLE, const_cast<char*>("EQUINOX"), &dtmp, 
-		 const_cast<char*>("WCS: Equinox of celestial pointing"), 
-		 &status);
+                 const_cast<char*>("WCS: Equinox of celestial pointing"), 
+                 &status);
 
   //Do data writing.  We have to make a transposed copy of the
   // data to do this, which is irritating as hell
@@ -913,7 +913,7 @@ int simImage::writeToFits(const std::string& outputfile) const {
 int simImage::writeProbImageToFits(const std::string& outfile) const {
   if (!use_clustered_pos)
     throw pofdExcept("simImage", "writeProbImageToFits",
-		     "No probability image to write", 1);
+                     "No probability image to write", 1);
   return posgen->writeProbToFits(outfile);
 }
 
@@ -927,14 +927,14 @@ void simImage::writePositionGeneratorToHDF5Handle(hid_t obj_id) const {
 
   if (H5Iget_ref(obj_id) < 0)
     throw pofdExcept("simImage", "writePositionGeneratorToHDF5Handle",
-		     "Given non-open obj_id to write to", 1);
+                     "Given non-open obj_id to write to", 1);
 
   hid_t group_id;
   group_id = H5Gcreate(obj_id, "PositionGenerator", H5P_DEFAULT, H5P_DEFAULT, 
-		      H5P_DEFAULT);
+                      H5P_DEFAULT);
   if (H5Iget_ref(group_id) < 0)
     throw pofdExcept("simImage", "writePositionGeneratorToHDF5",
-		     "Failed to create HDF5 model group", 2);
+                     "Failed to create HDF5 model group", 2);
 
   hsize_t adims;
   hid_t mems_id, att_id;
@@ -945,7 +945,7 @@ void simImage::writePositionGeneratorToHDF5Handle(hid_t obj_id) const {
     hid_t datatype = H5Tcopy(H5T_C_S1);
     H5Tset_size(datatype, strlen(postype)); 
     att_id = H5Acreate1(group_id, "PositionType", datatype,
-			mems_id, H5P_DEFAULT);
+                        mems_id, H5P_DEFAULT);
     H5Awrite(att_id, datatype, postype);
     H5Aclose(att_id);
     posgen->writeToHDF5Handle(group_id);
@@ -954,7 +954,7 @@ void simImage::writePositionGeneratorToHDF5Handle(hid_t obj_id) const {
     hid_t datatype = H5Tcopy(H5T_C_S1);
     H5Tset_size(datatype, strlen(postype)); 
     att_id = H5Acreate1(group_id, "PositionType", datatype,
-			mems_id, H5P_DEFAULT);
+                        mems_id, H5P_DEFAULT);
     H5Awrite(att_id, datatype, postype);
     H5Aclose(att_id);
   }

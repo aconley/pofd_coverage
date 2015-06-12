@@ -6,6 +6,7 @@
 #define __beam__
 
 #include "../include/global_settings.h"
+#include "../include/ran.h"
 #include "../include/fourierFilter.h"
 
 /*!
@@ -19,7 +20,13 @@ class beam {
  private :
   double fwhm; //!< FWHM of beam, in arcsec
   double rhosq; //!< Convenience variable \f$\rho = 4 \log\left(2\right) 3600^2/FWHM^2)\f$
-  
+  double noise; //!< Fractional beam noise
+
+  mutable ran *rangen; //!< Random number generator, if needed for fills
+
+  /*! \brief Inner function to add noise */
+  void addNoise(unsigned int, double, double* const) const;
+
   /*!\brief Inner beam generator, no filtering, arbitrary extent*/
   void getRawBeam(unsigned int n1, unsigned int n2, double pixsize, 
                   double* const bm) const;
@@ -29,15 +36,19 @@ class beam {
                   unsigned int oversamp, double* const bm) const;
 
  public :
-  beam(double FWHM=10.0); //!< Constructor with FWHM
-  
-  void setFWHM(double); //!< Set the FWHM
+  beam(double FWHM=10.0) noexcept; //!< Constructor with FWHM
+  ~beam(); //!< Desctructor
 
-  double getFWHM() const { return fwhm; } //!< Get the FWHM
-  double getRhoSq() const { return rhosq; } //!< Get \f$\rho^2\f$
+  void setFWHM(double) noexcept; //!< Set the FWHM
 
-  double getEffectiveArea() const; //<! Get effective area of beam in sq deg
-  double getEffectiveAreaSq() const; //!< Get effective area of beam^2 in sq deg
+  double getFWHM() const noexcept { return fwhm; } //!< Get the FWHM
+  double getRhoSq() const noexcept { return rhosq; } //!< Get \f$\rho^2\f$
+
+  void setNoise(double NOISE) noexcept { noise = NOISE; } //!< Set the beam noise
+  double getNoise() const noexcept { return noise; } //!< Get beam noise
+
+  double getEffectiveArea() const noexcept; //<! Get effective area of beam in sq deg
+  double getEffectiveAreaSq() const noexcept; //!< Get effective area of beam^2 in sq deg
 
   /*!\brief Get factorized beam, no filtering*/
   void getBeamFac(unsigned int n, double pixsize, double* const fac) const; 

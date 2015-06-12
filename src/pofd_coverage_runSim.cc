@@ -17,6 +17,7 @@
 static struct option long_options[] = {
   {"help", no_argument, 0, 'h'},
   {"bin", no_argument, 0, 'b'},
+  {"beamnoise", required_argument, 0, 'B'},
   {"double", no_argument, 0, 'd'},
   {"esmooth", required_argument, 0, 'e'},
   {"extra_smooth1", required_argument, 0, '!'},
@@ -56,7 +57,7 @@ static struct option long_options[] = {
   {0, 0, 0, 0}
 };
 
-char optstring[] = "hbde:!:@:f:F:+:1:mn:5:6:N2:3:4:o:p:q:s:#:$:,:.:/:7:9:0:*:(:):%:S:vVw:";
+char optstring[] = "hbB:de:!:@:f:F:+:1:mn:5:6:N2:3:4:o:p:q:s:#:$:,:.:/:7:9:0:*:(:):%:S:vVw:";
 
 int runSimSingle(int argc, char **argv) {
 
@@ -67,7 +68,7 @@ int runSimSingle(int argc, char **argv) {
   double sigma; // Instrument noise
   unsigned int nsims, nlike, n1, n2, fftsize, nbins;
   unsigned int oversample, sparcity, nbeambins;
-  double pixsize, n0rangefrac, n0initrange, nfwhm, simfwhm;
+  double pixsize, n0rangefrac, n0initrange, nfwhm, simfwhm, bmnoise;
   double filtscale, filt_fwhm, qfactor, sigmc, sigmi; //Filtering parameters
   std::string outputfile; //Ouput pofd option
   std::string powerspecfile; //Power spectrum file
@@ -86,6 +87,7 @@ int runSimSingle(int argc, char **argv) {
   has_wisdom          = false;
   esmooth             = 0.0;
   simfwhm             = std::numeric_limits<double>::quiet_NaN();
+  bmnoise             = 0.0;
   has_user_seed       = false;
   seed                = 1024;
   oversample          = 1;
@@ -111,6 +113,9 @@ int runSimSingle(int argc, char **argv) {
     switch(c) {
     case 'b':
       use_binning = true;
+      break;
+    case 'B':
+      bmnoise = atof(optarg);
       break;
     case 'e':
       esmooth = atof(optarg);
@@ -188,7 +193,7 @@ int runSimSingle(int argc, char **argv) {
       break;
     }
 
-  if (optind >= argc-6) {
+  if (optind >= argc - 6) {
     std::cout << "Some required arguments missing" << std::endl;
     std::cout << " Use --help for description of inputs and options"
               << std::endl;
@@ -328,6 +333,8 @@ int runSimSingle(int argc, char **argv) {
       printf("   fftsize:            %u\n", fftsize);
       if (!std::isnan(simfwhm))
         printf("   sim fwhm:           %0.2f\n", simfwhm);
+      if (bmnoise != 0.0)
+        printf("   beam noise:         %0.4f\n", bmnoise);
       if (esmooth > 0)
         printf("   esmooth:            %0.2f\n",esmooth);
       if (oversample > 1)
@@ -359,7 +366,7 @@ int runSimSingle(int argc, char **argv) {
     simManager sim(modelfile, nsims, n0initrange, map_like, nlike,
                    n0rangefrac, fftsize, n1, n2, pixsize, fwhm, nfwhm, simfwhm,
                    sigma, filtscale, qfactor, matched, filt_fwhm, sigmi,
-                   sigmc, nbeambins, n0, esmooth, oversample, powerspecfile,
+                   sigmc, bmnoise, nbeambins, n0, esmooth, oversample, powerspecfile,
                    sparcity, use_binning, nbins);
     if (has_wisdom) sim.addWisdom(wisdom_file);
     if (has_user_seed) sim.setSeed(seed);
@@ -402,7 +409,7 @@ int runSimDouble(int argc, char **argv) {
   unsigned int nsims, nlike, n1, n2, fftsize, nbins, oversample;
   unsigned int nbeambins, sparcity;
   bool verbose, has_wisdom, has_user_seed, use_binning, map_like;
-  double pixsize, n0rangefrac, n0initrange, nfwhm, simfwhm1, simfwhm2;
+  double pixsize, n0rangefrac, n0initrange, nfwhm, simfwhm1, simfwhm2, bmnoise;
 
   // Filtering params
   bool matched, single_filt;
@@ -427,6 +434,7 @@ int runSimDouble(int argc, char **argv) {
   has_wisdom          = false;
   simfwhm1            = std::numeric_limits<double>::quiet_NaN();
   simfwhm2            = std::numeric_limits<double>::quiet_NaN();
+  bmnoise             = 0.0;
   esmooth1            = 0.0;
   esmooth2            = 0.0;
   has_user_seed       = false;
@@ -459,6 +467,9 @@ int runSimDouble(int argc, char **argv) {
     switch(c) {
     case 'b':
       use_binning = true;
+      break;
+    case 'B':
+      bmnoise = atof(optarg);
       break;
     case '!':
       esmooth1 = atof(optarg);
@@ -761,8 +772,10 @@ int runSimDouble(int argc, char **argv) {
       printf("   fftsize:            %u by %u\n", fftsize, fftsize);
       if (!std::isnan(simfwhm1))
         printf("   sim fwhm1:          %0.2f\n", simfwhm1);
-     if (!std::isnan(simfwhm2))
-       printf("    sim fwhm2:          %0.2f\n", simfwhm2);
+      if (!std::isnan(simfwhm2))
+        printf("    sim fwhm2:          %0.2f\n", simfwhm2);
+      if (bmnoise != 0.0)
+        printf("   beam noise:         %0.4f\n", bmnoise);
       if (esmooth1 > 0)
         printf("   esmooth1:           %0.2f\n",esmooth1);
       if (esmooth2 > 0)
@@ -957,6 +970,9 @@ int main(int argc, char **argv) {
       std::cout << "\t\tPrint this message and exit." << std::endl;
       std::cout << "\t-b, --bin" << std::endl;
       std::cout << "\t\tBin the simulated image for the likelihood calculation."
+                << std::endl;
+      std::cout << "\t-B, --beamnoise VALUE" << std::endl;
+      std::cout << "\t\tFractional beam noise to add for P(D) calculations (def: 0)"
                 << std::endl;
       std::cout << "\t-F, --filtscale VALUE" << std::endl;
       std::cout << "\t\tRadius of high-pass filter in arcseconds. If zero,"

@@ -3,6 +3,8 @@
 #include<sstream>
 #include<limits>
 #include<cstring>
+#include<ctime>
+
 #include<fitsio.h>
 
 #include "../include/beam.h"
@@ -13,22 +15,41 @@
 /*!
   \param[in] FWHM     FWHM of beam, in arcsec
 */
-beam::beam(double FWHM) { setFWHM(FWHM); }
+beam::beam(double FWHM) noexcept : noise(0.0), rangen(nullptr) { setFWHM(FWHM); }
+
+beam::~beam() { if (rangen != nullptr) delete rangen; }
 
 /*!
   \param[in] fwhm_    New FWHM of beam, in arcsec
 */
-void beam::setFWHM(double fwhm_) {
+void beam::setFWHM(double fwhm_) noexcept {
   fwhm = fwhm_;
-  rhosq = pofd_coverage::rhofac / (fwhm*fwhm);
+  rhosq = pofd_coverage::rhofac / (fwhm * fwhm);
 }
 
-double beam::getEffectiveArea() const {
+double beam::getEffectiveArea() const noexcept {
   return pofd_coverage::pi / rhosq;
 }
 
-double beam::getEffectiveAreaSq() const {
+double beam::getEffectiveAreaSq() const noexcept {
   return 0.5 * pofd_coverage::pi / rhosq;
+}
+
+/*!
+  \param[in] n Number of values in bm
+  \param[in] noiseval Gaussian noise sigma
+  \param[inout] bm Data to modify, treated as 1D array of length n
+*/
+void beam::addNoise(unsigned int n, double noiseval, double* const bm) const {
+  if (noiseval == 0) return; // Negative noise is okay
+  if (rangen == nullptr) {
+    unsigned long long int seed;
+    seed = static_cast<unsigned long long int>(time(nullptr));
+    seed += static_cast<unsigned long long int>(clock());
+    rangen = new ran(seed);
+  }
+  for (unsigned int i = 0; i < n; ++i)
+    bm[i] += noise * rangen->gauss();
 }
 
 /*!
@@ -303,6 +324,9 @@ void beam::getBeam(unsigned int n, double pixsize, double* const bm,
   // pre-filtered beam
   getRawBeam(n, n, pixsize, bm);
 
+  // Add noise if needed
+  if (noise > 0) addNoise(n * n, noise, bm);
+
   // Apply filtering to beam
   if (filter != nullptr)
     filter->filter(n, n, pixsize, bm);
@@ -324,6 +348,9 @@ void beam::getBeam(unsigned int n1, unsigned int n2,
 
   // pre-filtered beam
   getRawBeam(n1, n2, pixsize, bm);
+
+  // Add noise if needed
+  if (noise > 0) addNoise(n1 * n2, noise, bm);
 
   // Apply filtering to beam
   if (filter != nullptr)
